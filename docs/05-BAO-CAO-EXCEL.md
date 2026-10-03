@@ -27,6 +27,7 @@ Menu **Báo cáo** (`/reports`). Chọn kỳ: Tháng này / Tháng trước / Qu
 ## Lương lái xe công ty (lương cứng + % doanh số)
 - Cài ở **Danh mục → Lái xe**, cột "Lương (tháng này)" (chỉ Admin, Kế toán thấy). Mỗi mức lương có **tháng bắt đầu áp dụng**; tăng lương thì thêm mức mới, các tháng trước vẫn tính theo mức cũ (bảng `DriverSalary`).
 - Lương kỳ = Σ theo từng tháng: lương cứng × (số ngày của kỳ trong tháng / số ngày của tháng) + % × doanh thu các chuyến lái xe đã chạy trong tháng.
-- Doanh thu tính lương: chuyến xe công ty do lái xe chạy, không hủy, booking đã xác nhận / hoàn thành, **giờ đón đã qua**; đã phân bổ giảm giá, chưa gồm VAT.
-- Xem ở **Báo cáo → Hiệu suất lái xe → Bảng lương lái xe** (bấm dòng để xem từng chuyến, kỳ nhiều tháng có chi tiết theo tháng). Excel có thêm sheet "Bảng lương lái xe" và "Chuyến tính lương LX".
+- Doanh thu tính lương: chuyến xe công ty do lái xe chạy, trạng thái **Hoàn thành**, booking đã xác nhận / hoàn thành; đã phân bổ giảm giá, chưa gồm VAT. Chuyến đã qua giờ đón mà chưa bấm Hoàn thành được cảnh báo, chưa tính.
+- **Hoàn ứng** = chi phí lái xe tự nhập trên app (`TripCost.byDriver`) của các chuyến lái xe chạy trong kỳ (kể cả chuyến bị hủy sau khi đã chi); chi phí do văn phòng nhập không tính. **Thực nhận = tổng lương + hoàn ứng.**
+- Xem ở **Báo cáo → Hiệu suất lái xe → Bảng lương lái xe** (bấm dòng để xem từng chuyến, khoản ứng, chuyến chưa hoàn thành; kỳ nhiều tháng có chi tiết theo tháng). Excel có thêm sheet "Bảng lương lái xe", "Chuyến tính lương LX", "Hoàn ứng LX".
 - API: `GET/PUT /api/drivers/:id/salaries`, `DELETE /api/drivers/salaries/:id`, `GET /api/drivers/salaries/current`, `GET /api/reports/driver-pay?from&to` – chỉ Admin, Kế toán.

@@ -272,10 +272,12 @@ export class ReportsController {
   }
 
   /**
-   * Lương lái xe công ty trong khoảng ngày = lương cứng + % doanh số.
+   * Lương lái xe công ty trong khoảng ngày = lương cứng + % doanh số; thực nhận = lương + hoàn ứng.
    * - Lương cứng tính theo tháng; kỳ không trọn tháng thì tính theo số ngày (lương × số ngày / số ngày của tháng).
-   * - Doanh số = doanh thu (đã phân bổ giảm giá, chưa VAT) các chuyến lái xe đã chạy:
-   *   chuyến không hủy, booking đã xác nhận / hoàn thành, giờ đón đã qua.
+   * - Doanh số = doanh thu (đã phân bổ giảm giá, chưa VAT) các chuyến lái xe đã HOÀN THÀNH
+   *   (xe công ty, booking đã xác nhận / hoàn thành), theo ngày đón.
+   * - Chuyến đã qua giờ đón nhưng chưa bấm hoàn thành: chưa tính, trả về để cảnh báo.
+   * - Hoàn ứng = chi phí lái xe tự nhập trên app (byDriver) của các chuyến lái xe chạy trong kỳ.
    * - Mỗi tháng dùng mức lương có hiệu lực của tháng đó (bảng DriverSalary).
    */
   @Get('driver-pay')
@@ -288,24 +290,42 @@ export class ReportsController {
     if ((startOfVnDay(to).getTime() - startOfVnDay(from).getTime()) / DAY_MS > 731) throw new BadRequestException('Chỉ xem tối đa 2 năm mỗi lần');
 
     const now = new Date();
-    const tripEnd = endOfVnDay(to) < now ? endOfVnDay(to) : now;
-    const [drivers, salaries, trips] = await Promise.all([
+    const inRange = { gte: startOfVnDay(from), lte: endOfVnDay(to) };
+    const companyTrip: Prisma.BookingTripWhereInput = { driverId: { not: null }, partnerId: null, booking: { status: { in: REVENUE_STATUSES } } };
+    const [drivers, salaries, trips, pending, advances] = await Promise.all([
       this.prisma.driver.findMany({ where: { partnerId: null }, select: { id: true, fullName: true, phone: true, status: true }, orderBy: { fullName: 'asc' } }),
       this.prisma.driverSalary.findMany({ where: { driver: { partnerId: null } }, orderBy: { effectiveFrom: 'desc' } }),
       this.prisma.bookingTrip.findMany({
-        where: {
-          driverId: { not: null },
-          partnerId: null,
-          status: { not: TripStatus.HUY },
-          pickupTime: { gte: startOfVnDay(from), lte: tripEnd },
-          booking: { status: { in: REVENUE_STATUSES } },
-        },
+        where: { ...companyTrip, status: TripStatus.HOAN_THANH, pickupTime: inRange },
         select: {
           driverId: true,
           amount: true,
           pickupTime: true,
           booking: { select: { discountAmount: true, trips: { select: { amount: true, status: true } } } },
         },
+      }),
+      // Đã qua giờ đón nhưng chưa hoàn thành → chưa tính % doanh số
+      this.prisma.bookingTrip.findMany({
+        where: {
+          ...companyTrip,
+          status: { notIn: [TripStatus.HUY, TripStatus.HOAN_THANH] },
+          pickupTime: { gte: inRange.gte, lte: endOfVnDay(to) < now ? endOfVnDay(to) : now },
+        },
+        select: { id: true, driverId: true, pickupTime: true, status: true, booking: { select: { id: true, code: true } } },
+        orderBy: { pickupTime: 'asc' },
+      }),
+      // Khoản lái xe tự ứng (nhập trên app) của các chuyến lái xe chạy trong kỳ, kể cả chuyến bị hủy sau khi đã chi
+      this.prisma.tripCost.findMany({
+        where: { byDriver: true, trip: { driverId: { not: null }, partnerId: null, pickupTime: inRange } },
+        select: {
+          id: true,
+          amount: true,
+          spentAt: true,
+          note: true,
+          category: { select: { name: true } },
+          trip: { select: { id: true, driverId: true, pickupTime: true, status: true, booking: { select: { id: true, code: true } } } },
+        },
+        orderBy: { spentAt: 'asc' },
       }),
     ]);
 
@@ -321,17 +341,23 @@ export class ReportsController {
     }
 
     const rateFor = (driverId: number, month: string) => salaries.find((s) => s.driverId === driverId && s.effectiveFrom.toISOString().slice(0, 7) <= month) ?? null;
+    const monthOf = (d: Date) => vnDate(d).slice(0, 7);
 
-    // Doanh thu từng chuyến theo lái xe + tháng
+    // Doanh thu chuyến hoàn thành theo lái xe + tháng
     const revenue = new Map<string, { revenue: number; trips: number }>();
     for (const t of trips) {
       const subtotal = this.subtotal(t.booking.trips);
       const factor = subtotal > 0 ? Math.max(0, subtotal - Number(t.booking.discountAmount)) / subtotal : 0;
-      const key = `${t.driverId}|${vnDate(t.pickupTime).slice(0, 7)}`;
+      const key = `${t.driverId}|${monthOf(t.pickupTime)}`;
       const r = revenue.get(key) ?? { revenue: 0, trips: 0 };
       r.revenue += Number(t.amount) * factor;
       r.trips += 1;
       revenue.set(key, r);
+    }
+    const advanceSum = new Map<string, number>();
+    for (const c of advances) {
+      const key = `${c.trip.driverId}|${monthOf(c.trip.pickupTime)}`;
+      advanceSum.set(key, (advanceSum.get(key) ?? 0) + Number(c.amount));
     }
 
     const rows = drivers.map((d) => {
@@ -342,10 +368,13 @@ export class ReportsController {
         const commissionPercent = rate ? Number(rate.commissionPercent) : 0;
         const baseAmount = Math.round((baseSalary * m.days) / m.daysInMonth);
         const commission = Math.round((r.revenue * commissionPercent) / 100);
-        return { ...m, hasRate: !!rate, baseSalary, commissionPercent, baseAmount, trips: r.trips, revenue: Math.round(r.revenue), commission, total: baseAmount + commission };
+        const reimbursement = Math.round(advanceSum.get(`${d.id}|${m.month}`) ?? 0);
+        const total = baseAmount + commission;
+        return { ...m, hasRate: !!rate, baseSalary, commissionPercent, baseAmount, trips: r.trips, revenue: Math.round(r.revenue), commission, total, reimbursement, netPay: total + reimbursement };
       });
-      const sum = (k: 'baseAmount' | 'revenue' | 'commission' | 'trips' | 'total') => detail.reduce((s, x) => s + x[k], 0);
+      const sum = (k: 'baseAmount' | 'revenue' | 'commission' | 'trips' | 'total' | 'reimbursement' | 'netPay') => detail.reduce((s, x) => s + x[k], 0);
       const last = detail[detail.length - 1];
+      const myPending = pending.filter((t) => t.driverId === d.id);
       return {
         driverId: d.id,
         fullName: d.fullName,
@@ -359,15 +388,30 @@ export class ReportsController {
         baseAmount: sum('baseAmount'),
         commission: sum('commission'),
         total: sum('total'),
+        reimbursement: sum('reimbursement'),
+        netPay: sum('netPay'),
         months: detail,
+        pendingTrips: myPending.map((t) => ({ id: t.id, pickupTime: t.pickupTime, status: t.status, booking: t.booking })),
+        advances: advances
+          .filter((c) => c.trip.driverId === d.id)
+          .map((c) => ({
+            id: c.id,
+            amount: Number(c.amount),
+            spentAt: c.spentAt,
+            note: c.note,
+            category: c.category.name,
+            tripId: c.trip.id,
+            pickupTime: c.trip.pickupTime,
+            tripStatus: c.trip.status,
+            booking: c.trip.booking,
+          })),
       };
     });
 
     return {
       from,
       to,
-      countedUntil: vnDate(tripEnd),
-      drivers: rows.filter((r) => r.status !== 'NGHI_VIEC' || r.trips > 0),
+      drivers: rows.filter((r) => r.status !== 'NGHI_VIEC' || r.trips > 0 || r.reimbursement > 0 || r.pendingTrips.length > 0),
     };
   }
 
