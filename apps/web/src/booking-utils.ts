@@ -95,7 +95,7 @@ export function buildQuoteText(b: Booking, s: Settings) {
   const vnd = (v: number | string) => `${formatVnd(v)}đ`;
   const lines: string[] = [];
   lines.push(`BÁO GIÁ DỊCH VỤ XE${s.companyName ? ` – ${s.companyName}` : ''}`);
-  lines.push(`Mã: ${b.code} | Ngày: ${dayjs().format('DD/MM/YYYY')}`);
+  lines.push(`Mã: ${b.code}${b.customerRef ? ` | Mã booking của Quý khách: ${b.customerRef}` : ''} | Ngày: ${dayjs().format('DD/MM/YYYY')}`);
   lines.push(`Kính gửi: ${b.customer?.name ?? b.contactName} – ${b.contactPhone}`);
   lines.push('');
 

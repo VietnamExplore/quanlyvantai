@@ -34,7 +34,7 @@ export const assignmentText = (t: DispatchTrip) =>
 /** Nội dung lệnh điều xe gửi tài xế / nhà xe qua Zalo */
 export function buildDispatchText(t: DispatchTrip) {
   const lines = [
-    `LỆNH ĐIỀU XE – ${t.booking.code}`,
+    `LỆNH ĐIỀU XE – ${t.booking.code}${t.booking.customerRef ? ` (mã khách: ${t.booking.customerRef})` : ''}`,
     `Dịch vụ: ${t.service?.name ?? t.serviceType}`,
     `Giờ đón: ${fmtTime(t.pickupTime)} (dự kiến xong ${dayjs(t.endTime).format('HH:mm DD/MM')})`,
     `Điểm đón: ${t.pickupAddress}`,

@@ -179,6 +179,7 @@ export class FinanceService implements OnModuleInit {
       g.bookings.push({
         id: b.id,
         code: b.code,
+        customerRef: b.customerRef,
         status: b.status,
         salesUser: b.salesUser?.fullName ?? null,
         firstPickup: activeTrips.length ? new Date(Math.min(...activeTrips.map((x) => x.pickupTime.getTime()))) : null,

@@ -68,7 +68,8 @@ export default function QuotePage() {
 
         <h1>BÁO GIÁ DỊCH VỤ VẬN CHUYỂN</h1>
         <div style={{ textAlign: 'center' }} className="muted">
-          Số: {b.code} · Ngày {dayjs().format('DD/MM/YYYY')}
+          Số: {b.code}
+          {b.customerRef && <> · Mã booking của Quý khách: {b.customerRef}</>} · Ngày {dayjs().format('DD/MM/YYYY')}
         </div>
 
         <div style={{ marginTop: 20 }}>

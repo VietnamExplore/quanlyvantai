@@ -67,6 +67,12 @@ export default function PassengerListPage() {
           </div>
           <div style={{ textAlign: 'right' }} className="muted">
             Số: {b.code}
+            {b.customerRef && (
+              <>
+                <br />
+                Mã của khách: {b.customerRef}
+              </>
+            )}
             <br />
             Ngày in: {dayjs().format('DD/MM/YYYY')}
           </div>

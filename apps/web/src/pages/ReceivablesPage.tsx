@@ -15,6 +15,7 @@ import type { BookingStatus, CustomerType } from '../types';
 interface RecBooking {
   id: number;
   code: string;
+  customerRef: string | null;
   status: BookingStatus;
   salesUser: string | null;
   firstPickup: string | null;
@@ -65,12 +66,13 @@ export default function ReceivablesPage() {
   function exportCsv() {
     downloadCsv(
       `cong-no-khach-hang-${dayjs().format('YYYYMMDD')}.csv`,
-      ['Khách hàng', 'SĐT', 'Booking', 'Ngày đi', 'NV kinh doanh', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)'],
+      ['Khách hàng', 'SĐT', 'Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)'],
       customers.flatMap((c) =>
         c.bookings.map((b) => [
           c.name,
           c.phone,
           b.code,
+          b.customerRef,
           b.firstPickup ? dayjs(b.firstPickup).format(DATE_FORMAT) : '',
           b.salesUser,
           b.total,
@@ -136,6 +138,7 @@ export default function ReceivablesPage() {
                 dataSource={c.bookings}
                 columns={[
                   { title: 'Booking', dataIndex: 'code', render: (v, b) => <Link to={`/bookings/${b.id}`}>{v}</Link> },
+                  { title: 'Mã của khách', dataIndex: 'customerRef' },
                   { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={BOOKING_STATUS} value={v} /> },
                   { title: 'Ngày đi', dataIndex: 'firstPickup', render: (v) => (v ? dayjs(v).format(DATE_FORMAT) : '') },
                   { title: 'NV kinh doanh', dataIndex: 'salesUser' },

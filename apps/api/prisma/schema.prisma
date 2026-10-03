@@ -329,6 +329,7 @@ enum TripStatus {
 model Booking {
   id              Int           @id @default(autoincrement())
   code            String        @unique
+  customerRef     String? // Mã booking của khách / đại lý (nếu có), dùng để đối chiếu
   customerId      Int?
   customer        Customer?     @relation(fields: [customerId], references: [id])
   contactName     String

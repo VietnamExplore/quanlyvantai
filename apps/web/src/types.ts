@@ -280,6 +280,7 @@ export interface TripCostRow {
 }
 
 export interface Booking extends Ref {
+  customerRef: string | null;
   payments: Payment[];
   paid: number;
   balance: number;
@@ -318,7 +319,7 @@ export interface Booking extends Ref {
 
 export interface DispatchTrip extends Omit<BookingTrip, 'vehicleType' | 'routePrice'> {
   bookingId: number;
-  booking: { id: number; code: string; status: BookingStatus; contactName: string; contactPhone: string; customer: { id: number; name: string } | null };
+  booking: { id: number; code: string; customerRef: string | null; status: BookingStatus; contactName: string; contactPhone: string; customer: { id: number; name: string } | null };
   vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number };
   vehicleId: number | null;
   vehicle: { id: number; plateNumber: string; vehicleType: { name: string } } | null;

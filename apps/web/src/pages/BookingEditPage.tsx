@@ -132,6 +132,7 @@ export default function BookingEditPage() {
     }
     const payload = {
       customerId: v.customerId ?? null,
+      customerRef: v.customerRef?.trim() || null,
       contactName: v.contactName,
       contactPhone: v.contactPhone,
       source: v.source,
@@ -303,6 +304,7 @@ export default function BookingEditPage() {
               {isNew ? 'Booking mới' : booking?.code}
             </Typography.Title>
             {!isNew && <EnumTag labels={BOOKING_STATUS} value={status} />}
+            {booking?.customerRef && <Tag>Mã khách: {booking.customerRef}</Tag>}
             {dirty && <Tag color="orange">Chưa lưu</Tag>}
           </Space>
           <Space wrap>
@@ -333,7 +335,7 @@ export default function BookingEditPage() {
       <Form form={form} layout="vertical" disabled={readOnly} onValuesChange={() => setDirty(true)}>
         <Card title="Khách hàng">
           <Row gutter={16}>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={7}>
               <Form.Item name="customerId" label="Khách hàng / đại lý" extra="Bỏ trống nếu là khách lẻ chưa có trong danh mục">
                 <QuickSelect
                   entity="customer"
@@ -344,12 +346,17 @@ export default function BookingEditPage() {
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={5}>
+              <Form.Item name="customerRef" label="Mã booking của khách" tooltip="Mã do khách / đại lý đặt cho đơn này (nếu có), dùng để đối chiếu. In trên báo giá, lệnh điều xe, danh sách hành khách.">
+                <Input placeholder="Ví dụ: HN-2611-045" allowClear />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={6}>
               <Form.Item name="contactName" label="Người liên hệ" rules={[{ required: true, message: 'Nhập tên người liên hệ' }]}>
                 <Input />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={6}>
               <Form.Item name="contactPhone" label="SĐT liên hệ" rules={[{ required: true, message: 'Nhập số điện thoại' }]}>
                 <Input />
               </Form.Item>

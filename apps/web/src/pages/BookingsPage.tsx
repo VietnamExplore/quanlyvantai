@@ -40,7 +40,7 @@ export default function BookingsPage() {
           Booking <Typography.Text type="secondary">({data.length})</Typography.Text>
         </Typography.Title>
         <Flex gap={8} wrap>
-          <Input allowClear prefix={<SearchOutlined />} placeholder="Mã, tên, SĐT khách" style={{ width: 220 }} onChange={(e) => setQ(e.target.value || undefined)} />
+          <Input allowClear prefix={<SearchOutlined />} placeholder="Mã, mã của khách, tên, SĐT" style={{ width: 220 }} onChange={(e) => setQ(e.target.value || undefined)} />
           <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Đi từ ngày', 'đến ngày']} onChange={(v) => setRange(v)} />
           <Select allowClear placeholder="Trạng thái" style={{ width: 150 }} options={toOptions(BOOKING_STATUS)} onChange={setStatus} />
           <Select allowClear placeholder="NV kinh doanh" style={{ width: 170 }} options={salesOptions} onChange={setSalesUserId} />
@@ -61,7 +61,20 @@ export default function BookingsPage() {
         pagination={{ pageSize: 30, hideOnSinglePage: true }}
         onRow={(r) => ({ onClick: () => navigate(`/bookings/${r.id}`), style: { cursor: 'pointer' } })}
         columns={[
-          { title: 'Mã', dataIndex: 'code', render: (v) => <b>{v}</b> },
+          {
+            title: 'Mã',
+            dataIndex: 'code',
+            render: (v, r) => (
+              <>
+                <b>{v}</b>
+                {r.customerRef && (
+                  <div>
+                    <Typography.Text type="secondary">Mã khách: {r.customerRef}</Typography.Text>
+                  </div>
+                )}
+              </>
+            ),
+          },
           {
             title: 'Khách hàng',
             render: (_, r) => (

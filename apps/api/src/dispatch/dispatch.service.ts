@@ -11,7 +11,7 @@ const CLOSED: TripStatus[] = [TripStatus.HOAN_THANH, TripStatus.HUY];
 
 export const dispatchTripInclude = {
   booking: {
-    select: { id: true, code: true, status: true, contactName: true, contactPhone: true, customer: { select: { id: true, name: true } } },
+    select: { id: true, code: true, customerRef: true, status: true, contactName: true, contactPhone: true, customer: { select: { id: true, name: true } } },
   },
   vehicleType: { select: { id: true, code: true, name: true, seats: true, maxPassengers: true } },
   service: { select: { code: true, name: true, color: true, pricingMode: true, hasFlight: true } },
@@ -80,6 +80,7 @@ export class DispatchService {
           ...(q && {
             OR: [
               { code: { contains: q, mode: 'insensitive' } },
+              { customerRef: { contains: q, mode: 'insensitive' } },
               { contactName: { contains: q, mode: 'insensitive' } },
               { customer: { name: { contains: q, mode: 'insensitive' } } },
             ],
