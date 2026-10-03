@@ -1,3 +1,4 @@
+import { QuickSelect } from '../components/QuickCreate';
 import { Col, Form, Input, InputNumber, Row, Select, Switch, Tag } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
@@ -76,7 +77,7 @@ export default function CustomersPage() {
           </Col>
           <Col xs={24} md={8}>
             <Form.Item name="salesUserId" label="NV kinh doanh phụ trách">
-              <Select allowClear options={salesOptions} />
+              <QuickSelect entity="salesUser" allowClear options={salesOptions} />
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>

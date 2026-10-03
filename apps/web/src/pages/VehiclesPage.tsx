@@ -63,7 +63,7 @@ export default function VehiclesPage() {
           </Col>
           <Col xs={24} md={12}>
             <Form.Item name="vehicleTypeId" label="Loại xe" rules={[{ required: true, message: 'Chọn loại xe' }]}>
-              <Select showSearch optionFilterProp="label" options={typeOptions} />
+              <QuickSelect entity="vehicleType" options={typeOptions} />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>

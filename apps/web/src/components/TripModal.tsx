@@ -84,7 +84,11 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
 
   async function recalc() {
     const v = form.getFieldsValue();
-    if (!v.serviceType || !v.vehicleTypeId || !v.pickupTime) return;
+    if (!v.serviceType || !v.vehicleTypeId || !v.pickupTime) {
+      const missing = [!v.vehicleTypeId && 'loại xe', !v.pickupTime && 'giờ đón'].filter(Boolean).join(' và ');
+      if (v.routePriceId || RENTAL_SERVICES.includes(v.serviceType)) setCalcMsg({ type: 'info', text: `Chọn ${missing} để hệ thống tính giá.` });
+      return;
+    }
     if (!v.routePriceId && !RENTAL_SERVICES.includes(v.serviceType)) {
       setBreakdown([]);
       setCalcMsg({ type: 'info', text: 'Chọn tuyến để hệ thống tự tính giá, hoặc nhập giá tay bên dưới.' });
@@ -219,7 +223,7 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
           </Col>
           <Col xs={14} md={8}>
             <Form.Item name="vehicleTypeId" label="Loại xe" rules={[{ required: true, message: 'Chọn loại xe' }]}>
-              <Select showSearch optionFilterProp="label" options={vehicleTypes.filter((t) => t.isActive).map((t) => ({ value: t.id, label: `${t.name} (tối đa ${t.maxPassengers} khách)` }))} />
+              <QuickSelect entity="vehicleType" options={vehicleTypes.filter((t) => t.isActive).map((t) => ({ value: t.id, label: `${t.name} (tối đa ${t.maxPassengers} khách)` }))} />
             </Form.Item>
           </Col>
           <Col xs={10} md={4}>
@@ -241,7 +245,13 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
           </Col>
           <Col xs={24} md={12}>
             <Form.Item name="routePriceId" label={isRental ? 'Tuyến / gói (không bắt buộc)' : 'Tuyến'} extra={isRental ? 'Bỏ trống để tính theo giá thuê ngày' : undefined}>
-              <Select allowClear showSearch optionFilterProp="label" options={routeOptions} placeholder="Chọn tuyến có giá cho loại xe này" />
+              <QuickSelect
+                entity="route"
+                allowClear
+                options={routeOptions}
+                placeholder="Chọn tuyến có giá cho loại xe này"
+                createInitial={{ vehicleTypeId, serviceType: serviceType ?? "THEO_TUYEN" }}
+              />
             </Form.Item>
           </Col>
 

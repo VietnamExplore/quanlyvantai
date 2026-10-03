@@ -1,3 +1,4 @@
+import { QuickSelect } from '../components/QuickCreate';
 import { Col, Form, Input, Rate, Row, Select, Switch, Tag } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
@@ -72,7 +73,7 @@ export default function PartnersPage() {
           </Col>
           <Col xs={24} md={16}>
             <Form.Item name="vehicleTypeCodes" label="Loại xe cung cấp được">
-              <Select mode="multiple" options={codeOptions} />
+              <QuickSelect entity="vehicleType" mode="multiple" valueKey="code" options={codeOptions} />
             </Form.Item>
           </Col>
           <Col xs={12} md={4}>

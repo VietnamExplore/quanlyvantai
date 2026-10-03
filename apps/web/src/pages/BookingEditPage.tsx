@@ -342,7 +342,7 @@ export default function BookingEditPage() {
             </Col>
             <Col xs={12} md={6}>
               <Form.Item name="salesUserId" label="NV kinh doanh">
-                <Select allowClear options={salesOptions} />
+                <QuickSelect entity="salesUser" allowClear options={salesOptions} />
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>

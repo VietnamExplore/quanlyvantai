@@ -1,14 +1,16 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { useQueryClient } from '@tanstack/react-query';
-import { App, Button, Col, Divider, Form, Input, Modal, Radio, Row, Select, type SelectProps } from 'antd';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { App, Button, Col, Divider, Form, Input, InputNumber, Modal, Radio, Row, Select, type SelectProps } from 'antd';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { CUSTOMER_TYPE, LOCATION_TYPE, OWNERSHIP, toOptions } from '../labels';
+import { CUSTOMER_TYPE, LOCATION_TYPE, OWNERSHIP, SERVICE_TYPE, toOptions } from '../labels';
 import type { Role } from '../types';
-import { useCompanyDriverOptions, usePartnerOptions, useVehicleTypeOptions } from './common';
+import { MoneyInput, useCompanyDriverOptions, useLocations, usePartnerOptions, useVehicleTypeOptions } from './common';
 
-export type QuickEntity = 'customer' | 'location' | 'partner' | 'driver' | 'vehicle';
+export type QuickEntity = 'customer' | 'location' | 'partner' | 'driver' | 'vehicle' | 'vehicleType' | 'route' | 'salesUser';
+
+type Rec = { id: number } & Record<string, unknown>;
 
 interface EntityConfig {
   title: string;
@@ -17,8 +19,14 @@ interface EntityConfig {
   /** Trường nhận chữ người dùng đã gõ tìm */
   nameField: string;
   defaults?: Record<string, unknown>;
+  /** Biến đổi dữ liệu form trước khi gửi */
+  toPayload?: (v: Record<string, unknown>) => Record<string, unknown>;
+  /** Các danh sách khác cần tải lại sau khi tạo */
+  invalidate?: string[];
   Fields: () => ReactNode;
 }
+
+// ───── Form từng loại dữ liệu ─────
 
 function CustomerFields() {
   return (
@@ -43,9 +51,14 @@ function CustomerFields() {
           <Input />
         </Form.Item>
       </Col>
-      <Col span={24}>
+      <Col span={12}>
         <Form.Item name="taxCode" label="Mã số thuế">
           <Input />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="salesUserId" label="NV kinh doanh phụ trách">
+          <QuickSelect entity="salesUser" allowClear />
         </Form.Item>
       </Col>
     </Row>
@@ -75,7 +88,6 @@ function LocationFields() {
 }
 
 function PartnerFields() {
-  const { codeOptions } = useVehicleTypeOptions();
   return (
     <Row gutter={12}>
       <Col span={24}>
@@ -95,7 +107,7 @@ function PartnerFields() {
       </Col>
       <Col span={24}>
         <Form.Item name="vehicleTypeCodes" label="Loại xe cung cấp được">
-          <Select mode="multiple" options={codeOptions} />
+          <QuickSelect entity="vehicleType" mode="multiple" valueKey="code" />
         </Form.Item>
       </Col>
     </Row>
@@ -103,7 +115,6 @@ function PartnerFields() {
 }
 
 function DriverFields() {
-  const partnerOptions = usePartnerOptions();
   return (
     <Row gutter={12}>
       <Col span={12}>
@@ -123,7 +134,7 @@ function DriverFields() {
       </Col>
       <Col span={16}>
         <Form.Item name="partnerId" label="Thuộc nhà xe đối tác" extra="Để trống nếu là lái xe công ty">
-          <Select allowClear showSearch optionFilterProp="label" options={partnerOptions} />
+          <QuickSelect entity="partner" allowClear />
         </Form.Item>
       </Col>
     </Row>
@@ -131,9 +142,6 @@ function DriverFields() {
 }
 
 function VehicleFields() {
-  const { options: typeOptions } = useVehicleTypeOptions();
-  const partnerOptions = usePartnerOptions();
-  const driverOptions = useCompanyDriverOptions();
   return (
     <Row gutter={12}>
       <Col span={12}>
@@ -143,7 +151,7 @@ function VehicleFields() {
       </Col>
       <Col span={12}>
         <Form.Item name="vehicleTypeId" label="Loại xe" rules={[{ required: true, message: 'Chọn loại xe' }]}>
-          <Select showSearch optionFilterProp="label" options={typeOptions} />
+          <QuickSelect entity="vehicleType" />
         </Form.Item>
       </Col>
       <Col span={24}>
@@ -156,15 +164,129 @@ function VehicleFields() {
           {({ getFieldValue }) =>
             getFieldValue('ownership') === 'DOI_TAC' ? (
               <Form.Item name="partnerId" label="Nhà xe đối tác" rules={[{ required: true, message: 'Chọn nhà xe' }]}>
-                <Select showSearch optionFilterProp="label" options={partnerOptions} />
+                <QuickSelect entity="partner" />
               </Form.Item>
             ) : (
               <Form.Item name="defaultDriverId" label="Lái xe mặc định">
-                <Select allowClear showSearch optionFilterProp="label" options={driverOptions} />
+                <QuickSelect entity="driver" allowClear />
               </Form.Item>
             )
           }
         </Form.Item>
+      </Col>
+    </Row>
+  );
+}
+
+const LICENSE_CLASSES = ['B', 'C1', 'C', 'D1', 'D2', 'D', 'BE', 'C1E', 'CE', 'D1E', 'D2E', 'DE'];
+
+function VehicleTypeFields() {
+  return (
+    <Row gutter={12}>
+      <Col span={8}>
+        <Form.Item name="code" label="Mã" rules={[{ required: true, message: 'Nhập mã' }]} extra="Ví dụ: XE22">
+          <Input autoFocus />
+        </Form.Item>
+      </Col>
+      <Col span={16}>
+        <Form.Item name="name" label="Tên" rules={[{ required: true, message: 'Nhập tên' }]}>
+          <Input placeholder="Xe 22 chỗ" />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="seats" label="Số chỗ (gồm ghế lái)" rules={[{ required: true, message: 'Nhập số chỗ' }]}>
+          <InputNumber min={2} style={{ width: '100%' }} />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="maxPassengers" label="Số khách tối đa" rules={[{ required: true, message: 'Nhập số khách' }]}>
+          <InputNumber min={1} style={{ width: '100%' }} />
+        </Form.Item>
+      </Col>
+      <Col span={24}>
+        <Form.Item name="licenseClasses" label="Hạng bằng lái phù hợp">
+          <Select mode="tags" options={LICENSE_CLASSES.map((c) => ({ value: c, label: c }))} />
+        </Form.Item>
+      </Col>
+    </Row>
+  );
+}
+
+function RouteFields() {
+  return (
+    <Row gutter={12}>
+      <Col span={16}>
+        <Form.Item name="name" label="Tên tuyến" rules={[{ required: true, message: 'Nhập tên tuyến' }]}>
+          <Input autoFocus placeholder="Khách sạn – Sân bay Đà Nẵng" />
+        </Form.Item>
+      </Col>
+      <Col span={8}>
+        <Form.Item name="serviceType" label="Dịch vụ">
+          <Select options={toOptions(SERVICE_TYPE)} />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="fromLocationId" label="Điểm đi">
+          <QuickSelect entity="location" allowClear />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="toLocationId" label="Điểm đến">
+          <QuickSelect entity="location" allowClear />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="vehicleTypeId" label="Giá cho loại xe" rules={[{ required: true, message: 'Chọn loại xe' }]}>
+          <QuickSelect entity="vehicleType" />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="durationHours" label="Giờ chạy" tooltip="Dùng để tính giờ xe rảnh khi điều phối">
+          <InputNumber min={0} step={0.5} style={{ width: '100%' }} />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="price" label="Giá bán" rules={[{ required: true, message: 'Nhập giá bán' }]}>
+          <MoneyInput />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="partnerCost" label="Giá mua đối tác (tham khảo)">
+          <MoneyInput />
+        </Form.Item>
+      </Col>
+      <Col span={24} style={{ fontSize: 12, color: '#8c8c8c', marginTop: -8, marginBottom: 8 }}>
+        Giá cho các loại xe khác thêm sau trong mục Bảng giá → Giá theo tuyến.
+      </Col>
+    </Row>
+  );
+}
+
+function SalesUserFields() {
+  return (
+    <Row gutter={12}>
+      <Col span={12}>
+        <Form.Item name="fullName" label="Họ tên" rules={[{ required: true, message: 'Nhập họ tên' }]}>
+          <Input autoFocus />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="phone" label="SĐT">
+          <Input />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true, message: 'Nhập tên đăng nhập' }]} extra="Nên dùng số điện thoại">
+          <Input autoComplete="off" />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="password" label="Mật khẩu" rules={[{ required: true, message: 'Nhập mật khẩu' }, { min: 6, message: 'Tối thiểu 6 ký tự' }]}>
+          <Input.Password autoComplete="new-password" />
+        </Form.Item>
+      </Col>
+      <Col span={24} style={{ fontSize: 12, color: '#8c8c8c', marginTop: -8, marginBottom: 8 }}>
+        Tài khoản được tạo với vai trò Kinh doanh. Đổi vai trò trong mục Người dùng.
       </Col>
     </Row>
   );
@@ -176,6 +298,36 @@ export const QUICK_ENTITIES: Record<QuickEntity, EntityConfig> = {
   partner: { title: 'nhà xe đối tác', endpoint: '/partners', roles: ['ADMIN', 'DIEU_HANH'], nameField: 'name', defaults: { vehicleTypeCodes: [] }, Fields: PartnerFields },
   driver: { title: 'lái xe', endpoint: '/drivers', roles: ['ADMIN', 'DIEU_HANH'], nameField: 'fullName', Fields: DriverFields },
   vehicle: { title: 'xe', endpoint: '/vehicles', roles: ['ADMIN', 'DIEU_HANH'], nameField: 'plateNumber', defaults: { ownership: 'CONG_TY' }, Fields: VehicleFields },
+  vehicleType: {
+    title: 'loại xe',
+    endpoint: '/vehicle-types',
+    roles: ['ADMIN'],
+    nameField: 'name',
+    defaults: { licenseClasses: [] },
+    invalidate: ['/rental-rates'],
+    Fields: VehicleTypeFields,
+  },
+  route: {
+    title: 'tuyến',
+    endpoint: '/route-prices',
+    roles: ['ADMIN', 'KE_TOAN'],
+    nameField: 'name',
+    defaults: { serviceType: 'THEO_TUYEN' },
+    toPayload: ({ vehicleTypeId, price, partnerCost, ...rest }) => ({
+      ...rest,
+      items: [{ vehicleTypeId, price, partnerCost: partnerCost ?? null }],
+    }),
+    Fields: RouteFields,
+  },
+  salesUser: {
+    title: 'nhân viên kinh doanh',
+    endpoint: '/users',
+    roles: ['ADMIN'],
+    nameField: 'fullName',
+    toPayload: (v) => ({ ...v, roles: ['KINH_DOANH'] }),
+    invalidate: ['/users/sales-staff'],
+    Fields: SalesUserFields,
+  },
 };
 
 /** Người dùng hiện tại có được tạo nhanh loại dữ liệu này không */
@@ -190,7 +342,7 @@ interface ModalProps {
   /** Giá trị điền sẵn, ví dụ chữ người dùng vừa gõ tìm */
   initial?: Record<string, unknown>;
   onClose: () => void;
-  onCreated?: (record: { id: number } & Record<string, unknown>) => void;
+  onCreated?: (record: Rec) => void;
 }
 
 /** Form gọn để tạo nhanh một bản ghi danh mục */
@@ -220,15 +372,15 @@ export function QuickCreateModal({ entity, open, initial, onClose, onCreated }: 
       return;
     }
     // Bỏ trường trống để máy chủ dùng giá trị mặc định
-    const payload = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+    const clean = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+    const payload = cfg.toPayload ? cfg.toPayload(clean) : clean;
     setSaving(true);
     try {
-      const record = await api<{ id: number } & Record<string, unknown>>(cfg.endpoint, { method: 'POST', body: payload });
+      const record = await api<Rec>(cfg.endpoint, { method: 'POST', body: payload });
       message.success(`Đã thêm ${cfg.title}`);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: [cfg.endpoint] }),
-        queryClient.invalidateQueries({ queryKey: ['/dispatch/options'] }),
-      ]);
+      await Promise.all(
+        [cfg.endpoint, '/dispatch/options', ...(cfg.invalidate ?? [])].map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
+      );
       onCreated?.(record);
       onClose();
     } catch (e) {
@@ -247,33 +399,76 @@ export function QuickCreateModal({ entity, open, initial, onClose, onCreated }: 
       okText="Thêm"
       cancelText="Hủy"
       confirmLoading={saving}
-      width={560}
+      width={600}
       forceRender
+      destroyOnHidden
       zIndex={1100}
     >
       <Form form={form} layout="vertical" name={`quick_${entity ?? 'none'}`}>
-        {cfg && <cfg.Fields />}
+        {cfg && open && <cfg.Fields />}
       </Form>
       {cfg && <div style={{ fontSize: 12, color: '#8c8c8c' }}>Các thông tin khác bổ sung sau trong mục danh mục.</div>}
     </Modal>
   );
 }
 
+// ───── Danh sách lựa chọn mặc định cho từng loại (khi trang không truyền options) ─────
+
+function useDefaultOptions(entity: QuickEntity, enabled: boolean, valueKey: string): SelectProps['options'] {
+  const partners = usePartnerOptions();
+  const drivers = useCompanyDriverOptions();
+  const { vehicleTypes } = useVehicleTypeOptions();
+  const locations = useLocations();
+  const sales = useSalesStaffOptionsSafe(enabled && entity === 'salesUser');
+  if (!enabled) return undefined;
+  switch (entity) {
+    case 'partner':
+      return partners;
+    case 'driver':
+      return drivers;
+    case 'vehicleType':
+      return vehicleTypes.filter((t) => t.isActive).map((t) => ({ value: valueKey === 'code' ? t.code : t.id, label: t.name }));
+    case 'location':
+      return locations.map((l) => ({ value: l.id, label: l.name }));
+    case 'salesUser':
+      return sales;
+    default:
+      return undefined;
+  }
+}
+
+/** Danh sách NV kinh doanh; chỉ tải khi cần */
+function useSalesStaffOptionsSafe(enabled: boolean) {
+  const { data = [] } = useQuery({
+    queryKey: ['/users/sales-staff'],
+    queryFn: () => api<{ id: number; fullName: string }[]>('/users/sales-staff'),
+    enabled,
+  });
+  return data.map((u) => ({ value: u.id, label: u.fullName }));
+}
+
 type QuickSelectProps = SelectProps & {
   entity: QuickEntity;
+  /** Trường dùng làm giá trị của ô chọn (mặc định "id", ví dụ loại xe của nhà xe dùng "code") */
+  valueKey?: string;
+  /** Giá trị điền sẵn thêm vào form tạo mới, ví dụ loại xe đang chọn */
+  createInitial?: Record<string, unknown>;
   /** Gọi sau khi tạo mới thành công (ngoài việc tự chọn giá trị mới) */
-  onCreated?: (record: { id: number } & Record<string, unknown>) => void;
+  onCreated?: (record: Rec) => void;
 };
 
 /**
  * Ô chọn có nút "+ Thêm mới" ở cuối danh sách.
  * Dùng thay Select trong Form.Item: tạo xong sẽ tự chọn bản ghi mới.
+ * Không truyền `options` thì tự lấy danh sách mặc định của loại dữ liệu.
  */
-export function QuickSelect({ entity, onCreated, ...props }: QuickSelectProps) {
+export function QuickSelect({ entity, valueKey = 'id', createInitial, onCreated, ...props }: QuickSelectProps) {
   const canCreate = useCanQuickCreate(entity);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const cfg = QUICK_ENTITIES[entity];
+  const defaultOptions = useDefaultOptions(entity, props.options === undefined, valueKey);
+  const multiple = props.mode === 'multiple' || props.mode === 'tags';
 
   return (
     <>
@@ -281,6 +476,7 @@ export function QuickSelect({ entity, onCreated, ...props }: QuickSelectProps) {
         showSearch
         optionFilterProp="label"
         {...props}
+        options={props.options ?? defaultOptions}
         onSearch={(v) => {
           // Giữ lại chữ đã gõ: khi bấm nút "Thêm mới", ô chọn tự xóa chữ tìm kiếm
           if (v) setSearch(v);
@@ -312,13 +508,20 @@ export function QuickSelect({ entity, onCreated, ...props }: QuickSelectProps) {
         }
       />
       <QuickCreateModal
-        entity={entity}
+        entity={open ? entity : null}
         open={open}
-        initial={search ? { [cfg.nameField]: search } : undefined}
+        initial={{ ...createInitial, ...(search ? { [cfg.nameField]: search } : {}) }}
         onClose={() => setOpen(false)}
         onCreated={(record) => {
           // Chọn luôn bản ghi vừa tạo
-          props.onChange?.(record.id, { value: record.id, label: String(record[cfg.nameField] ?? record.id) });
+          const value = record[valueKey] as string | number;
+          const option = { value, label: String(record[cfg.nameField] ?? value) };
+          if (multiple) {
+            const cur = (Array.isArray(props.value) ? props.value : []) as (string | number)[];
+            props.onChange?.([...cur, value], [option]);
+          } else {
+            props.onChange?.(value, option);
+          }
           onCreated?.(record);
           setSearch('');
         }}
