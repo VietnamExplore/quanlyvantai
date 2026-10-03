@@ -8,6 +8,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime } from '../booking-utils';
 import { EnumTag, Money, ServiceTag, useSalesStaffOptions } from '../components/common';
+import { PaidTag } from '../components/finance';
 import { BOOKING_STATUS, toOptions } from '../labels';
 import type { Booking } from '../types';
 
@@ -90,6 +91,20 @@ export default function BookingsPage() {
           },
           { title: 'Số chuyến', align: 'center', render: (_, r) => r.trips.filter((t) => t.status !== 'HUY').length || r.trips.length },
           { title: 'Tổng tiền', align: 'right', dataIndex: 'total', render: (v) => <Money value={v} strong /> },
+          {
+            title: 'Thanh toán',
+            render: (_, r) =>
+              r.status === 'HUY' ? null : (
+                <>
+                  <PaidTag total={r.total} paid={r.paid} />
+                  {r.balance > 0 && r.paid > 0 && (
+                    <div>
+                      <Typography.Text type="secondary">còn {r.balance.toLocaleString('vi-VN')} đ</Typography.Text>
+                    </div>
+                  )}
+                </>
+              ),
+          },
           { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={BOOKING_STATUS} value={v} /> },
           { title: 'NV kinh doanh', render: (_, r) => r.salesUser?.fullName },
           { title: 'Ngày tạo', dataIndex: 'createdAt', render: (v) => new Date(v).toLocaleDateString('vi-VN') },

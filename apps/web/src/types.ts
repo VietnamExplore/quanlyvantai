@@ -91,6 +91,7 @@ export interface Customer extends Ref {
   salesUser: { id: number; fullName: string } | null;
   creditLimit: string | null;
   discountPercent: string | null;
+  paymentTermDays: number;
   notes: string | null;
   isActive: boolean;
 }
@@ -245,7 +246,43 @@ export interface Passenger {
   note: string | null;
 }
 
+export type PaymentMethod = 'TIEN_MAT' | 'CHUYEN_KHOAN' | 'THE' | 'KHAC';
+
+export interface Payment {
+  id: number;
+  amount: string;
+  method: PaymentMethod;
+  paidAt: string;
+  reference: string | null;
+  note: string | null;
+  createdBy?: { id: number; fullName: string };
+}
+
+export interface CostCategory {
+  code: string;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+  _count?: { costs: number };
+}
+
+export interface TripCostRow {
+  id: number;
+  tripId: number;
+  categoryCode: string;
+  category: { name: string };
+  amount: string;
+  spentAt: string;
+  note: string | null;
+  byDriver: boolean;
+  createdById: number | null;
+  createdBy: { fullName: string } | null;
+}
+
 export interface Booking extends Ref {
+  payments: Payment[];
+  paid: number;
+  balance: number;
   passengers: Passenger[];
   signTitle: string | null;
   signSubtitle: string | null;

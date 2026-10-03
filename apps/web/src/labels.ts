@@ -5,6 +5,7 @@ import type {
   DriverStatus,
   LocationType,
   Ownership,
+  PaymentMethod,
   Role,
   SurchargeRule,
   TripStatus,
@@ -84,6 +85,13 @@ export const TRIP_STATUS: Labels<TripStatus> = {
   DA_DON_KHACH: { label: 'Đã đón khách', color: 'purple' },
   HOAN_THANH: { label: 'Hoàn thành', color: 'green' },
   HUY: { label: 'Đã hủy', color: 'red' },
+};
+
+export const PAYMENT_METHOD: Labels<PaymentMethod> = {
+  TIEN_MAT: { label: 'Tiền mặt', color: 'green' },
+  CHUYEN_KHOAN: { label: 'Chuyển khoản', color: 'blue' },
+  THE: { label: 'Thẻ', color: 'purple' },
+  KHAC: { label: 'Khác' },
 };
 
 /** Chuyển bộ nhãn thành danh sách option cho Select / Radio. */

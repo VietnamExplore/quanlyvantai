@@ -32,6 +32,7 @@ import { buildDispatchText, NEXT_ACTION, TRIP_FLOW } from '../dispatch-utils';
 import { TRIP_STATUS } from '../labels';
 import type { DispatchOptions, DispatchTrip, Partner } from '../types';
 import { EnumTag, Money, MoneyInput } from './common';
+import { TripCostsSection } from './finance';
 import { QuickSelect } from './QuickCreate';
 
 interface Props {
@@ -454,6 +455,18 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                   Thôi, giữ xe hiện tại
                 </Button>
               )}
+            </>
+          )}
+
+          {trip.status !== 'CHO_DIEU' && (
+            <>
+              <Divider titlePlacement="start">Chi phí chuyến</Divider>
+              <TripCostsSection
+                tripId={trip.id}
+                amount={amount}
+                partnerCost={trip.partnerId && trip.partnerCost !== null ? Number(trip.partnerCost) : null}
+                estimatedCost={trip.estimatedCost === null ? null : Number(trip.estimatedCost)}
+              />
             </>
           )}
 

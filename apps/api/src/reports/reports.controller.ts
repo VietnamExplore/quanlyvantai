@@ -1,6 +1,8 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
+import { tripCost } from '../finance/cost.util';
+import { FinanceService } from '../finance/finance.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const TZ = 'Asia/Ho_Chi_Minh';
@@ -35,7 +37,10 @@ function periodKeys(from: string, to: string, groupBy: GroupBy) {
 @Controller('reports')
 @Roles(...OFFICE_ROLES)
 export class ReportsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly finance: FinanceService,
+  ) {}
 
   /**
    * Báo cáo doanh thu – chi phí – lợi nhuận theo ngày đón khách.
@@ -64,7 +69,7 @@ export class ReportsController {
     const prevTo = vnDate(new Date(startOfVnDay(from).getTime() - DAY_MS));
     const prevFrom = vnDate(new Date(startOfVnDay(from).getTime() - days * DAY_MS));
 
-    const [trips, prevTrips, quotes, drafts, waitingDispatch, upcoming] = await Promise.all([
+    const [trips, prevTrips, quotes, drafts, waitingDispatch, upcoming, receivables, payables] = await Promise.all([
       this.loadTrips(from, to, bookingScope),
       this.loadTrips(prevFrom, prevTo, bookingScope),
       this.prisma.booking.findMany({
@@ -82,6 +87,8 @@ export class ReportsController {
           booking: { ...bookingScope, status: { in: REVENUE_STATUSES } },
         },
       }),
+      this.finance.receivables(ownOnly ? user.id : undefined),
+      ownOnly ? null : this.finance.payables(),
     ]);
 
     const keys = periodKeys(from, to, groupBy);
@@ -93,6 +100,7 @@ export class ReportsController {
     const byCustomer = new Map<string, Agg & { bookings: Set<number> }>();
     const bookingIds = new Set<number>();
     let tripsWithoutCost = 0;
+    let tripsActualCost = 0;
 
     const add = (a: Agg, revenue: number, cost: number) => {
       a.revenue += revenue;
@@ -106,8 +114,9 @@ export class ReportsController {
 
     for (const t of trips) {
       const revenue = t.revenue;
-      const cost = t.estimatedCost === null ? 0 : Number(t.estimatedCost);
-      if (t.estimatedCost === null) tripsWithoutCost++;
+      const { cost, known, actual } = tripCost(t);
+      if (!known) tripsWithoutCost++;
+      if (actual) tripsActualCost++;
       bookingIds.add(t.booking.id);
 
       const dateKey = vnDate(t.pickupTime);
@@ -128,7 +137,7 @@ export class ReportsController {
     }
 
     const prev = emptyAgg();
-    for (const t of prevTrips) add(prev, t.revenue, t.estimatedCost === null ? 0 : Number(t.estimatedCost));
+    for (const t of prevTrips) add(prev, t.revenue, tripCost(t).cost);
 
     const ranked = <T extends Agg>(map: Map<string, T>, limit = 10) =>
       [...map.entries()]
@@ -141,7 +150,7 @@ export class ReportsController {
       to,
       groupBy,
       ownOnly,
-      kpis: { ...withProfit(total), bookings: bookingIds.size, tripsWithoutCost },
+      kpis: { ...withProfit(total), bookings: bookingIds.size, tripsWithoutCost, tripsActualCost },
       previous: { from: prevFrom, to: prevTo, ...withProfit(prev) },
       series: keys.map((period) => ({ period, ...withProfit(series.get(period)!) })),
       byService: ranked(byService, 20),
@@ -154,6 +163,9 @@ export class ReportsController {
         drafts,
         waitingDispatch,
         upcoming7Days: upcoming,
+        receivable: Math.round(receivables.totalBalance),
+        receivableOverdue: Math.round(receivables.totalOverdue),
+        payable: payables ? Math.round(payables.totalBalance) : null,
       },
     };
   }
@@ -173,6 +185,9 @@ export class ReportsController {
       select: {
         amount: true,
         estimatedCost: true,
+        partnerId: true,
+        partnerCost: true,
+        costs: { select: { amount: true } },
         pickupTime: true,
         serviceType: true,
         service: { select: { name: true } },

@@ -13,6 +13,7 @@ const bookingInclude = {
   salesUser: { select: { id: true, fullName: true } },
   createdBy: { select: { id: true, fullName: true } },
   passengers: { orderBy: { seq: 'asc' } },
+  payments: { orderBy: [{ paidAt: 'asc' }, { id: 'asc' }], include: { createdBy: { select: { id: true, fullName: true } } } },
   trips: {
     orderBy: { seq: 'asc' },
     include: {
@@ -38,12 +39,20 @@ const TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
 };
 
 /** Tính tổng tiền booking */
-export function bookingTotals(b: { discountAmount: unknown; vatPercent: unknown; depositAmount: unknown; trips: { amount: unknown; status?: TripStatus }[] }) {
+export function bookingTotals(b: {
+  discountAmount: unknown;
+  vatPercent: unknown;
+  depositAmount: unknown;
+  trips: { amount: unknown; status?: TripStatus }[];
+  payments?: { amount: unknown }[];
+}) {
   const subtotal = b.trips.filter((t) => t.status !== TripStatus.HUY).reduce((s, t) => s + Number(t.amount), 0);
   const taxable = Math.max(0, subtotal - Number(b.discountAmount));
   const vatAmount = Math.round((taxable * Number(b.vatPercent)) / 100);
   const total = taxable + vatAmount;
-  return { subtotal, vatAmount, total, remaining: total - Number(b.depositAmount) };
+  const paid = (b.payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+  // remaining: còn lại sau đặt cọc (in trên báo giá); balance: còn phải thu thực tế
+  return { subtotal, vatAmount, total, remaining: total - Number(b.depositAmount), paid, balance: total - paid };
 }
 
 const withTotals = (b: BookingWithTrips) => ({ ...b, ...bookingTotals(b) });

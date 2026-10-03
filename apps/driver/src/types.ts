@@ -29,6 +29,22 @@ export interface Trip {
   booking: { code: string; contactName: string; contactPhone: string; customer: { name: string } | null };
 }
 
+export interface CostCategory {
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface TripCost {
+  id: number;
+  categoryCode: string;
+  category: { name: string };
+  amount: string;
+  spentAt: string;
+  note: string | null;
+  byDriver: boolean;
+}
+
 export interface DriverProfile {
   id: number;
   fullName: string;

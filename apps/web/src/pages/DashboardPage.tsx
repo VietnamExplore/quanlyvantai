@@ -40,14 +40,23 @@ interface Summary {
   to: string;
   groupBy: 'day' | 'month';
   ownOnly: boolean;
-  kpis: Agg & { bookings: number; tripsWithoutCost: number };
+  kpis: Agg & { bookings: number; tripsWithoutCost: number; tripsActualCost: number };
   previous: Agg & { from: string; to: string };
   series: (Agg & { period: string })[];
   byService: (Agg & { name: string })[];
   byVehicleType: (Agg & { name: string })[];
   bySales: (Agg & { name: string; bookings: number })[];
   topCustomers: (Agg & { name: string; bookings: number })[];
-  pipeline: { quotes: number; quoteValue: number; drafts: number; waitingDispatch: number; upcoming7Days: number };
+  pipeline: {
+    quotes: number;
+    quoteValue: number;
+    drafts: number;
+    waitingDispatch: number;
+    upcoming7Days: number;
+    receivable: number;
+    receivableOverdue: number;
+    payable: number | null;
+  };
 }
 
 type Preset = 'thisMonth' | 'lastMonth' | '3months' | 'thisYear' | 'custom';
@@ -194,7 +203,25 @@ export default function DashboardPage() {
           <KpiTile title="Doanh thu" value={k?.revenue ?? 0} suffix="đ" footer={r && <Delta cur={r.kpis.revenue} prev={r.previous.revenue} />} />
         </Col>
         <Col xs={12} lg={6}>
-          <KpiTile title="Chi phí dự kiến" value={k?.cost ?? 0} suffix="đ" footer={r && <Delta cur={r.kpis.cost} prev={r.previous.cost} />} />
+          <KpiTile
+            title="Chi phí"
+            value={k?.cost ?? 0}
+            suffix="đ"
+            footer={
+              r && (
+                <>
+                  <Delta cur={r.kpis.cost} prev={r.previous.cost} />
+                  {k && k.trips > 0 && (
+                    <div>
+                      <Typography.Text type="secondary">
+                        {k.tripsActualCost}/{k.trips} chuyến đã có chi phí thực tế
+                      </Typography.Text>
+                    </div>
+                  )}
+                </>
+              )
+            }
+          />
         </Col>
         <Col xs={12} lg={6}>
           <KpiTile title="Lợi nhuận" value={k?.profit ?? 0} suffix="đ" footer={r && <Delta cur={r.kpis.profit} prev={r.previous.profit} />} />
@@ -319,6 +346,26 @@ export default function DashboardPage() {
             <Typography.Text type="secondary">Đã xác nhận</Typography.Text>
           </Card>
         </Col>
+        <Col xs={12} lg={6}>
+          <Link to="/finance/receivables">
+            <Card hoverable style={{ height: '100%' }}>
+              <Statistic title="Khách còn nợ" value={r?.pipeline.receivable ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} />
+              <Typography.Text type={r?.pipeline.receivableOverdue ? 'danger' : 'secondary'}>
+                {r?.pipeline.receivableOverdue ? `Quá hạn ${formatVnd(r.pipeline.receivableOverdue)} đ` : 'Không có nợ quá hạn'}
+              </Typography.Text>
+            </Card>
+          </Link>
+        </Col>
+        {r?.pipeline.payable !== null && r?.pipeline.payable !== undefined && (
+          <Col xs={12} lg={6}>
+            <Link to="/finance/payables">
+              <Card hoverable style={{ height: '100%' }}>
+                <Statistic title="Phải trả nhà xe" value={r.pipeline.payable} formatter={(v) => `${formatVnd(Number(v))} đ`} />
+                <Typography.Text type="secondary">Tiền thuê xe đối tác chưa thanh toán</Typography.Text>
+              </Card>
+            </Link>
+          </Col>
+        )}
       </Row>
 
       {hasRole('ADMIN', 'DIEU_HANH', 'KE_TOAN') && (

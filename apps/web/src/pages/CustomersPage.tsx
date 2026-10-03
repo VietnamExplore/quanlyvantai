@@ -41,6 +41,7 @@ export default function CustomersPage() {
         { title: 'NV phụ trách', render: (_, r) => r.salesUser?.fullName },
         { title: 'Hạn mức công nợ', dataIndex: 'creditLimit', align: 'right', render: (v) => formatVnd(v) },
         { title: 'Chiết khấu', dataIndex: 'discountPercent', align: 'right', render: (v) => (v ? `${Number(v)}%` : '') },
+        { title: 'Ngày công nợ', dataIndex: 'paymentTermDays', align: 'right', render: (v) => (v ? `${v} ngày` : '') },
         { title: 'Trạng thái', dataIndex: 'isActive', render: (v) => (v ? null : <Tag>Ngừng giao dịch</Tag>) },
       ]}
       renderForm={() => (
@@ -94,6 +95,11 @@ export default function CustomersPage() {
           <Col xs={12} md={5}>
             <Form.Item name="discountPercent" label="Chiết khấu (%)">
               <InputNumber min={0} max={100} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item name="paymentTermDays" label="Số ngày công nợ" tooltip="Hạn thanh toán = ngày kết thúc chuyến cuối + số ngày này. 0 = thanh toán ngay khi xong chuyến.">
+              <InputNumber min={0} style={{ width: '100%' }} addonAfter="ngày" />
             </Form.Item>
           </Col>
           <Col xs={24} md={5}>

@@ -1,6 +1,9 @@
 import {
   AppstoreOutlined,
   BankOutlined,
+  BookOutlined,
+  TagsOutlined,
+  WalletOutlined,
   CalendarOutlined,
   CarOutlined,
   FileTextOutlined,
@@ -44,6 +47,14 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
     ],
   },
   {
+    label: 'Tài chính',
+    items: [
+      { key: '/finance/receivables', label: 'Công nợ khách hàng', icon: <WalletOutlined /> },
+      { key: '/finance/payables', label: 'Công nợ nhà xe', icon: <ShopOutlined />, roles: ['ADMIN', 'KE_TOAN', 'DIEU_HANH'] },
+      { key: '/finance/ledger', label: 'Sổ thu chi', icon: <BookOutlined />, roles: ['ADMIN', 'KE_TOAN', 'DIEU_HANH'] },
+    ],
+  },
+  {
     label: 'Bảng giá',
     items: [
       { key: '/route-prices', label: 'Giá theo tuyến', icon: <NodeIndexOutlined /> },
@@ -61,6 +72,7 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
       { key: '/locations', label: 'Địa điểm', icon: <EnvironmentOutlined /> },
       { key: '/vehicle-types', label: 'Loại xe', icon: <SettingOutlined /> },
       { key: '/services', label: 'Dịch vụ', icon: <AppstoreOutlined /> },
+      { key: '/cost-categories', label: 'Loại chi phí', icon: <TagsOutlined /> },
     ],
   },
   {
@@ -105,7 +117,7 @@ export function AppLayout() {
   ];
 
   const items = NAV_GROUPS.filter((g) => !g.roles || hasRole(...g.roles)).map((g, i) => {
-    const children = g.items.map(({ key, label, icon }) => ({ key, label, icon }));
+    const children = g.items.filter((n) => !n.roles || hasRole(...n.roles)).map(({ key, label, icon }) => ({ key, label, icon }));
     return g.label ? { type: 'group' as const, key: `g${i}`, label: g.label, children } : { type: 'group' as const, key: `g${i}`, children };
   });
   const selected = NAV.filter((n) => n.key !== '/' && pathname.startsWith(n.key)).map((n) => n.key);

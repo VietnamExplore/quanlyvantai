@@ -4,6 +4,7 @@ import { api } from '../api';
 import { colors, fmtTime, NEXT_STEP, SERVICE } from '../theme';
 import type { Trip } from '../types';
 import { Button, Card, Row, StatusBadge, styles as ui } from '../ui';
+import { TripCosts } from './TripCosts';
 
 const openMap = (address: string) =>
   Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`);
@@ -134,6 +135,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
             </View>
           )}
         </Card>
+        {trip.status !== 'DA_GAN' && <TripCosts tripId={trip.id} canAdd={trip.status !== 'HUY'} />}
       </ScrollView>
 
       {next && (

@@ -54,6 +54,7 @@ import { DATE_FORMAT, EnumTag, Money, MoneyInput, ServiceTag, useCustomers, useS
 import { TripModal } from '../components/TripModal';
 import { BOOKING_SOURCE, BOOKING_STATUS, TRIP_STATUS, toOptions } from '../labels';
 import { PassengersCard, SignCard } from '../components/BookingExtras';
+import { PaymentsCard } from '../components/finance';
 import { QuickSelect } from '../components/QuickCreate';
 import type { Booking, BookingStatus, Customer, Passenger } from '../types';
 
@@ -520,6 +521,7 @@ export default function BookingEditPage() {
           onChanged={() => setDirty(true)}
         />
         <SignCard form={form} defaultTitle={signDefault} canPrint={!isNew && !dirty} bookingId={booking?.id} />
+        {!isNew && booking && <PaymentsCard bookingId={booking.id} />}
 
         <Row gutter={16} style={{ marginTop: 16 }}>
           <Col xs={24} lg={14}>

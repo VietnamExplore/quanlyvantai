@@ -14,6 +14,8 @@ import {
 import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
 import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
+import { CreateTripCostDto } from '../finance/finance.dto';
+import { FinanceService } from '../finance/finance.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Bước kế tiếp hợp lệ mà lái xe được bấm */
@@ -66,7 +68,10 @@ const driverTripSelect = {
 @Controller('driver')
 @Roles(Role.LAI_XE)
 export class DriverAppController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly finance: FinanceService,
+  ) {}
 
   private driverId(user: AuthUser) {
     if (!user.driverId) throw new ForbiddenException('Tài khoản chưa được liên kết với hồ sơ lái xe. Liên hệ văn phòng.');
@@ -133,6 +138,37 @@ export class DriverAppController {
       this.prisma.tripEvent.create({ data: { tripId: id, status: TripStatus.CHO_DIEU, note: `Lái xe từ chối: ${dto.reason.trim()}`, userId: user.id } }),
     ]);
     return { message: 'Đã từ chối chuyến, văn phòng sẽ điều xe khác' };
+  }
+
+  // ───── Chi phí chuyến do lái xe nhập ─────
+
+  private async ownTrip(user: AuthUser, id: number) {
+    const trip = await this.prisma.bookingTrip.findFirst({ where: { id, driverId: this.driverId(user) } });
+    if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
+    return trip;
+  }
+
+  @Get('trips/:id/costs')
+  async costs(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    await this.ownTrip(user, id);
+    return this.finance.tripCosts(id);
+  }
+
+  @Post('trips/:id/costs')
+  async addCost(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CreateTripCostDto) {
+    const trip = await this.ownTrip(user, id);
+    if (trip.status === TripStatus.DA_GAN) throw new BadRequestException('Hãy nhận chuyến trước khi nhập chi phí');
+    return this.finance.addTripCost(id, dto, user, true);
+  }
+
+  /** Lái xe chỉ xóa được chi phí do chính mình nhập */
+  @Post('trip-costs/:id/delete')
+  @HttpCode(200)
+  async removeCost(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    const cost = await this.prisma.tripCost.findUnique({ where: { id }, include: { trip: true } });
+    if (!cost || cost.trip.driverId !== this.driverId(user) || cost.createdById !== user.id) throw new NotFoundException('Không tìm thấy chi phí');
+    await this.prisma.tripCost.delete({ where: { id } });
+    return this.finance.tripCosts(cost.tripId);
   }
 
   @Post('push-token')

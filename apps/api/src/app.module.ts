@@ -10,6 +10,7 @@ import { DispatchModule } from './dispatch/dispatch.module';
 import { DriverAppModule } from './driver-app/driver-app.module';
 import { PushModule } from './push/push.module';
 import { ServicesModule } from './services/services.module';
+import { FinanceModule } from './finance/finance.module';
 import { PricingModule } from './pricing/pricing.module';
 import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
@@ -51,6 +52,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     PushModule,
     DriverAppModule,
     ServicesModule,
+    FinanceModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

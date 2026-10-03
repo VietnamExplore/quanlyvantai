@@ -4,7 +4,11 @@ import { useAuth } from './auth';
 import { AppLayout } from './components/AppLayout';
 import BookingEditPage from './pages/BookingEditPage';
 import BookingsPage from './pages/BookingsPage';
+import CostCategoriesPage from './pages/CostCategoriesPage';
 import CustomersPage from './pages/CustomersPage';
+import LedgerPage from './pages/LedgerPage';
+import PayablesPage from './pages/PayablesPage';
+import ReceivablesPage from './pages/ReceivablesPage';
 import DashboardPage from './pages/DashboardPage';
 import DispatchPage from './pages/DispatchPage';
 import DriversPage from './pages/DriversPage';
@@ -68,6 +72,10 @@ export default function App() {
         <Route path="locations" element={<LocationsPage />} />
         <Route path="vehicle-types" element={<VehicleTypesPage />} />
         <Route path="services" element={<ServicesPage />} />
+        <Route path="cost-categories" element={<CostCategoriesPage />} />
+        <Route path="finance/receivables" element={<ReceivablesPage />} />
+        {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/payables" element={<PayablesPage />} />}
+        {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/ledger" element={<LedgerPage />} />}
         {hasRole('ADMIN') && <Route path="users" element={<UsersPage />} />}
         {hasRole('ADMIN') && <Route path="settings" element={<SettingsPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />

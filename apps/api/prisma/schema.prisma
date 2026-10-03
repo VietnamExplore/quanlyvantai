@@ -32,6 +32,9 @@ model User {
   salesBookings   Booking[] @relation("BookingSales")
   createdBookings Booking[] @relation("BookingCreator")
   assignedTrips   BookingTrip[] @relation("TripAssigner")
+  tripCosts       TripCost[]       @relation("CostCreator")
+  payments        Payment[]        @relation("PaymentCreator")
+  partnerPayments PartnerPayment[] @relation("PartnerPaymentCreator")
   tripEvents      TripEvent[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
@@ -137,6 +140,7 @@ model Partner {
   vehicles         Vehicle[]
   drivers          Driver[]
   trips            BookingTrip[]
+  payments         PartnerPayment[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
@@ -162,6 +166,7 @@ model Customer {
   salesUser       User?        @relation("SalesOwner", fields: [salesUserId], references: [id])
   creditLimit     Decimal?     @db.Decimal(15, 0) // Hạn mức công nợ (VND)
   discountPercent Decimal?     @db.Decimal(5, 2)
+  paymentTermDays Int          @default(0) // Số ngày được nợ sau khi kết thúc chuyến
   notes           String?
   isActive        Boolean      @default(true)
   bookings        Booking[]
@@ -343,6 +348,7 @@ model Booking {
   createdBy       User          @relation("BookingCreator", fields: [createdById], references: [id])
   trips           BookingTrip[]
   passengers      BookingPassenger[]
+  payments        Payment[]
   signTitle       String? // Dòng chính trên bảng đón khách
   signSubtitle    String? // Dòng phụ trên bảng đón khách
   createdAt       DateTime      @default(now())
@@ -397,6 +403,7 @@ model BookingTrip {
   assignedById       Int?
   assignedBy         User?        @relation("TripAssigner", fields: [assignedById], references: [id])
   events             TripEvent[]
+  costs              TripCost[]
 
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -435,4 +442,77 @@ model TripEvent {
   createdAt DateTime    @default(now())
 
   @@index([tripId])
+}
+
+// ───────────── Tài chính ─────────────
+
+enum PaymentMethod {
+  TIEN_MAT
+  CHUYEN_KHOAN
+  THE
+  KHAC
+}
+
+/// Danh mục loại chi phí chuyến (xăng dầu, cầu đường…)
+model CostCategory {
+  code      String     @id
+  name      String
+  sortOrder Int        @default(0)
+  isActive  Boolean    @default(true)
+  costs     TripCost[]
+}
+
+/// Chi phí thực tế phát sinh của chuyến
+model TripCost {
+  id           Int          @id @default(autoincrement())
+  tripId       Int
+  trip         BookingTrip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  categoryCode String
+  category     CostCategory @relation(fields: [categoryCode], references: [code], onUpdate: Cascade)
+  amount       Decimal      @db.Decimal(15, 0)
+  spentAt      DateTime     @default(now()) @db.Date
+  note         String?
+  byDriver     Boolean      @default(false) // Lái xe nhập trên app
+  createdById  Int?
+  createdBy    User?        @relation("CostCreator", fields: [createdById], references: [id])
+  createdAt    DateTime     @default(now())
+
+  @@index([tripId])
+  @@index([spentAt])
+}
+
+/// Phiếu thu tiền khách (số âm = hoàn tiền)
+model Payment {
+  id          Int           @id @default(autoincrement())
+  bookingId   Int
+  booking     Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount      Decimal       @db.Decimal(15, 0)
+  method      PaymentMethod @default(CHUYEN_KHOAN)
+  paidAt      DateTime      @db.Date
+  reference   String? // Số chứng từ / mã giao dịch
+  note        String?
+  createdById Int
+  createdBy   User          @relation("PaymentCreator", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+
+  @@index([bookingId])
+  @@index([paidAt])
+}
+
+/// Thanh toán cho nhà xe đối tác
+model PartnerPayment {
+  id          Int           @id @default(autoincrement())
+  partnerId   Int
+  partner     Partner       @relation(fields: [partnerId], references: [id])
+  amount      Decimal       @db.Decimal(15, 0)
+  method      PaymentMethod @default(CHUYEN_KHOAN)
+  paidAt      DateTime      @db.Date
+  reference   String?
+  note        String?
+  createdById Int
+  createdBy   User          @relation("PartnerPaymentCreator", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+
+  @@index([partnerId])
+  @@index([paidAt])
 }

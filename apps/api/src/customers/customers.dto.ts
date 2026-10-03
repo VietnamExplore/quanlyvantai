@@ -36,6 +36,12 @@ export class CreateCustomerDto {
   @Max(100)
   discountPercent?: number | null;
 
+  /** Số ngày được nợ sau khi kết thúc chuyến */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  paymentTermDays?: number;
+
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
 }
