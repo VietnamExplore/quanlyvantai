@@ -3,7 +3,7 @@ import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
 import { AuthUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { PriceLine, sumLines } from '../pricing/pricing.service';
-import { BookingQueryDto, ChangeStatusDto, CreateBookingDto, TripDto, UpdateBookingDto } from './bookings.dto';
+import { BookingQueryDto, ChangeStatusDto, CreateBookingDto, PassengerDto, TripDto, UpdateBookingDto } from './bookings.dto';
 
 const HOUR_MS = 3_600_000;
 const TZ = 'Asia/Ho_Chi_Minh';
@@ -12,6 +12,7 @@ const bookingInclude = {
   customer: { select: { id: true, name: true, type: true, phone: true, email: true, taxCode: true, address: true } },
   salesUser: { select: { id: true, fullName: true } },
   createdBy: { select: { id: true, fullName: true } },
+  passengers: { orderBy: { seq: 'asc' } },
   trips: {
     orderBy: { seq: 'asc' },
     include: {
@@ -46,6 +47,19 @@ export function bookingTotals(b: { discountAmount: unknown; vatPercent: unknown;
 }
 
 const withTotals = (b: BookingWithTrips) => ({ ...b, ...bookingTotals(b) });
+
+/** Chuẩn hóa danh sách hành khách trước khi lưu */
+const passengerRows = (list: PassengerDto[]) =>
+  list.map((p, i) => ({
+    seq: i + 1,
+    fullName: p.fullName.trim(),
+    gender: p.gender ?? null,
+    birthYear: p.birthYear ?? null,
+    idNumber: p.idNumber?.trim() || null,
+    nationality: p.nationality?.trim() || null,
+    phone: p.phone?.trim() || null,
+    note: p.note?.trim() || null,
+  }));
 
 /** Mã booking theo tháng giờ VN: BK2610-0001 */
 function codePrefix() {
@@ -88,7 +102,7 @@ export class BookingsService {
   }
 
   async create(dto: CreateBookingDto, user: AuthUser) {
-    const { trips, quoteValidUntil, ...data } = dto;
+    const { trips, passengers, quoteValidUntil, ...data } = dto;
     const tripData = await this.buildTrips(trips);
 
     for (let attempt = 0; ; attempt++) {
@@ -104,6 +118,7 @@ export class BookingsService {
             salesUserId: data.salesUserId ?? (user.roles.includes(Role.KINH_DOANH) ? user.id : null),
             createdById: user.id,
             trips: { create: tripData.map(({ id: _id, ...t }) => t) },
+            ...(passengers?.length && { passengers: { create: passengerRows(passengers) } }),
           },
           include: bookingInclude,
         });
@@ -122,7 +137,7 @@ export class BookingsService {
       throw new BadRequestException('Booking đã hoàn thành hoặc đã hủy, không sửa được');
     }
 
-    const { trips, quoteValidUntil, ...data } = dto;
+    const { trips, passengers, quoteValidUntil, ...data } = dto;
     const ops: Prisma.PrismaPromise<unknown>[] = [
       this.prisma.booking.update({
         where: { id },
@@ -148,6 +163,12 @@ export class BookingsService {
             : this.prisma.bookingTrip.create({ data: { ...t, bookingId: id } }),
         );
       }
+    }
+
+    if (passengers) {
+      // Thay toàn bộ danh sách hành khách
+      ops.push(this.prisma.bookingPassenger.deleteMany({ where: { bookingId: id } }));
+      if (passengers.length) ops.push(this.prisma.bookingPassenger.createMany({ data: passengerRows(passengers).map((p) => ({ ...p, bookingId: id })) }));
     }
 
     await this.prisma.$transaction(ops);
@@ -202,9 +223,12 @@ export class BookingsService {
       let endTime = t.endTime ? new Date(t.endTime) : null;
       if (!endTime) {
         const route = routes.find((r) => r.id === t.routePriceId);
+        // Có tuyến: theo giờ chạy của tuyến. Dịch vụ thuê theo ngày: theo số ngày thuê. Còn lại: mặc định 2 giờ
         const hours = route
           ? (route.durationHours === null ? 2 : Number(route.durationHours))
-          : (days - 1) * 24 + (type.rentalRate?.fullDayHours ?? 10);
+          : service.pricingMode === 'THEO_NGAY'
+            ? (days - 1) * 24 + (type.rentalRate?.fullDayHours ?? 10)
+            : 2;
         endTime = new Date(pickupTime.getTime() + (hours + (t.extraHours ?? 0)) * HOUR_MS);
       }
       if (endTime <= pickupTime) throw new BadRequestException(`Chuyến ${i + 1}: giờ kết thúc phải sau giờ đón`);

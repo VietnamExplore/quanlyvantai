@@ -342,6 +342,9 @@ model Booking {
   createdById     Int
   createdBy       User          @relation("BookingCreator", fields: [createdById], references: [id])
   trips           BookingTrip[]
+  passengers      BookingPassenger[]
+  signTitle       String? // Dòng chính trên bảng đón khách
+  signSubtitle    String? // Dòng phụ trên bảng đón khách
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -401,6 +404,23 @@ model BookingTrip {
   @@index([pickupTime])
   @@index([vehicleId, pickupTime])
   @@index([driverId, pickupTime])
+}
+
+/// Danh sách hành khách của booking (in kèm lệnh vận chuyển xe hợp đồng)
+model BookingPassenger {
+  id          Int     @id @default(autoincrement())
+  bookingId   Int
+  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  seq         Int
+  fullName    String
+  gender      String? // NAM | NU
+  birthYear   Int?
+  idNumber    String? // CCCD / hộ chiếu
+  nationality String?
+  phone       String?
+  note        String?
+
+  @@index([bookingId])
 }
 
 /// Nhật ký thay đổi trạng thái / điều xe của chuyến

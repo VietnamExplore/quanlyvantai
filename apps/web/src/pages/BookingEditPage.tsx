@@ -53,8 +53,9 @@ import {
 import { DATE_FORMAT, EnumTag, Money, MoneyInput, ServiceTag, useCustomers, useSalesStaffOptions, useSettings } from '../components/common';
 import { TripModal } from '../components/TripModal';
 import { BOOKING_SOURCE, BOOKING_STATUS, TRIP_STATUS, toOptions } from '../labels';
+import { PassengersCard, SignCard } from '../components/BookingExtras';
 import { QuickSelect } from '../components/QuickCreate';
-import type { Booking, BookingStatus, Customer } from '../types';
+import type { Booking, BookingStatus, Customer, Passenger } from '../types';
 
 const LOCKED: BookingStatus[] = ['HOAN_THANH', 'HUY'];
 
@@ -114,6 +115,9 @@ export default function BookingEditPage() {
   const vatPercent = Form.useWatch('vatPercent', form) ?? 0;
   const deposit = Form.useWatch('depositAmount', form) ?? 0;
   const totals = computeTotals(trips, discount, vatPercent, deposit);
+  const watchCustomerId = Form.useWatch('customerId', form);
+  const watchContact = Form.useWatch('contactName', form);
+  const signDefault = (customers.find((c) => c.id === watchCustomerId)?.name ?? watchContact ?? '').toUpperCase();
 
   /** Lưu booking. Trả về booking đã lưu, hoặc null nếu dữ liệu chưa hợp lệ / lỗi. */
   async function save(): Promise<Booking | null> {
@@ -136,6 +140,19 @@ export default function BookingEditPage() {
       quoteValidUntil: v.quoteValidUntil ? (v.quoteValidUntil as Dayjs).format('YYYY-MM-DD') : null,
       notes: v.notes || null,
       internalNotes: v.internalNotes || null,
+      signTitle: v.signTitle?.trim() || null,
+      signSubtitle: v.signSubtitle?.trim() || null,
+      passengers: ((v.passengers ?? []) as Passenger[])
+        .filter((p) => p?.fullName?.trim())
+        .map((p) => ({
+          fullName: p.fullName.trim(),
+          gender: p.gender ?? null,
+          birthYear: p.birthYear ?? null,
+          idNumber: p.idNumber || null,
+          nationality: p.nationality || null,
+          phone: p.phone || null,
+          note: p.note || null,
+        })),
       trips: trips.map(toTripPayload),
     };
     setSaving(true);
@@ -493,6 +510,16 @@ export default function BookingEditPage() {
             ]}
           />
         </Card>
+
+        <PassengersCard
+          form={form}
+          readOnly={readOnly}
+          tripPassengers={Math.max(0, ...trips.filter((t) => t.status !== 'HUY').map((t) => t.passengers))}
+          canPrint={!isNew && !dirty}
+          bookingId={booking?.id}
+          onChanged={() => setDirty(true)}
+        />
+        <SignCard form={form} defaultTitle={signDefault} canPrint={!isNew && !dirty} bookingId={booking?.id} />
 
         <Row gutter={16} style={{ marginTop: 16 }}>
           <Col xs={24} lg={14}>

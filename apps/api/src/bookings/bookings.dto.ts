@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -71,6 +72,19 @@ export class TripDto {
   @IsOptional() @IsString() notes?: string | null;
 }
 
+export class PassengerDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Hành khách phải có họ tên' })
+  fullName: string;
+
+  @IsOptional() @IsIn(['NAM', 'NU'], { message: 'Giới tính hành khách không hợp lệ' }) gender?: 'NAM' | 'NU' | null;
+  @IsOptional() @IsInt() @Min(1900, { message: 'Năm sinh không hợp lệ' }) @Max(2100, { message: 'Năm sinh không hợp lệ' }) birthYear?: number | null;
+  @IsOptional() @IsString() idNumber?: string | null;
+  @IsOptional() @IsString() nationality?: string | null;
+  @IsOptional() @IsString() phone?: string | null;
+  @IsOptional() @IsString() note?: string | null;
+}
+
 export class CreateBookingDto {
   @IsOptional() @IsInt() customerId?: number | null;
 
@@ -95,6 +109,16 @@ export class CreateBookingDto {
   @ValidateNested({ each: true })
   @Type(() => TripDto)
   trips: TripDto[];
+
+  /** Danh sách hành khách: gửi kèm thì thay toàn bộ danh sách cũ */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PassengerDto)
+  passengers?: PassengerDto[];
+
+  @IsOptional() @IsString() signTitle?: string | null;
+  @IsOptional() @IsString() signSubtitle?: string | null;
 }
 
 export class UpdateBookingDto extends PartialType(CreateBookingDto) {}

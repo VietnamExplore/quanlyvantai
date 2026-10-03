@@ -229,9 +229,26 @@ export interface BookingTrip extends Ref {
   vehicle?: { plateNumber: string } | null;
   driver?: { fullName: string } | null;
   partner?: { name: string } | null;
+  partnerPlate?: string | null;
+  partnerDriverName?: string | null;
+  partnerDriverPhone?: string | null;
+}
+
+export interface Passenger {
+  id?: number;
+  fullName: string;
+  gender: 'NAM' | 'NU' | null;
+  birthYear: number | null;
+  idNumber: string | null;
+  nationality: string | null;
+  phone: string | null;
+  note: string | null;
 }
 
 export interface Booking extends Ref {
+  passengers: Passenger[];
+  signTitle: string | null;
+  signSubtitle: string | null;
   code: string;
   customerId: number | null;
   customer: { id: number; name: string; type: CustomerType; phone: string | null; email: string | null; taxCode: string | null; address: string | null } | null;

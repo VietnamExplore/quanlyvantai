@@ -11,11 +11,13 @@ import DriversPage from './pages/DriversPage';
 import LocationsPage from './pages/LocationsPage';
 import LoginPage from './pages/LoginPage';
 import PartnersPage from './pages/PartnersPage';
+import PassengerListPage from './pages/PassengerListPage';
 import QuotePage from './pages/QuotePage';
 import RentalRatesPage from './pages/RentalRatesPage';
 import RoutePricesPage from './pages/RoutePricesPage';
 import ServicesPage from './pages/ServicesPage';
 import SettingsPage from './pages/SettingsPage';
+import SignPage from './pages/SignPage';
 import SurchargesPage from './pages/SurchargesPage';
 import UsersPage from './pages/UsersPage';
 import VehicleTypesPage from './pages/VehicleTypesPage';
@@ -49,6 +51,8 @@ export default function App() {
     <Routes>
       {/* Trang in báo giá: không có menu */}
       <Route path="bookings/:id/quote" element={<QuotePage />} />
+      <Route path="bookings/:id/passengers" element={<PassengerListPage />} />
+      <Route path="bookings/:id/sign" element={<SignPage />} />
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="bookings" element={<BookingsPage />} />
