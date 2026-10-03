@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
 import { BookingsModule } from './bookings/bookings.module';
 import { DispatchModule } from './dispatch/dispatch.module';
+import { DriverAppModule } from './driver-app/driver-app.module';
+import { PushModule } from './push/push.module';
 import { PricingModule } from './pricing/pricing.module';
 import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
@@ -45,6 +47,8 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     BookingsModule,
     ReportsModule,
     DispatchModule,
+    PushModule,
+    DriverAppModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

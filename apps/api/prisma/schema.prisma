@@ -26,6 +26,7 @@ model User {
   email        String?
   roles        Role[]
   isActive     Boolean    @default(true)
+  pushToken    String? // Expo push token của app lái xe
   driver       Driver?
   customers    Customer[] @relation("SalesOwner")
   salesBookings   Booking[] @relation("BookingSales")

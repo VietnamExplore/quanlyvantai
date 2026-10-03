@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable } from '@nestjs/comm
 import { BookingStatus, DriverStatus, Ownership, Prisma, TripStatus, VehicleStatus } from '@prisma/client';
 import { AuthUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 import { AssignDto, DispatchQueryDto, TripStatusDto } from './dispatch.dto';
 
 const TZ = 'Asia/Ho_Chi_Minh';
@@ -49,7 +50,23 @@ export interface CheckResult {
 
 @Injectable()
 export class DispatchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
+  ) {}
+
+  /** Báo lái xe mới có chuyến; báo lái xe cũ nếu chuyến bị chuyển đi */
+  private async notifyAssignment(tripId: number, previousDriverId: number | null, newDriverId: number | null) {
+    const trip = await this.prisma.bookingTrip.findUnique({ where: { id: tripId }, select: { pickupTime: true, pickupAddress: true, booking: { select: { code: true } } } });
+    if (!trip) return;
+    const when = fmt(trip.pickupTime);
+    if (previousDriverId && previousDriverId !== newDriverId) {
+      await this.push.notifyDriver(previousDriverId, 'Chuyến đã được chuyển', `${trip.booking.code} lúc ${when} không còn giao cho bạn`, { tripId });
+    }
+    if (newDriverId && newDriverId !== previousDriverId) {
+      await this.push.notifyDriver(newDriverId, 'Bạn có chuyến mới', `${when} · ${trip.pickupAddress}`, { tripId });
+    }
+  }
 
   async listTrips({ from, to, status, q }: DispatchQueryDto) {
     const { start, end } = dayRange(from, to);
@@ -311,6 +328,7 @@ export class DispatchService {
       }),
       this.prisma.tripEvent.create({ data: { tripId: id, status: TripStatus.DA_GAN, note, userId: user.id } }),
     ]);
+    await this.notifyAssignment(id, trip.driverId, dto.mode === 'COMPANY' ? (dto.driverId ?? null) : null);
     return this.getTrip(id);
   }
 
@@ -336,6 +354,7 @@ export class DispatchService {
       }),
       this.prisma.tripEvent.create({ data: { tripId: id, status: TripStatus.CHO_DIEU, note: 'Hủy điều xe', userId: user.id } }),
     ]);
+    await this.notifyAssignment(id, trip.driverId, null);
     return this.getTrip(id);
   }
 

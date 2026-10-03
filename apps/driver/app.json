@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Lái Xe",
+    "slug": "lai-xe",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "vn.vantai.laixe"
+    },
+    "android": {
+      "package": "vn.vantai.laixe",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#1668dc",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["POST_NOTIFICATIONS", "VIBRATE"],
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#1668dc"
+        }
+      ]
+    ]
+  }
+}
