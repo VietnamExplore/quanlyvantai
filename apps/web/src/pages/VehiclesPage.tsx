@@ -1,3 +1,4 @@
+import { QuickSelect } from '../components/QuickCreate';
 import { Col, DatePicker, Form, Input, InputNumber, Radio, Row, Select } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
@@ -75,11 +76,11 @@ export default function VehiclesPage() {
               {({ getFieldValue }) =>
                 getFieldValue('ownership') === 'DOI_TAC' ? (
                   <Form.Item name="partnerId" label="Nhà xe đối tác" rules={[{ required: true, message: 'Chọn nhà xe' }]}>
-                    <Select showSearch optionFilterProp="label" options={partnerOptions} />
+                    <QuickSelect entity="partner" options={partnerOptions} />
                   </Form.Item>
                 ) : (
                   <Form.Item name="defaultDriverId" label="Lái xe mặc định">
-                    <Select allowClear showSearch optionFilterProp="label" options={driverOptions} />
+                    <QuickSelect entity="driver" allowClear options={driverOptions} />
                   </Form.Item>
                 )
               }

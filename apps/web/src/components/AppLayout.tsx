@@ -5,6 +5,7 @@ import {
   FileTextOutlined,
   NodeIndexOutlined,
   PercentageOutlined,
+  PlusOutlined,
   ScheduleOutlined,
   DashboardOutlined,
   EnvironmentOutlined,
@@ -24,6 +25,7 @@ import { useAuth } from '../auth';
 import { ROLE } from '../labels';
 import type { Role } from '../types';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { QUICK_ENTITIES, QuickCreateModal, type QuickEntity } from './QuickCreate';
 
 interface NavItem {
   key: string;
@@ -79,6 +81,25 @@ export function AppLayout() {
   const isMobile = !screens.lg;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
+  const [quickEntity, setQuickEntity] = useState<QuickEntity | null>(null);
+
+  // Menu "Tạo nhanh": chỉ hiện mục người dùng có quyền tạo
+  const quickItems = [
+    ...(hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH')
+      ? [{ key: 'booking', icon: <FileTextOutlined />, label: 'Booking mới', onClick: () => navigate('/bookings/new') }, { type: 'divider' as const }]
+      : []),
+    ...(
+      [
+        ['customer', <TeamOutlined key="c" />, 'Khách hàng'],
+        ['vehicle', <CarOutlined key="v" />, 'Xe'],
+        ['driver', <IdcardOutlined key="d" />, 'Lái xe'],
+        ['partner', <ShopOutlined key="p" />, 'Nhà xe đối tác'],
+        ['location', <EnvironmentOutlined key="l" />, 'Địa điểm'],
+      ] as [QuickEntity, ReactNode, string][]
+    )
+      .filter(([e]) => hasRole(...QUICK_ENTITIES[e].roles))
+      .map(([e, icon, label]) => ({ key: e, icon, label, onClick: () => setQuickEntity(e) })),
+  ];
 
   const items = NAV_GROUPS.filter((g) => !g.roles || hasRole(...g.roles)).map((g, i) => {
     const children = g.items.map(({ key, label, icon }) => ({ key, label, icon }));
@@ -130,6 +151,14 @@ export function AppLayout() {
           }}
         >
           {isMobile ? <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} /> : <span />}
+          <Space size={isMobile ? 8 : 16}>
+          {quickItems.length > 0 && (
+            <Dropdown menu={{ items: quickItems }} trigger={['click']}>
+              <Button type="primary" icon={<PlusOutlined />}>
+                {isMobile ? '' : 'Tạo nhanh'}
+              </Button>
+            </Dropdown>
+          )}
           <Dropdown
             menu={{
               items: [
@@ -149,12 +178,14 @@ export function AppLayout() {
               )}
             </Space>
           </Dropdown>
+          </Space>
         </Layout.Header>
         <Layout.Content style={{ padding: isMobile ? 12 : 24 }}>
           <Outlet />
         </Layout.Content>
       </Layout>
       <ChangePasswordModal open={pwdOpen} onClose={() => setPwdOpen(false)} />
+      <QuickCreateModal entity={quickEntity} open={!!quickEntity} onClose={() => setQuickEntity(null)} />
     </Layout>
   );
 }

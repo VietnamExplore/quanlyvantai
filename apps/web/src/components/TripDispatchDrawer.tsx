@@ -32,6 +32,7 @@ import { buildDispatchText, NEXT_ACTION, TRIP_FLOW } from '../dispatch-utils';
 import { SERVICE_TYPE, TRIP_STATUS } from '../labels';
 import type { DispatchOptions, DispatchTrip, Partner } from '../types';
 import { EnumTag, Money, MoneyInput } from './common';
+import { QuickSelect } from './QuickCreate';
 
 interface Props {
   tripId: number | null;
@@ -195,7 +196,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       onFinish={(v) => assign({ mode: 'COMPANY', vehicleId: v.vehicleId, driverId: v.driverId ?? null, dispatchNote: v.dispatchNote || null })}
     >
       <Form.Item name="vehicleId" label="Xe công ty" rules={[{ required: true, message: 'Chọn xe' }]}>
-        <Select
+        <QuickSelect
+          entity="vehicle"
           showSearch
           optionFilterProp="label"
           placeholder={options ? 'Chọn xe' : 'Đang tải...'}
@@ -220,7 +222,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
         />
       </Form.Item>
       <Form.Item name="driverId" label="Lái xe">
-        <Select
+        <QuickSelect
+          entity="driver"
           allowClear
           showSearch
           optionFilterProp="label"
@@ -272,7 +275,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       }
     >
       <Form.Item name="partnerId" label="Nhà xe đối tác" rules={[{ required: true, message: 'Chọn nhà xe' }]}>
-        <Select
+        <QuickSelect
+          entity="partner"
           showSearch
           optionFilterProp="label"
           options={matchingPartners.map((p) => ({ value: p.id, label: p.name, data: p }))}

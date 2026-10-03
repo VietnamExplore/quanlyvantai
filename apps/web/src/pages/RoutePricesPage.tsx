@@ -1,3 +1,4 @@
+import { QuickSelect } from '../components/QuickCreate';
 import { Col, Divider, Form, Input, InputNumber, Row, Select, Switch, Table, Tag, Typography } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
@@ -70,12 +71,12 @@ export default function RoutePricesPage() {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="fromLocationId" label="Điểm đi">
-                <Select allowClear showSearch optionFilterProp="label" options={locationOptions} />
+                <QuickSelect entity="location" allowClear options={locationOptions} />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="toLocationId" label="Điểm đến">
-                <Select allowClear showSearch optionFilterProp="label" options={locationOptions} />
+                <QuickSelect entity="location" allowClear options={locationOptions} />
               </Form.Item>
             </Col>
             <Col xs={12} md={4}>

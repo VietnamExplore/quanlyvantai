@@ -1,3 +1,4 @@
+import { QuickSelect } from '../components/QuickCreate';
 import { Checkbox, Col, Form, Input, Row, Select, Switch, Tag } from 'antd';
 import { CrudPage } from '../components/CrudPage';
 import { EnumTag, useCompanyDriverOptions } from '../components/common';
@@ -74,7 +75,7 @@ export default function UsersPage() {
               {({ getFieldValue }) =>
                 (getFieldValue('roles') ?? []).includes('LAI_XE') ? (
                   <Form.Item name="driverId" label="Liên kết hồ sơ lái xe" extra="Lái xe sẽ thấy các chuyến được giao cho hồ sơ này trên app">
-                    <Select allowClear showSearch optionFilterProp="label" options={driverOptions} />
+                    <QuickSelect entity="driver" allowClear options={driverOptions} />
                   </Form.Item>
                 ) : null
               }

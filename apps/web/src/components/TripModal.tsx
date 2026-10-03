@@ -26,6 +26,7 @@ import { newKey, tripAmount, type TripDraft } from '../booking-utils';
 import { RENTAL_SERVICES, SERVICE_TYPE, toOptions } from '../labels';
 import type { PriceLine, PriceResult, RoutePrice, Surcharge } from '../types';
 import { Money, MoneyInput, useLocations, useVehicleTypeOptions } from './common';
+import { QuickSelect } from './QuickCreate';
 
 const CALC_KEYS = ['serviceType', 'vehicleTypeId', 'routePriceId', 'pickupTime', 'days', 'halfDay', 'extraKm', 'extraHours'];
 const DATETIME_FORMAT = 'HH:mm DD/MM/YYYY';
@@ -138,9 +139,12 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
     if (Object.keys(changed).some((k) => CALC_KEYS.includes(k))) recalc();
   };
 
+  const fillAddress = (field: 'pickup' | 'dropoff', loc: { name: string; address?: string | null }) =>
+    form.setFieldsValue({ [`${field}Address`]: loc.address ? `${loc.name} (${loc.address})` : loc.name });
+
   const pickLocation = (field: 'pickup' | 'dropoff', id: number | undefined) => {
     const loc = locations.find((l) => l.id === id);
-    if (loc) form.setFieldsValue({ [`${field}Address`]: loc.address ? `${loc.name} (${loc.address})` : loc.name });
+    if (loc) fillAddress(field, loc);
   };
 
   const addManualSurcharge = (s?: Surcharge) => {
@@ -273,7 +277,13 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
         <Row gutter={16}>
           <Col xs={24} md={8}>
             <Form.Item name="pickupLocationId" label="Điểm đón (chọn nhanh)">
-              <Select allowClear showSearch optionFilterProp="label" options={locationOptions} onChange={(id) => pickLocation('pickup', id)} />
+              <QuickSelect
+                entity="location"
+                allowClear
+                options={locationOptions}
+                onChange={(id) => pickLocation('pickup', id as number | undefined)}
+                onCreated={(loc) => fillAddress('pickup', loc as unknown as { name: string; address?: string | null })}
+              />
             </Form.Item>
           </Col>
           <Col xs={24} md={16}>
@@ -283,7 +293,13 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
           </Col>
           <Col xs={24} md={8}>
             <Form.Item name="dropoffLocationId" label="Điểm trả (chọn nhanh)">
-              <Select allowClear showSearch optionFilterProp="label" options={locationOptions} onChange={(id) => pickLocation('dropoff', id)} />
+              <QuickSelect
+                entity="location"
+                allowClear
+                options={locationOptions}
+                onChange={(id) => pickLocation('dropoff', id as number | undefined)}
+                onCreated={(loc) => fillAddress('dropoff', loc as unknown as { name: string; address?: string | null })}
+              />
             </Form.Item>
           </Col>
           <Col xs={24} md={16}>

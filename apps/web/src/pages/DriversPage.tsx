@@ -1,3 +1,4 @@
+import { QuickSelect } from '../components/QuickCreate';
 import { Col, DatePicker, Form, Input, Row, Select, Tag } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
@@ -53,7 +54,7 @@ export default function DriversPage() {
           </Col>
           <Col xs={24} md={12}>
             <Form.Item name="partnerId" label="Thuộc nhà xe đối tác" extra="Để trống nếu là lái xe công ty">
-              <Select allowClear showSearch optionFilterProp="label" options={partnerOptions} />
+              <QuickSelect entity="partner" allowClear options={partnerOptions} />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>

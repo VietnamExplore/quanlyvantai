@@ -53,7 +53,8 @@ import {
 import { DATE_FORMAT, EnumTag, Money, MoneyInput, useCustomers, useSalesStaffOptions, useSettings } from '../components/common';
 import { TripModal } from '../components/TripModal';
 import { BOOKING_SOURCE, BOOKING_STATUS, SERVICE_TYPE, TRIP_STATUS, toOptions } from '../labels';
-import type { Booking, BookingStatus } from '../types';
+import { QuickSelect } from '../components/QuickCreate';
+import type { Booking, BookingStatus, Customer } from '../types';
 
 const LOCKED: BookingStatus[] = ['HOAN_THANH', 'HUY'];
 
@@ -223,7 +224,11 @@ export default function BookingEditPage() {
 
   const onCustomerChange = (customerId: number | undefined) => {
     const c = customers.find((x) => x.id === customerId);
-    if (!c) return;
+    if (c) fillContact(c);
+  };
+
+  /** Điền người liên hệ, SĐT, NV phụ trách từ khách hàng (chỉ điền ô còn trống) */
+  const fillContact = (c: Customer) => {
     const cur = form.getFieldsValue();
     form.setFieldsValue({
       contactName: cur.contactName || c.name,
@@ -311,11 +316,11 @@ export default function BookingEditPage() {
           <Row gutter={16}>
             <Col xs={24} md={8}>
               <Form.Item name="customerId" label="Khách hàng / đại lý" extra="Bỏ trống nếu là khách lẻ chưa có trong danh mục">
-                <Select
+                <QuickSelect
+                  entity="customer"
                   allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  onChange={onCustomerChange}
+                  onChange={(id) => onCustomerChange(id as number | undefined)}
+                  onCreated={(c) => fillContact(c as unknown as Customer)}
                   options={customers.map((c) => ({ value: c.id, label: c.phone ? `${c.name} – ${c.phone}` : c.name }))}
                 />
               </Form.Item>
