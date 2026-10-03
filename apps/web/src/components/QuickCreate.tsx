@@ -1,14 +1,14 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Col, Divider, Form, Input, InputNumber, Modal, Radio, Row, Select, type SelectProps } from 'antd';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { App, Button, Col, Divider, Form, Input, InputNumber, Modal, Radio, Row, Select, Switch, Tag, type SelectProps } from 'antd';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { CUSTOMER_TYPE, LOCATION_TYPE, OWNERSHIP, SERVICE_TYPE, toOptions } from '../labels';
+import { CUSTOMER_TYPE, LOCATION_TYPE, OWNERSHIP, toOptions } from '../labels';
 import type { Role } from '../types';
-import { MoneyInput, useCompanyDriverOptions, useLocations, usePartnerOptions, useVehicleTypeOptions } from './common';
+import { MoneyInput, useCompanyDriverOptions, useLocations, usePartnerOptions, useServices, useVehicleTypeOptions } from './common';
 
-export type QuickEntity = 'customer' | 'location' | 'partner' | 'driver' | 'vehicle' | 'vehicleType' | 'route' | 'salesUser';
+export type QuickEntity = 'customer' | 'location' | 'partner' | 'driver' | 'vehicle' | 'vehicleType' | 'route' | 'salesUser' | 'service';
 
 type Rec = { id: number } & Record<string, unknown>;
 
@@ -18,6 +18,8 @@ interface EntityConfig {
   roles: Role[];
   /** Trường nhận chữ người dùng đã gõ tìm */
   nameField: string;
+  /** Trường khóa của bản ghi (mặc định "id") */
+  valueKey?: string;
   defaults?: Record<string, unknown>;
   /** Biến đổi dữ liệu form trước khi gửi */
   toPayload?: (v: Record<string, unknown>) => Record<string, unknown>;
@@ -222,7 +224,7 @@ function RouteFields() {
       </Col>
       <Col span={8}>
         <Form.Item name="serviceType" label="Dịch vụ">
-          <Select options={toOptions(SERVICE_TYPE)} />
+          <QuickSelect entity="service" />
         </Form.Item>
       </Col>
       <Col span={12}>
@@ -257,6 +259,40 @@ function RouteFields() {
       </Col>
       <Col span={24} style={{ fontSize: 12, color: '#8c8c8c', marginTop: -8, marginBottom: 8 }}>
         Giá cho các loại xe khác thêm sau trong mục Bảng giá → Giá theo tuyến.
+      </Col>
+    </Row>
+  );
+}
+
+export const SERVICE_COLORS = ['blue', 'cyan', 'green', 'purple', 'magenta', 'orange', 'gold', 'geekblue', 'lime', 'volcano', 'red'];
+
+export function ServiceFields() {
+  return (
+    <Row gutter={12}>
+      <Col span={24}>
+        <Form.Item name="name" label="Tên dịch vụ" rules={[{ required: true, message: 'Nhập tên dịch vụ' }]}>
+          <Input autoFocus placeholder="Đưa đón sự kiện, Xe cưới, Đưa đón nhân viên…" />
+        </Form.Item>
+      </Col>
+      <Col span={24}>
+        <Form.Item name="pricingMode" label="Cách tính giá">
+          <Radio.Group
+            options={[
+              { value: 'TUYEN', label: 'Theo tuyến (chọn tuyến có giá)' },
+              { value: 'THEO_NGAY', label: 'Theo ngày thuê (tuyến không bắt buộc)' },
+            ]}
+          />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="hasFlight" label="Có số hiệu chuyến bay" valuePropName="checked" tooltip="Bật cho dịch vụ đón/tiễn sân bay">
+          <Switch />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="color" label="Màu nhãn">
+          <Select allowClear options={SERVICE_COLORS.map((c) => ({ value: c, label: <Tag color={c}>{c}</Tag> }))} />
+        </Form.Item>
       </Col>
     </Row>
   );
@@ -319,6 +355,15 @@ export const QUICK_ENTITIES: Record<QuickEntity, EntityConfig> = {
     }),
     Fields: RouteFields,
   },
+  service: {
+    title: 'dịch vụ',
+    endpoint: '/services',
+    roles: ['ADMIN'],
+    nameField: 'name',
+    valueKey: 'code',
+    defaults: { pricingMode: 'TUYEN', hasFlight: false },
+    Fields: ServiceFields,
+  },
   salesUser: {
     title: 'nhân viên kinh doanh',
     endpoint: '/users',
@@ -354,6 +399,8 @@ export function QuickCreateModal({ entity, open, initial, onClose, onCreated }: 
   const cfg = entity ? QUICK_ENTITIES[entity] : null;
   const initialRef = useRef(initial);
   initialRef.current = initial;
+  // Mỗi ô chọn có form thêm nhanh riêng: tên form phải khác nhau để không trùng mã ô nhập
+  const formUid = useId().replace(/[^a-zA-Z0-9]/g, '');
 
   // Chỉ khởi tạo form lúc mở, không xóa dữ liệu đang nhập khi trang vẽ lại
   useEffect(() => {
@@ -404,7 +451,7 @@ export function QuickCreateModal({ entity, open, initial, onClose, onCreated }: 
       destroyOnHidden
       zIndex={1100}
     >
-      <Form form={form} layout="vertical" name={`quick_${entity ?? 'none'}`}>
+      <Form form={form} layout="vertical" name={`quick_${entity ?? 'none'}_${formUid}`}>
         {cfg && open && <cfg.Fields />}
       </Form>
       {cfg && <div style={{ fontSize: 12, color: '#8c8c8c' }}>Các thông tin khác bổ sung sau trong mục danh mục.</div>}
@@ -420,6 +467,7 @@ function useDefaultOptions(entity: QuickEntity, enabled: boolean, valueKey: stri
   const { vehicleTypes } = useVehicleTypeOptions();
   const locations = useLocations();
   const sales = useSalesStaffOptionsSafe(enabled && entity === 'salesUser');
+  const { options: serviceOptions } = useServices();
   if (!enabled) return undefined;
   switch (entity) {
     case 'partner':
@@ -432,6 +480,8 @@ function useDefaultOptions(entity: QuickEntity, enabled: boolean, valueKey: stri
       return locations.map((l) => ({ value: l.id, label: l.name }));
     case 'salesUser':
       return sales;
+    case 'service':
+      return serviceOptions;
     default:
       return undefined;
   }
@@ -462,11 +512,12 @@ type QuickSelectProps = SelectProps & {
  * Dùng thay Select trong Form.Item: tạo xong sẽ tự chọn bản ghi mới.
  * Không truyền `options` thì tự lấy danh sách mặc định của loại dữ liệu.
  */
-export function QuickSelect({ entity, valueKey = 'id', createInitial, onCreated, ...props }: QuickSelectProps) {
+export function QuickSelect({ entity, valueKey: valueKeyProp, createInitial, onCreated, ...props }: QuickSelectProps) {
   const canCreate = useCanQuickCreate(entity);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const cfg = QUICK_ENTITIES[entity];
+  const valueKey = valueKeyProp ?? cfg.valueKey ?? 'id';
   const defaultOptions = useDefaultOptions(entity, props.options === undefined, valueKey);
   const multiple = props.mode === 'multiple' || props.mode === 'tags';
 

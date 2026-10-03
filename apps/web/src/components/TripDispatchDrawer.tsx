@@ -29,7 +29,7 @@ import { api, ApiError } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime, routeText } from '../booking-utils';
 import { buildDispatchText, NEXT_ACTION, TRIP_FLOW } from '../dispatch-utils';
-import { SERVICE_TYPE, TRIP_STATUS } from '../labels';
+import { TRIP_STATUS } from '../labels';
 import type { DispatchOptions, DispatchTrip, Partner } from '../types';
 import { EnumTag, Money, MoneyInput } from './common';
 import { QuickSelect } from './QuickCreate';
@@ -356,7 +356,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       ) : (
         <>
           <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Dịch vụ">{SERVICE_TYPE[trip.serviceType].label}</Descriptions.Item>
+            <Descriptions.Item label="Dịch vụ">{trip.service?.name ?? trip.serviceType}</Descriptions.Item>
             <Descriptions.Item label="Thời gian">
               <b>{fmtTime(trip.pickupTime)}</b> → {dayjs(trip.endTime).format('HH:mm DD/MM')}
             </Descriptions.Item>

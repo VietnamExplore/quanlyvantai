@@ -1,5 +1,5 @@
 export type TripStatus = 'CHO_DIEU' | 'DA_GAN' | 'TAI_XE_NHAN' | 'DANG_DEN_DON' | 'DA_DON_KHACH' | 'HOAN_THANH' | 'HUY';
-export type ServiceType = 'DON_TIEN_SAN_BAY' | 'THEO_TUYEN' | 'CITY_TOUR' | 'THUE_THEO_NGAY' | 'TOUR_NHIEU_NGAY';
+export type ServiceType = string;
 
 export interface AuthUser {
   id: number;
@@ -24,6 +24,7 @@ export interface Trip {
   notes: string | null;
   dispatchNote: string | null;
   vehicleType: { name: string };
+  service?: { name: string };
   vehicle: { plateNumber: string } | null;
   booking: { code: string; contactName: string; contactPhone: string; customer: { name: string } | null };
 }

@@ -1,6 +1,5 @@
 import dayjs from 'dayjs';
 import { fmtTime, routeText } from './booking-utils';
-import { SERVICE_TYPE } from './labels';
 import type { DispatchTrip, TripStatus } from './types';
 
 /** Thứ tự tiến trình của chuyến sau khi điều xe */
@@ -36,7 +35,7 @@ export const assignmentText = (t: DispatchTrip) =>
 export function buildDispatchText(t: DispatchTrip) {
   const lines = [
     `LỆNH ĐIỀU XE – ${t.booking.code}`,
-    `Dịch vụ: ${SERVICE_TYPE[t.serviceType].label}`,
+    `Dịch vụ: ${t.service?.name ?? t.serviceType}`,
     `Giờ đón: ${fmtTime(t.pickupTime)} (dự kiến xong ${dayjs(t.endTime).format('HH:mm DD/MM')})`,
     `Điểm đón: ${t.pickupAddress}`,
   ];

@@ -8,7 +8,9 @@ import { api } from '../api';
 
 type Filters = Record<string, string | number | undefined>;
 
-export interface CrudPageProps<T extends { id: number }> {
+export interface CrudPageProps<T extends object> {
+  /** Trường khóa của bản ghi (mặc định "id"), dùng trong đường dẫn sửa/xóa */
+  idField?: keyof T & string;
   title: string;
   /** Đường dẫn API, ví dụ "/vehicles" */
   endpoint: string;
@@ -30,7 +32,9 @@ export interface CrudPageProps<T extends { id: number }> {
   modalWidth?: number;
 }
 
-export function CrudPage<T extends { id: number }>(props: CrudPageProps<T>) {
+export function CrudPage<T extends object>(props: CrudPageProps<T>) {
+  const idField = (props.idField ?? 'id') as keyof T & string;
+  const keyOf = (row: T) => String(row[idField]);
   const { title, endpoint, columns, renderForm, renderFilters, dateFields = [], canEdit, canDelete } = props;
   const { message } = App.useApp();
   const queryClient = useQueryClient();
@@ -49,7 +53,7 @@ export function CrudPage<T extends { id: number }>(props: CrudPageProps<T>) {
   const save = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
       editing
-        ? api(`${endpoint}/${editing.id}`, { method: 'PATCH', body: payload })
+        ? api(`${endpoint}/${encodeURIComponent(keyOf(editing))}`, { method: 'PATCH', body: payload })
         : api(endpoint, { method: 'POST', body: payload }),
     onSuccess: () => {
       message.success(editing ? 'Đã cập nhật' : 'Đã thêm mới');
@@ -60,7 +64,7 @@ export function CrudPage<T extends { id: number }>(props: CrudPageProps<T>) {
   });
 
   const remove = useMutation({
-    mutationFn: (id: number) => api(`${endpoint}/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => api(`${endpoint}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     onSuccess: () => {
       message.success('Đã xóa');
       queryClient.invalidateQueries();
@@ -110,7 +114,7 @@ export function CrudPage<T extends { id: number }>(props: CrudPageProps<T>) {
             <Space size={0}>
               <Button type="text" icon={<EditOutlined />} onClick={() => openForm(row)} title="Sửa" />
               {canDelete && (
-                <Popconfirm title="Xóa bản ghi này?" okText="Xóa" cancelText="Hủy" onConfirm={() => remove.mutate(row.id)}>
+                <Popconfirm title="Xóa bản ghi này?" okText="Xóa" cancelText="Hủy" onConfirm={() => remove.mutate(keyOf(row))}>
                   <Button type="text" danger icon={<DeleteOutlined />} title="Xóa" />
                 </Popconfirm>
               )}
@@ -144,7 +148,7 @@ export function CrudPage<T extends { id: number }>(props: CrudPageProps<T>) {
       </Flex>
 
       <Table<T>
-        rowKey="id"
+        rowKey={(row) => keyOf(row)}
         size="middle"
         loading={isFetching}
         columns={[...columns, ...actionColumn]}

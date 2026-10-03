@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { InputNumber, Tag, Tooltip, type InputNumberProps } from 'antd';
 import dayjs from 'dayjs';
 import { api } from '../api';
-import type { Customer, Driver, Location, Partner, Settings, VehicleType } from '../types';
+import type { Customer, Driver, Location, Partner, Service, Settings, VehicleType } from '../types';
 
 export const DATE_FORMAT = 'DD/MM/YYYY';
 
@@ -58,6 +58,25 @@ export function useLocations() {
 export function useCustomers() {
   const { data = [] } = useQuery({ queryKey: ['/customers', {}], queryFn: () => api<Customer[]>('/customers') });
   return data.filter((c) => c.isActive);
+}
+
+/** Danh mục Dịch vụ: danh sách, tra theo mã, option cho ô chọn (chỉ dịch vụ đang dùng) */
+export function useServices() {
+  const { data = [] } = useQuery({ queryKey: ['/services'], queryFn: () => api<Service[]>('/services') });
+  const byCode = Object.fromEntries(data.map((s) => [s.code, s])) as Record<string, Service | undefined>;
+  return {
+    services: data,
+    byCode,
+    options: data.filter((s) => s.isActive).map((s) => ({ value: s.code, label: s.name })),
+    name: (code: string) => byCode[code]?.name ?? code,
+  };
+}
+
+/** Nhãn màu tên dịch vụ */
+export function ServiceTag({ code }: { code: string }) {
+  const { byCode } = useServices();
+  const s = byCode[code];
+  return <Tag color={s?.color ?? undefined}>{s?.name ?? code}</Tag>;
 }
 
 export function useSettings() {

@@ -7,7 +7,6 @@ import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { fmtTime, routeText } from '../booking-utils';
 import { formatVnd, useSettings } from '../components/common';
-import { SERVICE_TYPE } from '../labels';
 import type { Booking } from '../types';
 
 const css = `
@@ -98,7 +97,7 @@ export default function QuotePage() {
               <tr key={t.id}>
                 <td style={{ textAlign: 'center' }}>{i + 1}</td>
                 <td>
-                  <b>{SERVICE_TYPE[t.serviceType].label}</b>
+                  <b>{t.service?.name ?? t.serviceType}</b>
                   <div>{routeText(t)}</div>
                   {t.flightNumber && <div className="muted">Chuyến bay: {t.flightNumber}</div>}
                   {t.itinerary && <pre className="muted">{t.itinerary}</pre>}

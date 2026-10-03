@@ -58,6 +58,7 @@ const driverTripSelect = {
   notes: true,
   dispatchNote: true,
   vehicleType: { select: { name: true } },
+  service: { select: { name: true } },
   vehicle: { select: { plateNumber: true } },
   booking: { select: { code: true, contactName: true, contactPhone: true, customer: { select: { name: true } } } },
 } satisfies Prisma.BookingTripSelect;

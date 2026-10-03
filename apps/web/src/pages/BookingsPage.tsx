@@ -7,8 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime } from '../booking-utils';
-import { EnumTag, Money, useSalesStaffOptions } from '../components/common';
-import { BOOKING_STATUS, SERVICE_TYPE, toOptions } from '../labels';
+import { EnumTag, Money, ServiceTag, useSalesStaffOptions } from '../components/common';
+import { BOOKING_STATUS, toOptions } from '../labels';
 import type { Booking } from '../types';
 
 export default function BookingsPage() {
@@ -83,7 +83,7 @@ export default function BookingsPage() {
                 <>
                   {fmtTime(first.pickupTime)}
                   <br />
-                  <EnumTag labels={SERVICE_TYPE} value={first.serviceType} />
+                  <ServiceTag code={first.serviceType} />
                 </>
               );
             },

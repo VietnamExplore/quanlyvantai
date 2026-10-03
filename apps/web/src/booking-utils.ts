@@ -1,6 +1,5 @@
 import dayjs from 'dayjs';
 import { formatVnd } from './components/common';
-import { SERVICE_TYPE } from './labels';
 import type { Booking, BookingTrip, PriceLine, ServiceType, Settings, TripStatus } from './types';
 
 /** Chuyến đang soạn trên form (chưa lưu hoặc đã lưu) */
@@ -103,7 +102,7 @@ export function buildQuoteText(b: Booking, s: Settings) {
   b.trips
     .filter((t) => t.status !== 'HUY')
     .forEach((t, i) => {
-      lines.push(`${i + 1}) ${SERVICE_TYPE[t.serviceType].label} – ${fmtTime(t.pickupTime)}`);
+      lines.push(`${i + 1}) ${t.service?.name ?? t.serviceType} – ${fmtTime(t.pickupTime)}`);
       lines.push(`   ${routeText(t)}${t.flightNumber ? ` (chuyến bay ${t.flightNumber})` : ''}`);
       lines.push(`   ${t.vehicleType.name} – ${t.passengers} khách${t.days > 1 ? ` – ${t.days} ngày` : ''}`);
       if (t.itinerary) lines.push(`   Lịch trình: ${t.itinerary.replace(/\n/g, '; ')}`);

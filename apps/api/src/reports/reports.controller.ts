@@ -113,7 +113,7 @@ export class ReportsController {
       const dateKey = vnDate(t.pickupTime);
       add(series.get(groupBy === 'day' ? dateKey : dateKey.slice(0, 7)) ?? emptyAgg(), revenue, cost);
       add(total, revenue, cost);
-      add(bucket(byService, t.serviceType, emptyAgg), revenue, cost);
+      add(bucket(byService, t.service.name, emptyAgg), revenue, cost);
       add(bucket(byVehicleType, t.vehicleType.name, emptyAgg), revenue, cost);
 
       const salesName = t.booking.salesUser?.fullName ?? 'Chưa gán NV';
@@ -144,7 +144,7 @@ export class ReportsController {
       kpis: { ...withProfit(total), bookings: bookingIds.size, tripsWithoutCost },
       previous: { from: prevFrom, to: prevTo, ...withProfit(prev) },
       series: keys.map((period) => ({ period, ...withProfit(series.get(period)!) })),
-      byService: [...byService.entries()].map(([serviceType, a]) => ({ serviceType, ...withProfit(a) })).sort((x, y) => y.revenue - x.revenue),
+      byService: ranked(byService, 20),
       byVehicleType: ranked(byVehicleType),
       bySales: ranked(bySales),
       topCustomers: ranked(byCustomer, 8),
@@ -175,6 +175,7 @@ export class ReportsController {
         estimatedCost: true,
         pickupTime: true,
         serviceType: true,
+        service: { select: { name: true } },
         vehicleType: { select: { name: true } },
         booking: {
           select: {

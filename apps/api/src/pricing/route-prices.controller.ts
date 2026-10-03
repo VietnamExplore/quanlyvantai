@@ -1,10 +1,11 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { Prisma, Role, ServiceType } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoutePriceDto, UpdateRoutePriceDto } from './pricing.dto';
 
 const routeInclude = {
+  service: { select: { code: true, name: true, color: true, pricingMode: true, hasFlight: true } },
   fromLocation: { select: { id: true, name: true } },
   toLocation: { select: { id: true, name: true } },
   items: { include: { vehicleType: { select: { id: true, code: true, name: true, seats: true } } } },
@@ -17,7 +18,7 @@ export class RoutePricesController {
 
   /** ?vehicleTypeId= để chỉ lấy tuyến đã có giá cho loại xe đó */
   @Get()
-  findAll(@Query('q') q?: string, @Query('serviceType') serviceType?: ServiceType, @Query('vehicleTypeId') vehicleTypeId?: string) {
+  findAll(@Query('q') q?: string, @Query('serviceType') serviceType?: string, @Query('vehicleTypeId') vehicleTypeId?: string) {
     return this.prisma.routePrice.findMany({
       where: {
         serviceType,

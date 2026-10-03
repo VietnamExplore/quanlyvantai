@@ -2,8 +2,7 @@ import { QuickSelect } from '../components/QuickCreate';
 import { Col, Divider, Form, Input, InputNumber, Row, Select, Switch, Table, Tag, Typography } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
-import { EnumTag, Money, MoneyInput, useLocations, useVehicleTypeOptions } from '../components/common';
-import { SERVICE_TYPE, toOptions } from '../labels';
+import { Money, MoneyInput, ServiceTag, useLocations, useServices, useVehicleTypeOptions } from '../components/common';
 import type { RoutePrice } from '../types';
 
 type PriceMap = Record<string, { price?: number | null; partnerCost?: number | null }>;
@@ -13,6 +12,7 @@ export default function RoutePricesPage() {
   const { vehicleTypes } = useVehicleTypeOptions();
   const locations = useLocations();
   const locationOptions = locations.map((l) => ({ value: l.id, label: l.name }));
+  const { options: serviceOptions } = useServices();
 
   return (
     <CrudPage<RoutePrice>
@@ -36,11 +36,11 @@ export default function RoutePricesPage() {
           .map(([vehicleTypeId, p]) => ({ vehicleTypeId: Number(vehicleTypeId), price: p.price, partnerCost: p.partnerCost ?? null })),
       })}
       renderFilters={(f, set) => (
-        <Select allowClear placeholder="Dịch vụ" style={{ width: 170 }} options={toOptions(SERVICE_TYPE)} value={f.serviceType} onChange={(v) => set('serviceType', v)} />
+        <Select allowClear placeholder="Dịch vụ" style={{ width: 170 }} options={serviceOptions} value={f.serviceType} onChange={(v) => set('serviceType', v)} />
       )}
       columns={[
         { title: 'Tuyến', dataIndex: 'name', render: (v, r) => (r.isActive ? <b>{v}</b> : <s>{v}</s>) },
-        { title: 'Dịch vụ', dataIndex: 'serviceType', render: (v) => <EnumTag labels={SERVICE_TYPE} value={v} /> },
+        { title: 'Dịch vụ', dataIndex: 'serviceType', render: (v) => <ServiceTag code={v} /> },
         { title: 'Km', dataIndex: 'distanceKm', align: 'right' },
         { title: 'Giờ chạy', dataIndex: 'durationHours', align: 'right', render: (v) => (v ? Number(v) : '') },
         {
@@ -66,7 +66,7 @@ export default function RoutePricesPage() {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="serviceType" label="Dịch vụ">
-                <Select options={toOptions(SERVICE_TYPE)} />
+                <QuickSelect entity="service" options={serviceOptions} />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>

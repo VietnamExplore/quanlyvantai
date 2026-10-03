@@ -32,7 +32,8 @@ export const NEXT_STEP: Partial<Record<TripStatus, { status: TripStatus; label: 
   DA_DON_KHACH: { status: 'HOAN_THANH', label: 'HOÀN THÀNH CHUYẾN', confirm: 'Xác nhận đã trả khách, hoàn thành chuyến?' },
 };
 
-export const SERVICE: Record<ServiceType, string> = {
+/** Tên dịch vụ dự phòng khi máy chủ chưa trả về tên */
+export const SERVICE: Record<string, string> = {
   DON_TIEN_SAN_BAY: 'Đón/tiễn sân bay',
   THEO_TUYEN: 'Đưa đón theo tuyến',
   CITY_TOUR: 'City tour',

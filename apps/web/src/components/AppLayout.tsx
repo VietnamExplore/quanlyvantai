@@ -1,4 +1,5 @@
 import {
+  AppstoreOutlined,
   BankOutlined,
   CalendarOutlined,
   CarOutlined,
@@ -59,6 +60,7 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
       { key: '/customers', label: 'Khách hàng', icon: <TeamOutlined /> },
       { key: '/locations', label: 'Địa điểm', icon: <EnvironmentOutlined /> },
       { key: '/vehicle-types', label: 'Loại xe', icon: <SettingOutlined /> },
+      { key: '/services', label: 'Dịch vụ', icon: <AppstoreOutlined /> },
     ],
   },
   {
@@ -95,6 +97,7 @@ export function AppLayout() {
         ['driver', <IdcardOutlined key="d" />, 'Lái xe'],
         ['partner', <ShopOutlined key="p" />, 'Nhà xe đối tác'],
         ['location', <EnvironmentOutlined key="l" />, 'Địa điểm'],
+        ['service', <AppstoreOutlined key="s" />, 'Dịch vụ'],
       ] as [QuickEntity, ReactNode, string][]
     )
       .filter(([e]) => hasRole(...QUICK_ENTITIES[e].roles))

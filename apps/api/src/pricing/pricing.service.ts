@@ -62,6 +62,9 @@ export class PricingService {
       partnerCost = item.partnerCost === null ? null : Number(item.partnerCost);
       durationHours = route.durationHours === null ? DEFAULT_ROUTE_HOURS : Number(route.durationHours);
     } else {
+      const service = await this.prisma.service.findUnique({ where: { code: dto.serviceType } });
+      if (!service) throw new BadRequestException('Dịch vụ không tồn tại');
+      if (service.pricingMode !== 'THEO_NGAY') throw new BadRequestException(`Dịch vụ "${service.name}" tính giá theo tuyến: hãy chọn tuyến`);
       const rate = await this.prisma.rentalRate.findUnique({ where: { vehicleTypeId: dto.vehicleTypeId } });
       if (!rate) throw new BadRequestException(`${vehicleType.name} chưa có giá thuê theo ngày. Hãy chọn tuyến hoặc khai báo giá thuê.`);
 

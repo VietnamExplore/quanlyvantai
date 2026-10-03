@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { ServiceType, SurchargeRule } from '@prisma/client';
+import { SurchargeRule } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -36,7 +36,7 @@ export class CreateRoutePriceDto {
   @IsNotEmpty({ message: 'Tên tuyến không được để trống' })
   name: string;
 
-  @IsOptional() @IsEnum(ServiceType) serviceType?: ServiceType;
+  @IsOptional() @IsString() serviceType?: string;
   @IsOptional() @IsInt() fromLocationId?: number | null;
   @IsOptional() @IsInt() toLocationId?: number | null;
   @IsOptional() @IsInt() @Min(0) distanceKm?: number | null;
@@ -95,7 +95,7 @@ export class UpdateHolidayDto extends PartialType(CreateHolidayDto) {}
 // ───── Tính giá ─────
 
 export class CalculatePriceDto {
-  @IsEnum(ServiceType) serviceType: ServiceType;
+  @IsString() serviceType: string;
   @IsInt() vehicleTypeId: number;
   @IsOptional() @IsInt() routePriceId?: number | null;
   @IsDateString() pickupTime: string;

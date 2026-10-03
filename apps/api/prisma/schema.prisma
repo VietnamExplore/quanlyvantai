@@ -197,19 +197,30 @@ model Location {
 
 // ───────────── Bảng giá ─────────────
 
-enum ServiceType {
-  DON_TIEN_SAN_BAY
-  THEO_TUYEN
-  CITY_TOUR
-  THUE_THEO_NGAY
-  TOUR_NHIEU_NGAY
+enum PricingMode {
+  TUYEN // Tính theo giá tuyến
+  THEO_NGAY // Tính theo giá thuê ngày khi không chọn tuyến
+}
+
+/// Danh mục dịch vụ (đón tiễn sân bay, city tour, thuê xe theo ngày…) do Admin quản lý
+model Service {
+  code        String        @id // Mã, ví dụ DON_TIEN_SAN_BAY
+  name        String
+  pricingMode PricingMode   @default(TUYEN)
+  hasFlight   Boolean       @default(false) // Hiện ô số hiệu chuyến bay
+  color       String? // Màu nhãn hiển thị
+  sortOrder   Int           @default(0)
+  isActive    Boolean       @default(true)
+  routes      RoutePrice[]
+  trips       BookingTrip[]
 }
 
 /// Giá theo tuyến: mỗi tuyến có giá bán riêng cho từng loại xe
 model RoutePrice {
   id             Int              @id @default(autoincrement())
   name           String
-  serviceType    ServiceType      @default(THEO_TUYEN)
+  serviceType    String           @default("THEO_TUYEN")
+  service        Service          @relation(fields: [serviceType], references: [code], onUpdate: Cascade)
   fromLocationId Int?
   fromLocation   Location?        @relation("RouteFrom", fields: [fromLocationId], references: [id])
   toLocationId   Int?
@@ -340,7 +351,8 @@ model BookingTrip {
   bookingId         Int
   booking           Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   seq               Int
-  serviceType       ServiceType
+  serviceType       String
+  service           Service      @relation(fields: [serviceType], references: [code], onUpdate: Cascade)
   pickupTime        DateTime
   endTime           DateTime // Giờ kết thúc dự kiến, dùng để kiểm tra trùng lịch khi điều xe
   pickupLocationId  Int?

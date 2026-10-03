@@ -116,7 +116,22 @@ export interface User extends Ref {
 
 // ───── Bảng giá & booking ─────
 
-export type ServiceType = 'DON_TIEN_SAN_BAY' | 'THEO_TUYEN' | 'CITY_TOUR' | 'THUE_THEO_NGAY' | 'TOUR_NHIEU_NGAY';
+/** Mã dịch vụ trong danh mục Dịch vụ */
+export type ServiceType = string;
+export type PricingMode = 'TUYEN' | 'THEO_NGAY';
+
+export interface Service {
+  code: string;
+  name: string;
+  pricingMode: PricingMode;
+  hasFlight: boolean;
+  color: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  _count?: { trips: number; routes: number };
+}
+
+type ServiceRef = Pick<Service, 'code' | 'name' | 'color' | 'pricingMode' | 'hasFlight'>;
 export type SurchargeRule = 'BAN_DEM' | 'LE_TET' | 'THU_CONG';
 export type BookingSource = 'HOTLINE' | 'ZALO' | 'WEBSITE' | 'EMAIL' | 'DAI_LY' | 'KHAC';
 export type BookingStatus = 'NHAP' | 'BAO_GIA' | 'XAC_NHAN' | 'HOAN_THANH' | 'HUY';
@@ -125,6 +140,7 @@ export type TripStatus = 'CHO_DIEU' | 'DA_GAN' | 'TAI_XE_NHAN' | 'DANG_DEN_DON' 
 export interface RoutePrice extends Ref {
   name: string;
   serviceType: ServiceType;
+  service?: ServiceRef;
   fromLocationId: number | null;
   fromLocation: { id: number; name: string } | null;
   toLocationId: number | null;
@@ -187,6 +203,7 @@ export interface PriceResult {
 export interface BookingTrip extends Ref {
   seq: number;
   serviceType: ServiceType;
+  service?: ServiceRef;
   pickupTime: string;
   endTime: string;
   pickupLocationId: number | null;

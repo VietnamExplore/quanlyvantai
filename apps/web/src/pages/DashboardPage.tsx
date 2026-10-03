@@ -17,8 +17,7 @@ import {
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { ExpiryCell, formatVnd } from '../components/common';
-import { SERVICE_TYPE } from '../labels';
-import type { ExpiryAlert, ServiceType } from '../types';
+import type { ExpiryAlert } from '../types';
 
 // Bảng màu đã kiểm tra bằng công cụ dataviz (đủ tương phản, an toàn với người mù màu)
 const COLOR = {
@@ -44,7 +43,7 @@ interface Summary {
   kpis: Agg & { bookings: number; tripsWithoutCost: number };
   previous: Agg & { from: string; to: string };
   series: (Agg & { period: string })[];
-  byService: (Agg & { serviceType: ServiceType })[];
+  byService: (Agg & { name: string })[];
   byVehicleType: (Agg & { name: string })[];
   bySales: (Agg & { name: string; bookings: number })[];
   topCustomers: (Agg & { name: string; bookings: number })[];
@@ -243,7 +242,7 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card title="Doanh thu theo dịch vụ" loading={isLoading} style={{ height: '100%' }}>
-            <HBar data={(r?.byService ?? []).map((s) => ({ ...s, name: SERVICE_TYPE[s.serviceType].label }))} />
+            <HBar data={r?.byService ?? []} />
           </Card>
         </Col>
         <Col xs={24} lg={12}>

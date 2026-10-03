@@ -6,7 +6,6 @@ import type {
   LocationType,
   Ownership,
   Role,
-  ServiceType,
   SurchargeRule,
   TripStatus,
   VehicleStatus,
@@ -54,14 +53,6 @@ export const LOCATION_TYPE: Labels<LocationType> = {
   KHAC: { label: 'Khác' },
 };
 
-export const SERVICE_TYPE: Labels<ServiceType> = {
-  DON_TIEN_SAN_BAY: { label: 'Đón/tiễn sân bay', color: 'blue' },
-  THEO_TUYEN: { label: 'Đưa đón theo tuyến', color: 'cyan' },
-  CITY_TOUR: { label: 'City tour', color: 'green' },
-  THUE_THEO_NGAY: { label: 'Thuê xe theo ngày', color: 'purple' },
-  TOUR_NHIEU_NGAY: { label: 'Tour nhiều ngày', color: 'magenta' },
-};
-
 export const SURCHARGE_RULE: Labels<SurchargeRule> = {
   BAN_DEM: { label: 'Tự động: ban đêm 22h–5h', color: 'geekblue' },
   LE_TET: { label: 'Tự động: ngày lễ, Tết', color: 'red' },
@@ -94,9 +85,6 @@ export const TRIP_STATUS: Labels<TripStatus> = {
   HOAN_THANH: { label: 'Hoàn thành', color: 'green' },
   HUY: { label: 'Đã hủy', color: 'red' },
 };
-
-/** Dịch vụ tính theo giá thuê ngày khi không chọn tuyến */
-export const RENTAL_SERVICES: ServiceType[] = ['THUE_THEO_NGAY', 'TOUR_NHIEU_NGAY', 'CITY_TOUR'];
 
 /** Chuyển bộ nhãn thành danh sách option cho Select / Radio. */
 export const toOptions = <K extends string>(labels: Labels<K>) =>

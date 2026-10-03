@@ -92,7 +92,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           </View>
           <Text style={s.time}>{fmtTime(trip.pickupTime)}</Text>
           <Text style={s.sub}>
-            {SERVICE[trip.serviceType]} · dự kiến xong {fmtTime(trip.endTime)}
+            {trip.service?.name ?? SERVICE[trip.serviceType] ?? trip.serviceType} · dự kiến xong {fmtTime(trip.endTime)}
           </Text>
         </Card>
 

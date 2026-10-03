@@ -14,6 +14,7 @@ import PartnersPage from './pages/PartnersPage';
 import QuotePage from './pages/QuotePage';
 import RentalRatesPage from './pages/RentalRatesPage';
 import RoutePricesPage from './pages/RoutePricesPage';
+import ServicesPage from './pages/ServicesPage';
 import SettingsPage from './pages/SettingsPage';
 import SurchargesPage from './pages/SurchargesPage';
 import UsersPage from './pages/UsersPage';
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="customers" element={<CustomersPage />} />
         <Route path="locations" element={<LocationsPage />} />
         <Route path="vehicle-types" element={<VehicleTypesPage />} />
+        <Route path="services" element={<ServicesPage />} />
         {hasRole('ADMIN') && <Route path="users" element={<UsersPage />} />}
         {hasRole('ADMIN') && <Route path="settings" element={<SettingsPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />

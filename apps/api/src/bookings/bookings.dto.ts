@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { BookingSource, BookingStatus, ServiceType } from '@prisma/client';
+import { BookingSource, BookingStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -34,7 +34,7 @@ export class TripDto {
   /** Có id = sửa chuyến cũ; không có = thêm chuyến mới */
   @IsOptional() @IsInt() id?: number;
 
-  @IsEnum(ServiceType) serviceType: ServiceType;
+  @IsString() @IsNotEmpty({ message: 'Chưa chọn dịch vụ' }) serviceType: string;
   @IsDateString() pickupTime: string;
   /** Bỏ trống để hệ thống tự tính theo tuyến / số ngày thuê */
   @IsOptional() @IsDateString() endTime?: string | null;

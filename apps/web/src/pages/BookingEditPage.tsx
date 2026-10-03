@@ -50,9 +50,9 @@ import {
   tripAmount,
   type TripDraft,
 } from '../booking-utils';
-import { DATE_FORMAT, EnumTag, Money, MoneyInput, useCustomers, useSalesStaffOptions, useSettings } from '../components/common';
+import { DATE_FORMAT, EnumTag, Money, MoneyInput, ServiceTag, useCustomers, useSalesStaffOptions, useSettings } from '../components/common';
 import { TripModal } from '../components/TripModal';
-import { BOOKING_SOURCE, BOOKING_STATUS, SERVICE_TYPE, TRIP_STATUS, toOptions } from '../labels';
+import { BOOKING_SOURCE, BOOKING_STATUS, TRIP_STATUS, toOptions } from '../labels';
 import { QuickSelect } from '../components/QuickCreate';
 import type { Booking, BookingStatus, Customer } from '../types';
 
@@ -389,7 +389,7 @@ export default function BookingEditPage() {
             locale={{ emptyText: <Empty description="Chưa có chuyến nào. Bấm “Thêm chuyến” để bắt đầu." /> }}
             columns={[
               { title: '#', width: 40, render: (_, __, i) => i + 1 },
-              { title: 'Dịch vụ', dataIndex: 'serviceType', render: (v) => <EnumTag labels={SERVICE_TYPE} value={v} /> },
+              { title: 'Dịch vụ', dataIndex: 'serviceType', render: (v) => <ServiceTag code={v} /> },
               {
                 title: 'Thời gian',
                 render: (_, t) => (

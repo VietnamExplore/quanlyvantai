@@ -23,9 +23,8 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { newKey, tripAmount, type TripDraft } from '../booking-utils';
-import { RENTAL_SERVICES, SERVICE_TYPE, toOptions } from '../labels';
 import type { PriceLine, PriceResult, RoutePrice, Surcharge } from '../types';
-import { Money, MoneyInput, useLocations, useVehicleTypeOptions } from './common';
+import { Money, MoneyInput, useLocations, useServices, useVehicleTypeOptions } from './common';
 import { QuickSelect } from './QuickCreate';
 
 const CALC_KEYS = ['serviceType', 'vehicleTypeId', 'routePriceId', 'pickupTime', 'days', 'halfDay', 'extraKm', 'extraHours'];
@@ -57,7 +56,11 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
   const unitPrice = Form.useWatch('unitPrice', form) ?? 0;
   const surcharges: PriceLine[] = Form.useWatch('surcharges', form) ?? [];
 
-  const isRental = RENTAL_SERVICES.includes(serviceType);
+  const { byCode: servicesByCode, options: serviceOptions } = useServices();
+  // Dịch vụ tính theo ngày thuê (không bắt buộc tuyến) và dịch vụ có số hiệu chuyến bay
+  const isRentalCode = (code?: string) => !!code && servicesByCode[code]?.pricingMode === 'THEO_NGAY';
+  const isRental = isRentalCode(serviceType);
+  const hasFlight = !!serviceType && !!servicesByCode[serviceType]?.hasFlight;
   const vehicleType = vehicleTypes.find((t) => t.id === vehicleTypeId);
   const amount = tripAmount({ unitPrice, surcharges });
   const estimatedCost: number | null | undefined = Form.useWatch('estimatedCost', form);
@@ -86,10 +89,10 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
     const v = form.getFieldsValue();
     if (!v.serviceType || !v.vehicleTypeId || !v.pickupTime) {
       const missing = [!v.vehicleTypeId && 'loại xe', !v.pickupTime && 'giờ đón'].filter(Boolean).join(' và ');
-      if (v.routePriceId || RENTAL_SERVICES.includes(v.serviceType)) setCalcMsg({ type: 'info', text: `Chọn ${missing} để hệ thống tính giá.` });
+      if (v.routePriceId || isRentalCode(v.serviceType)) setCalcMsg({ type: 'info', text: `Chọn ${missing} để hệ thống tính giá.` });
       return;
     }
-    if (!v.routePriceId && !RENTAL_SERVICES.includes(v.serviceType)) {
+    if (!v.routePriceId && !isRentalCode(v.serviceType)) {
       setBreakdown([]);
       setCalcMsg({ type: 'info', text: 'Chọn tuyến để hệ thống tự tính giá, hoặc nhập giá tay bên dưới.' });
       return;
@@ -208,7 +211,7 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
         <Row gutter={16}>
           <Col xs={24} md={8}>
             <Form.Item name="serviceType" label="Dịch vụ" rules={[{ required: true }]}>
-              <Select options={toOptions(SERVICE_TYPE)} />
+              <QuickSelect entity="service" options={serviceOptions} />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
@@ -317,7 +320,7 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
               <Input />
             </Form.Item>
           </Col>
-          {serviceType === 'DON_TIEN_SAN_BAY' && (
+          {hasFlight && (
             <Col xs={24} md={8}>
               <Form.Item name="flightNumber" label="Số hiệu chuyến bay">
                 <Input placeholder="VN123" />

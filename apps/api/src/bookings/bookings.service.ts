@@ -17,6 +17,7 @@ const bookingInclude = {
     include: {
       vehicleType: { select: { id: true, code: true, name: true, seats: true, maxPassengers: true } },
       routePrice: { select: { id: true, name: true } },
+      service: { select: { code: true, name: true, color: true, pricingMode: true, hasFlight: true } },
       vehicle: { select: { plateNumber: true } },
       driver: { select: { fullName: true } },
       partner: { select: { name: true } },
@@ -183,8 +184,12 @@ export class BookingsService {
     const types = await this.prisma.vehicleType.findMany({ where: { id: { in: typeIds } }, include: { rentalRate: true } });
     const routeIds = [...new Set(trips.map((t) => t.routePriceId).filter((x): x is number => !!x))];
     const routes = await this.prisma.routePrice.findMany({ where: { id: { in: routeIds } } });
+    const services = await this.prisma.service.findMany({ where: { code: { in: [...new Set(trips.map((t) => t.serviceType))] } } });
 
     return trips.map((t, i) => {
+      const service = services.find((s) => s.code === t.serviceType);
+      if (!service) throw new BadRequestException(`Chuyến ${i + 1}: dịch vụ không tồn tại`);
+      if (!service.isActive && !t.id) throw new BadRequestException(`Chuyến ${i + 1}: dịch vụ "${service.name}" đã ngừng sử dụng`);
       const type = types.find((x) => x.id === t.vehicleTypeId);
       if (!type) throw new BadRequestException(`Chuyến ${i + 1}: loại xe không tồn tại`);
       if (t.passengers > type.maxPassengers) {

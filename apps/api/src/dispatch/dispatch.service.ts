@@ -14,6 +14,7 @@ export const dispatchTripInclude = {
     select: { id: true, code: true, status: true, contactName: true, contactPhone: true, customer: { select: { id: true, name: true } } },
   },
   vehicleType: { select: { id: true, code: true, name: true, seats: true, maxPassengers: true } },
+  service: { select: { code: true, name: true, color: true, pricingMode: true, hasFlight: true } },
   vehicle: { select: { id: true, plateNumber: true, vehicleType: { select: { name: true } } } },
   driver: { select: { id: true, fullName: true, phone: true } },
   partner: { select: { id: true, name: true, phone: true } },

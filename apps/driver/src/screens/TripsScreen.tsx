@@ -18,7 +18,7 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
         </Text>
         <StatusBadge status={trip.status} />
       </View>
-      <Text style={s.service}>{SERVICE[trip.serviceType]}{trip.flightNumber ? ` · ✈ ${trip.flightNumber}` : ''}</Text>
+      <Text style={s.service}>{trip.service?.name ?? SERVICE[trip.serviceType] ?? trip.serviceType}{trip.flightNumber ? ` · ✈ ${trip.flightNumber}` : ''}</Text>
       <Text style={s.place} numberOfLines={2}>📍 {trip.pickupAddress}</Text>
       {trip.dropoffAddress && <Text style={s.place} numberOfLines={2}>🏁 {trip.dropoffAddress}</Text>}
       <Text style={s.meta}>
