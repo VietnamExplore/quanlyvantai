@@ -356,7 +356,7 @@ export function useSignFile(bookingId?: number) {
 }
 
 const SIGN_ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
-const SIGN_MAX_MB = 10;
+const SIGN_MAX_MB = 100;
 
 function SignFileBox({ bookingId, file }: { bookingId?: number; file: ReturnType<typeof useSignFile> }) {
   const { message } = App.useApp();

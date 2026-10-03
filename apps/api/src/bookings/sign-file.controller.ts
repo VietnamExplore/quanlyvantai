@@ -31,7 +31,7 @@ const ALLOWED: Record<string, string> = {
   'image/webp': '.webp',
   'application/pdf': '.pdf',
 };
-const MAX_SIZE = 10 * 1024 * 1024;
+const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
 function removeFile(name: string | null) {
   if (!name) return;
