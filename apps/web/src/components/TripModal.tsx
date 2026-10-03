@@ -59,6 +59,7 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
   const isRental = RENTAL_SERVICES.includes(serviceType);
   const vehicleType = vehicleTypes.find((t) => t.id === vehicleTypeId);
   const amount = tripAmount({ unitPrice, surcharges });
+  const estimatedCost: number | null | undefined = Form.useWatch('estimatedCost', form);
 
   useEffect(() => {
     if (!open) return;
@@ -105,6 +106,11 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
       });
       const manual = ((v.surcharges ?? []) as PriceLine[]).filter((s) => !s.auto);
       form.setFieldsValue({ unitPrice: res.unitPrice, endTime: dayjs(res.endTime), surcharges: [...res.surcharges, ...manual] });
+      // Tự điền chi phí = giá mua đối tác của tuyến, trừ khi nhân viên đã tự nhập con số khác
+      const curCost = v.estimatedCost;
+      if (res.partnerCost !== null && (curCost === null || curCost === undefined || curCost === partnerCost)) {
+        form.setFieldsValue({ estimatedCost: res.partnerCost });
+      }
       setBreakdown(res.breakdown);
       setPartnerCost(res.partnerCost);
       setCalcMsg(null);
@@ -168,6 +174,7 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
       itinerary: v.itinerary || null,
       notes: v.notes || null,
       days: v.days || 1,
+      estimatedCost: v.estimatedCost ?? null,
       extraKm: v.extraKm || 0,
       extraHours: v.extraHours || 0,
       surcharges: ((v.surcharges ?? []) as PriceLine[]).filter((s) => s.name?.trim()).map((s) => ({ ...s, amount: Number(s.amount || 0) })),
@@ -328,6 +335,16 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
               <MoneyInput />
             </Form.Item>
           </Col>
+          <Col xs={24} md={10}>
+            <Form.Item
+              name="estimatedCost"
+              label="Chi phí dự kiến"
+              tooltip="Giá thuê xe đối tác, hoặc chi phí xăng dầu + lương tài xế nếu chạy xe công ty. Dùng để tính lợi nhuận."
+              extra={partnerCost !== null ? `Giá mua đối tác của tuyến: ${partnerCost.toLocaleString('vi-VN')}đ` : 'Để trống nếu chưa biết'}
+            >
+              <MoneyInput />
+            </Form.Item>
+          </Col>
         </Row>
 
         <Form.List name="surcharges">
@@ -375,15 +392,10 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
         </Dropdown>
 
         <Flex justify="flex-end" align="baseline" gap={16} wrap style={{ marginTop: 16 }}>
-          {partnerCost !== null && (
-            <Space>
-              <Typography.Text type="secondary">
-                Giá mua đối tác tham khảo: <Money value={partnerCost} />
-              </Typography.Text>
-              <Tag color={amount - partnerCost >= 0 ? 'green' : 'red'}>
-                Lãi dự kiến: {(amount - partnerCost).toLocaleString('vi-VN')} đ
-              </Tag>
-            </Space>
+          {estimatedCost !== null && estimatedCost !== undefined && (
+            <Tag color={amount - estimatedCost >= 0 ? 'green' : 'red'} style={{ fontSize: 14, padding: '2px 8px' }}>
+              Lãi dự kiến: {(amount - estimatedCost).toLocaleString('vi-VN')} đ
+            </Tag>
           )}
           <Typography.Title level={4} style={{ margin: 0 }}>
             Thành tiền: <Money value={amount} />

@@ -58,6 +58,9 @@ export class TripDto {
 
   @IsNumber() @Min(0) unitPrice: number;
 
+  /** Chi phí dự kiến của chuyến (giá thuê đối tác / chi phí xe công ty) */
+  @IsOptional() @IsNumber() @Min(0) estimatedCost?: number | null;
+
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })

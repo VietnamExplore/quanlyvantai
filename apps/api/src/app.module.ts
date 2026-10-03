@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
 import { BookingsModule } from './bookings/bookings.module';
 import { PricingModule } from './pricing/pricing.module';
+import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { CustomersModule } from './customers/customers.module';
 import { DriversModule } from './drivers/drivers.module';
@@ -41,6 +42,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     PricingModule,
     SettingsModule,
     BookingsModule,
+    ReportsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

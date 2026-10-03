@@ -221,6 +221,7 @@ export class BookingsService {
         unitPrice: t.unitPrice,
         surcharges: surcharges as unknown as Prisma.InputJsonValue,
         amount: t.unitPrice + sumLines(surcharges),
+        estimatedCost: t.estimatedCost ?? null,
         itinerary: t.itinerary || null,
         notes: t.notes || null,
       };

@@ -205,6 +205,7 @@ export interface BookingTrip extends Ref {
   unitPrice: string;
   surcharges: PriceLine[];
   amount: string;
+  estimatedCost: string | null;
   itinerary: string | null;
   notes: string | null;
   status: TripStatus;

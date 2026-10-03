@@ -531,6 +531,26 @@ export default function BookingEditPage() {
                   </Descriptions.Item>
                 )}
               </Descriptions>
+              {trips.length > 0 && (
+                <Descriptions column={1} size="small" bordered style={{ marginTop: 12 }} title={<Typography.Text type="secondary">Nội bộ (khách không thấy)</Typography.Text>}>
+                  <Descriptions.Item label="Chi phí dự kiến">
+                    <Money value={totals.cost} />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Lợi nhuận dự kiến">
+                    <Typography.Text strong type={totals.profit < 0 ? 'danger' : undefined}>
+                      {totals.profit.toLocaleString('vi-VN')} đ
+                    </Typography.Text>
+                    {totals.subtotal - discount > 0 && (
+                      <Typography.Text type="secondary"> ({Math.round((totals.profit / (totals.subtotal - discount)) * 100)}%)</Typography.Text>
+                    )}
+                    {totals.missingCost > 0 && (
+                      <div>
+                        <Typography.Text type="warning">{totals.missingCost} chuyến chưa nhập chi phí</Typography.Text>
+                      </div>
+                    )}
+                  </Descriptions.Item>
+                </Descriptions>
+              )}
             </Card>
           </Col>
         </Row>
