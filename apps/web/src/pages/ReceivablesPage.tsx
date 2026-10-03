@@ -100,7 +100,7 @@ export default function ReceivablesPage() {
         </Col>
         <Col xs={12} md={8}>
           <Card>
-            <Statistic title="Trong đó quá hạn" value={data?.totalOverdue ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} valueStyle={{ color: data?.totalOverdue ? '#cf1322' : undefined }} />
+            <Statistic title="Trong đó quá hạn" value={data?.totalOverdue ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} styles={{ content: { color: data?.totalOverdue ? '#cf1322' : undefined } }} />
           </Card>
         </Col>
         <Col xs={24} md={8}>

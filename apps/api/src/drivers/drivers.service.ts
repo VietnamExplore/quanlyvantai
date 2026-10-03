@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { withDates } from '../common/utils';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateDriverDto, DriverQueryDto, UpdateDriverDto } from './drivers.dto';
+import { CreateDriverDto, DriverQueryDto, DriverSalaryDto, UpdateDriverDto } from './drivers.dto';
 
 const DATE_FIELDS = ['licenseExpiry', 'healthCheckExpiry'] as const;
 
@@ -52,6 +52,38 @@ export class DriversService {
       data: withDates(dto, [...DATE_FIELDS]) as Prisma.DriverUncheckedUpdateInput,
       include: driverInclude,
     });
+  }
+
+  salaries(driverId: number) {
+    return this.prisma.driverSalary.findMany({ where: { driverId }, orderBy: { effectiveFrom: 'desc' } });
+  }
+
+  /** Mức lương áp dụng cho tháng hiện tại của từng lái xe công ty (null = chưa cài) */
+  async currentSalaries() {
+    const monthStart = new Date(`${new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date()).slice(0, 7)}-01T00:00:00Z`);
+    const rows = await this.prisma.driverSalary.findMany({
+      where: { effectiveFrom: { lte: monthStart }, driver: { partnerId: null } },
+      orderBy: { effectiveFrom: 'desc' },
+    });
+    const byDriver: Record<number, (typeof rows)[number]> = {};
+    for (const r of rows) byDriver[r.driverId] ??= r;
+    return byDriver;
+  }
+
+  async setSalary(driverId: number, dto: DriverSalaryDto, userId: number) {
+    const driver = await this.prisma.driver.findUniqueOrThrow({ where: { id: driverId } });
+    if (driver.partnerId) throw new BadRequestException('Chỉ cài lương cho lái xe công ty');
+    const effectiveFrom = new Date(`${dto.effectiveFrom}-01T00:00:00Z`);
+    const data = { baseSalary: dto.baseSalary, commissionPercent: dto.commissionPercent, note: dto.note?.trim() || null };
+    return this.prisma.driverSalary.upsert({
+      where: { driverId_effectiveFrom: { driverId, effectiveFrom } },
+      create: { driverId, effectiveFrom, createdById: userId, ...data },
+      update: data,
+    });
+  }
+
+  removeSalary(id: number) {
+    return this.prisma.driverSalary.delete({ where: { id } });
   }
 
   remove(id: number) {

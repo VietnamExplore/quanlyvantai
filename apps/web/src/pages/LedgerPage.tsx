@@ -93,12 +93,12 @@ export default function LedgerPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="Tổng thu" value={data?.income ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} valueStyle={{ color: '#3f8600' }} />
+            <Statistic title="Tổng thu" value={data?.income ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} styles={{ content: { color: '#3f8600' } }} />
           </Card>
         </Col>
         <Col xs={12} md={8}>
           <Card>
-            <Statistic title="Tổng chi" value={data?.expense ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} valueStyle={{ color: '#cf1322' }} />
+            <Statistic title="Tổng chi" value={data?.expense ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} styles={{ content: { color: '#cf1322' } }} />
           </Card>
         </Col>
         <Col xs={12} md={8}>

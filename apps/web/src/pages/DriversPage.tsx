@@ -1,17 +1,25 @@
 import { QuickSelect } from '../components/QuickCreate';
-import { Col, DatePicker, Form, Input, Row, Select, Tag } from 'antd';
+import { DollarOutlined } from '@ant-design/icons';
+import { Button, Col, DatePicker, Form, Input, Row, Select, Tag, Typography } from 'antd';
+import { useState } from 'react';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
 import { DATE_FORMAT, EnumTag, ExpiryCell, usePartnerOptions } from '../components/common';
 import { DRIVER_STATUS, toOptions } from '../labels';
+import { DriverSalaryModal, salaryText, useCurrentSalaries } from '../components/DriverSalary';
 import type { Driver } from '../types';
 
 export default function DriversPage() {
   const { hasRole } = useAuth();
   const partnerOptions = usePartnerOptions();
+  // Lương lái xe: chỉ Admin, Kế toán xem / sửa
+  const canSalary = hasRole('ADMIN', 'KE_TOAN');
+  const salaries = useCurrentSalaries(canSalary);
+  const [salaryDriver, setSalaryDriver] = useState<Driver | null>(null);
   const ownerOptions = [{ value: 'company', label: 'Lái xe công ty' }, ...partnerOptions.map((p) => ({ value: String(p.value), label: p.label }))];
 
   return (
+    <>
     <CrudPage<Driver>
       title="Lái xe"
       endpoint="/drivers"
@@ -35,6 +43,27 @@ export default function DriversPage() {
         { title: 'Hạn khám SK', dataIndex: 'healthCheckExpiry', render: (v) => <ExpiryCell value={v} /> },
         { title: 'Xe mặc định', render: (_, r) => r.defaultVehicles.map((v) => v.plateNumber).join(', ') },
         { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={DRIVER_STATUS} value={v} /> },
+        ...(canSalary
+          ? [
+              {
+                title: 'Lương (tháng này)',
+                render: (_: unknown, r: Driver) =>
+                  r.partner ? null : (
+                    <Button
+                      size="small"
+                      type={salaries?.[r.id] ? 'text' : 'dashed'}
+                      icon={<DollarOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSalaryDriver(r);
+                      }}
+                    >
+                      {salaryText(salaries?.[r.id]) ?? <Typography.Text type="warning">Cài lương</Typography.Text>}
+                    </Button>
+                  ),
+              },
+            ]
+          : []),
         {
           title: 'Tài khoản app',
           render: (_, r) => (r.user ? <Tag color={r.user.isActive ? 'green' : 'default'}>{r.user.username}</Tag> : <span style={{ color: '#bbb' }}>Chưa có</span>),
@@ -95,5 +124,7 @@ export default function DriversPage() {
         </Row>
       )}
     />
+    <DriverSalaryModal driver={salaryDriver} onClose={() => setSalaryDriver(null)} />
+    </>
   );
 }

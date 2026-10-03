@@ -116,9 +116,26 @@ model Driver {
   user              User?        @relation(fields: [userId], references: [id])
   defaultVehicles   Vehicle[]
   trips             BookingTrip[]
+  salaries          DriverSalary[]
   notes             String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+}
+
+/// Mức lương lái xe công ty theo thời gian: lương cứng / tháng + % doanh thu chuyến đã chạy.
+/// Mức áp dụng cho một tháng = bản ghi có effectiveFrom gần nhất <= ngày đầu tháng đó.
+model DriverSalary {
+  id                Int      @id @default(autoincrement())
+  driverId          Int
+  driver            Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  effectiveFrom     DateTime @db.Date // luôn là ngày 01 của tháng bắt đầu áp dụng
+  baseSalary        Decimal  @db.Decimal(14, 0)
+  commissionPercent Decimal  @db.Decimal(5, 2)
+  note              String?
+  createdById       Int?
+  createdAt         DateTime @default(now())
+
+  @@unique([driverId, effectiveFrom])
 }
 
 // ───────────── Nhà xe đối tác ─────────────

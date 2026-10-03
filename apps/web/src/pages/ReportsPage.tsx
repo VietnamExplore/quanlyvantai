@@ -6,8 +6,10 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../auth';
 import { routeText } from '../booking-utils';
 import { formatVnd } from '../components/common';
+import { DriverSalaryModal } from '../components/DriverSalary';
 import { downloadExcel, type ExcelSheet } from '../excel';
 import { DRIVER_STATUS, TRIP_STATUS, VEHICLE_STATUS } from '../labels';
 import type { DriverStatus, TripStatus, VehicleStatus } from '../types';
@@ -56,6 +58,47 @@ interface TripsReport {
   trips: ReportTrip[];
   vehicles: { id: number; plateNumber: string; status: VehicleStatus; vehicleType: { name: string } }[];
   drivers: { id: number; fullName: string; phone: string; status: DriverStatus }[];
+}
+
+// ───── Lương lái xe (API /reports/driver-pay, chỉ Admin / Kế toán) ─────
+
+interface PayMonth {
+  month: string;
+  from: string;
+  to: string;
+  days: number;
+  daysInMonth: number;
+  hasRate: boolean;
+  baseSalary: number;
+  commissionPercent: number;
+  baseAmount: number;
+  trips: number;
+  revenue: number;
+  commission: number;
+  total: number;
+}
+
+interface DriverPay {
+  driverId: number;
+  fullName: string;
+  phone: string;
+  status: DriverStatus;
+  missingRate: boolean;
+  baseSalary: number;
+  commissionPercent: number;
+  trips: number;
+  revenue: number;
+  baseAmount: number;
+  commission: number;
+  total: number;
+  months: PayMonth[];
+}
+
+interface DriverPayReport {
+  from: string;
+  to: string;
+  countedUntil: string;
+  drivers: DriverPay[];
 }
 
 // ───── Gom nhóm ─────
@@ -177,6 +220,8 @@ const PRESETS: { value: Exclude<Preset, 'custom'>; label: string; range: () => [
 
 export default function ReportsPage() {
   const { message } = App.useApp();
+  const { hasRole } = useAuth();
+  const canSalary = hasRole('ADMIN', 'KE_TOAN');
   const [preset, setPreset] = useState<Preset>('thisMonth');
   const [range, setRange] = useState<[Dayjs, Dayjs]>(PRESETS[0].range());
   const [tab, setTab] = useState('trips');
@@ -189,6 +234,11 @@ export default function ReportsPage() {
     queryFn: () => api<TripsReport>('/reports/trips', { query: { from, to } }),
   });
   const trips = useMemo(() => data?.trips ?? [], [data]);
+  const { data: pay, isLoading: payLoading } = useQuery({
+    queryKey: ['/reports/driver-pay', from, to],
+    queryFn: () => api<DriverPayReport>('/reports/driver-pay', { query: { from, to } }),
+    enabled: canSalary,
+  });
   const periodDays = range[1].startOf('day').diff(range[0].startOf('day'), 'day') + 1;
 
   const groups = useMemo(() => {
@@ -284,6 +334,7 @@ export default function ReportsPage() {
             { header: `Tỷ lệ sử dụng (%/${periodDays} ngày)`, value: (g) => Math.round((g.activeDays / periodDays) * 100) },
             { header: 'Giờ chạy', value: (g) => g.hours, sum: true },
           ]),
+          ...(pay ? payrollSheets(pay, trips, rangeText) : []),
           groupSheet('Hiệu suất lái xe', 'HIỆU SUẤT LÁI XE CÔNG TY', 'Lái xe', groups.drivers, [
             { header: 'Ngày làm việc', value: (g) => g.activeDays, sum: true },
             { header: 'Giờ chạy', value: (g) => g.hours, sum: true },
@@ -353,6 +404,13 @@ export default function ReportsPage() {
             key: 'drivers',
             label: 'Hiệu suất lái xe',
             children: (
+              <>
+              {canSalary && <DriverPayTable pay={pay} loading={payLoading} trips={trips} />}
+              {canSalary && (
+                <Typography.Title level={5} style={{ marginTop: 24 }}>
+                  Hiệu suất lái xe
+                </Typography.Title>
+              )}
               <GroupTable
                 loading={isLoading}
                 rows={groups.drivers}
@@ -369,6 +427,7 @@ export default function ReportsPage() {
                   return d && d.status !== 'DANG_LAM' ? <Tag color={DRIVER_STATUS[d.status].color}>{DRIVER_STATUS[d.status].label}</Tag> : null;
                 }}
               />
+              </>
             ),
           },
         ]),
@@ -697,4 +756,219 @@ function GroupTable({
       />
     </>
   );
+}
+
+// ───── Bảng lương lái xe ─────
+
+/** Các chuyến tính lương của một lái xe: xe công ty, giờ đón đã qua; kèm % và tiền doanh số của tháng đó */
+function payTrips(d: DriverPay, trips: ReportTrip[]) {
+  const now = dayjs();
+  return trips
+    .filter((t) => t.driver?.id === d.driverId && !t.partnerId && !dayjs(t.pickupTime).isAfter(now))
+    .map((t) => {
+      const pct = d.months.find((m) => m.month === dayjs(t.pickupTime).format('YYYY-MM'))?.commissionPercent ?? 0;
+      return { trip: t, pct, commission: (t.revenue * pct) / 100 };
+    });
+}
+
+function DriverPayTable({ pay, loading, trips }: { pay?: DriverPayReport; loading: boolean; trips: ReportTrip[] }) {
+  const [editing, setEditing] = useState<{ id: number; fullName: string } | null>(null);
+  const rows = pay?.drivers ?? [];
+  const sum = rows.reduce(
+    (s, r) => ({ revenue: s.revenue + r.revenue, baseAmount: s.baseAmount + r.baseAmount, commission: s.commission + r.commission, total: s.total + r.total, trips: s.trips + r.trips }),
+    { revenue: 0, baseAmount: 0, commission: 0, total: 0, trips: 0 },
+  );
+  const missing = rows.filter((r) => r.missingRate);
+  const multiMonth = (pay?.drivers[0]?.months.length ?? 0) > 1;
+
+  return (
+    <>
+      <Typography.Title level={5} style={{ marginTop: 0 }}>
+        Bảng lương lái xe
+      </Typography.Title>
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+        Lương = lương cứng + % × doanh thu chuyến đã chạy (đã trừ giảm giá, chưa VAT). Kỳ không trọn tháng thì lương cứng tính theo số ngày.
+        {pay && ` Tính chuyến chạy đến hết ngày ${dayjs(pay.countedUntil).format('DD/MM/YYYY')}.`} Bấm vào dòng để xem từng chuyến.
+      </Typography.Paragraph>
+      {missing.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          title={`Chưa cài lương cho: ${missing.map((m) => m.fullName).join(', ')}. Bấm nút ở cột "Mức lương" để cài.`}
+        />
+      )}
+      <Table<DriverPay>
+        rowKey="driverId"
+        size="small"
+        loading={loading}
+        dataSource={rows}
+        scroll={{ x: 'max-content' }}
+        pagination={false}
+        locale={{ emptyText: 'Chưa có lái xe công ty' }}
+        expandable={{
+          expandRowByClick: true,
+          rowExpandable: (r) => r.trips > 0 || multiMonth,
+          expandedRowRender: (r) => <DriverPayDetail pay={r} trips={trips} multiMonth={multiMonth} />,
+        }}
+        columns={[
+          {
+            title: 'Lái xe',
+            render: (_, r) => (
+              <>
+                <b>{r.fullName}</b> {r.status !== 'DANG_LAM' && <Tag color={DRIVER_STATUS[r.status].color}>{DRIVER_STATUS[r.status].label}</Tag>}
+                <div>
+                  <Typography.Text type="secondary">{r.phone}</Typography.Text>
+                </div>
+              </>
+            ),
+          },
+          {
+            title: 'Mức lương',
+            render: (_, r) => (
+              <Button
+                size="small"
+                type={r.missingRate ? 'dashed' : 'text'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditing({ id: r.driverId, fullName: r.fullName });
+                }}
+              >
+                {r.missingRate && r.baseSalary === 0 && r.commissionPercent === 0 ? (
+                  <Typography.Text type="warning">Cài lương</Typography.Text>
+                ) : (
+                  `${money(r.baseSalary)} + ${r.commissionPercent}%`
+                )}
+              </Button>
+            ),
+          },
+          { title: 'Chuyến đã chạy', dataIndex: 'trips', align: 'right' },
+          { title: 'Doanh thu tính lương', dataIndex: 'revenue', align: 'right', render: money, sorter: (a, b) => a.revenue - b.revenue },
+          { title: 'Lương cứng', dataIndex: 'baseAmount', align: 'right', render: money },
+          { title: 'Tiền % doanh số', dataIndex: 'commission', align: 'right', render: money, sorter: (a, b) => a.commission - b.commission },
+          { title: 'Tổng lương', dataIndex: 'total', align: 'right', render: (v) => <b>{money(v)}</b>, sorter: (a, b) => a.total - b.total },
+        ]}
+        summary={() =>
+          rows.length > 1 && (
+            <Table.Summary>
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={3}>
+                  <b>Tổng cộng</b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={3} align="right">
+                  <b>{sum.trips}</b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={4} align="right">
+                  <b>{money(sum.revenue)}</b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={5} align="right">
+                  <b>{money(sum.baseAmount)}</b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={6} align="right">
+                  <b>{money(sum.commission)}</b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={7} align="right">
+                  <b>{money(sum.total)}</b>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            </Table.Summary>
+          )
+        }
+      />
+      <DriverSalaryModal driver={editing} onClose={() => setEditing(null)} />
+    </>
+  );
+}
+
+function DriverPayDetail({ pay, trips, multiMonth }: { pay: DriverPay; trips: ReportTrip[]; multiMonth: boolean }) {
+  const rows = payTrips(pay, trips);
+  return (
+    <Flex vertical gap={12}>
+      {multiMonth && (
+        <Table<PayMonth>
+          rowKey="month"
+          size="small"
+          pagination={false}
+          dataSource={pay.months}
+          columns={[
+            { title: 'Tháng', render: (_, m) => `${dayjs(m.month).format('MM/YYYY')}${m.days < m.daysInMonth ? ` (${m.days}/${m.daysInMonth} ngày)` : ''}` },
+            { title: 'Mức lương', render: (_, m) => (m.hasRate ? `${money(m.baseSalary)} + ${m.commissionPercent}%` : <Typography.Text type="warning">Chưa cài</Typography.Text>) },
+            { title: 'Chuyến', dataIndex: 'trips', align: 'right' },
+            { title: 'Doanh thu', dataIndex: 'revenue', align: 'right', render: money },
+            { title: 'Lương cứng', dataIndex: 'baseAmount', align: 'right', render: money },
+            { title: 'Tiền % DS', dataIndex: 'commission', align: 'right', render: money },
+            { title: 'Cộng', dataIndex: 'total', align: 'right', render: (v) => <b>{money(v)}</b> },
+          ]}
+        />
+      )}
+      {rows.length > 0 && (
+        <Table
+          rowKey={(r) => r.trip.id}
+          size="small"
+          pagination={false}
+          dataSource={rows}
+          columns={[
+            { title: 'Giờ đón', render: (_, r) => dayjs(r.trip.pickupTime).format('DD/MM/YYYY HH:mm') },
+            { title: 'Booking', render: (_, r) => <Link to={`/bookings/${r.trip.booking.id}`}>{r.trip.booking.code}</Link> },
+            { title: 'Khách', render: (_, r) => customerName(r.trip) },
+            { title: 'Hành trình', render: (_, r) => <div style={{ maxWidth: 300, whiteSpace: 'normal' }}>{routeText(r.trip)}</div> },
+            { title: 'Xe', render: (_, r) => r.trip.vehicle?.plateNumber },
+            { title: 'Doanh thu', align: 'right', render: (_, r) => money(r.trip.revenue) },
+            { title: '%', align: 'right', render: (_, r) => `${r.pct}%` },
+            { title: 'Tiền % DS', align: 'right', render: (_, r) => money(r.commission) },
+          ]}
+        />
+      )}
+    </Flex>
+  );
+}
+
+/** Sheet Excel: bảng lương tổng hợp + chi tiết chuyến tính lương */
+function payrollSheets(pay: DriverPayReport, trips: ReportTrip[], rangeText: string): ExcelSheet[] {
+  return [
+    {
+      name: 'Bảng lương lái xe',
+      title: `BẢNG LƯƠNG LÁI XE · ${rangeText}`,
+      headers: ['Lái xe', 'SĐT', 'Lương cứng / tháng', '% doanh số', 'Chuyến đã chạy', 'Doanh thu tính lương', 'Lương cứng kỳ này', 'Tiền % doanh số', 'Tổng lương', 'Ghi chú'],
+      sumColumns: [4, 5, 6, 7, 8],
+      numberColumns: [2],
+      totalLabel: 'Tổng cộng',
+      rows: pay.drivers.map((d) => [
+        d.fullName,
+        d.phone,
+        d.baseSalary,
+        d.commissionPercent,
+        d.trips,
+        d.revenue,
+        d.baseAmount,
+        d.commission,
+        d.total,
+        d.missingRate
+          ? 'Chưa cài lương đủ các tháng'
+          : d.months.length > 1
+            ? d.months.map((m) => `${dayjs(m.month).format('MM/YYYY')}: ${formatVnd(m.total)}`).join('; ')
+            : '',
+      ]),
+    },
+    {
+      name: 'Chuyến tính lương LX',
+      title: `CHI TIẾT CHUYẾN TÍNH LƯƠNG LÁI XE · ${rangeText}`,
+      headers: ['Lái xe', 'Giờ đón', 'Booking', 'Khách hàng', 'Hành trình', 'Xe', 'Doanh thu', '% doanh số', 'Tiền % doanh số'],
+      sumColumns: [6, 8],
+      totalLabel: 'Tổng cộng',
+      rows: pay.drivers.flatMap((d) =>
+        payTrips(d, trips).map((r) => [
+          d.fullName,
+          dayjs(r.trip.pickupTime).format('DD/MM/YYYY HH:mm'),
+          r.trip.booking.code,
+          customerName(r.trip),
+          routeText(r.trip),
+          r.trip.vehicle?.plateNumber,
+          r.trip.revenue,
+          r.pct,
+          Math.round(r.commission),
+        ]),
+      ),
+    },
+  ];
 }

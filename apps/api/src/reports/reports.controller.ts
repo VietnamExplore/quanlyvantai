@@ -271,6 +271,106 @@ export class ReportsController {
     return { from, to, ownOnly, trips, vehicles, drivers };
   }
 
+  /**
+   * Lương lái xe công ty trong khoảng ngày = lương cứng + % doanh số.
+   * - Lương cứng tính theo tháng; kỳ không trọn tháng thì tính theo số ngày (lương × số ngày / số ngày của tháng).
+   * - Doanh số = doanh thu (đã phân bổ giảm giá, chưa VAT) các chuyến lái xe đã chạy:
+   *   chuyến không hủy, booking đã xác nhận / hoàn thành, giờ đón đã qua.
+   * - Mỗi tháng dùng mức lương có hiệu lực của tháng đó (bảng DriverSalary).
+   */
+  @Get('driver-pay')
+  @Roles(Role.ADMIN, Role.KE_TOAN)
+  async driverPay(@Query('from') fromQ?: string, @Query('to') toQ?: string) {
+    const today = vnDate(new Date());
+    const from = isYmd(fromQ) ? fromQ! : `${today.slice(0, 8)}01`;
+    const to = isYmd(toQ) ? toQ! : today;
+    if (startOfVnDay(from) > startOfVnDay(to)) throw new BadRequestException('Ngày bắt đầu phải trước ngày kết thúc');
+    if ((startOfVnDay(to).getTime() - startOfVnDay(from).getTime()) / DAY_MS > 731) throw new BadRequestException('Chỉ xem tối đa 2 năm mỗi lần');
+
+    const now = new Date();
+    const tripEnd = endOfVnDay(to) < now ? endOfVnDay(to) : now;
+    const [drivers, salaries, trips] = await Promise.all([
+      this.prisma.driver.findMany({ where: { partnerId: null }, select: { id: true, fullName: true, phone: true, status: true }, orderBy: { fullName: 'asc' } }),
+      this.prisma.driverSalary.findMany({ where: { driver: { partnerId: null } }, orderBy: { effectiveFrom: 'desc' } }),
+      this.prisma.bookingTrip.findMany({
+        where: {
+          driverId: { not: null },
+          partnerId: null,
+          status: { not: TripStatus.HUY },
+          pickupTime: { gte: startOfVnDay(from), lte: tripEnd },
+          booking: { status: { in: REVENUE_STATUSES } },
+        },
+        select: {
+          driverId: true,
+          amount: true,
+          pickupTime: true,
+          booking: { select: { discountAmount: true, trips: { select: { amount: true, status: true } } } },
+        },
+      }),
+    ]);
+
+    // Các tháng (có thể chỉ một phần tháng) nằm trong kỳ
+    const months: { month: string; from: string; to: string; days: number; daysInMonth: number }[] = [];
+    for (let m = from.slice(0, 7); m <= to.slice(0, 7); ) {
+      const [y, mo] = m.split('-').map(Number);
+      const daysInMonth = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+      const mFrom = from > `${m}-01` ? from : `${m}-01`;
+      const mTo = to < `${m}-${String(daysInMonth).padStart(2, '0')}` ? to : `${m}-${String(daysInMonth).padStart(2, '0')}`;
+      months.push({ month: m, from: mFrom, to: mTo, days: Number(mTo.slice(8)) - Number(mFrom.slice(8)) + 1, daysInMonth });
+      m = mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, '0')}`;
+    }
+
+    const rateFor = (driverId: number, month: string) => salaries.find((s) => s.driverId === driverId && s.effectiveFrom.toISOString().slice(0, 7) <= month) ?? null;
+
+    // Doanh thu từng chuyến theo lái xe + tháng
+    const revenue = new Map<string, { revenue: number; trips: number }>();
+    for (const t of trips) {
+      const subtotal = this.subtotal(t.booking.trips);
+      const factor = subtotal > 0 ? Math.max(0, subtotal - Number(t.booking.discountAmount)) / subtotal : 0;
+      const key = `${t.driverId}|${vnDate(t.pickupTime).slice(0, 7)}`;
+      const r = revenue.get(key) ?? { revenue: 0, trips: 0 };
+      r.revenue += Number(t.amount) * factor;
+      r.trips += 1;
+      revenue.set(key, r);
+    }
+
+    const rows = drivers.map((d) => {
+      const detail = months.map((m) => {
+        const rate = rateFor(d.id, m.month);
+        const r = revenue.get(`${d.id}|${m.month}`) ?? { revenue: 0, trips: 0 };
+        const baseSalary = rate ? Number(rate.baseSalary) : 0;
+        const commissionPercent = rate ? Number(rate.commissionPercent) : 0;
+        const baseAmount = Math.round((baseSalary * m.days) / m.daysInMonth);
+        const commission = Math.round((r.revenue * commissionPercent) / 100);
+        return { ...m, hasRate: !!rate, baseSalary, commissionPercent, baseAmount, trips: r.trips, revenue: Math.round(r.revenue), commission, total: baseAmount + commission };
+      });
+      const sum = (k: 'baseAmount' | 'revenue' | 'commission' | 'trips' | 'total') => detail.reduce((s, x) => s + x[k], 0);
+      const last = detail[detail.length - 1];
+      return {
+        driverId: d.id,
+        fullName: d.fullName,
+        phone: d.phone,
+        status: d.status,
+        missingRate: detail.some((x) => !x.hasRate),
+        baseSalary: last.baseSalary,
+        commissionPercent: last.commissionPercent,
+        trips: sum('trips'),
+        revenue: sum('revenue'),
+        baseAmount: sum('baseAmount'),
+        commission: sum('commission'),
+        total: sum('total'),
+        months: detail,
+      };
+    });
+
+    return {
+      from,
+      to,
+      countedUntil: vnDate(tripEnd),
+      drivers: rows.filter((r) => r.status !== 'NGHI_VIEC' || r.trips > 0),
+    };
+  }
+
   private subtotal(trips: { amount: Prisma.Decimal; status: TripStatus }[]) {
     return trips.filter((t) => t.status !== TripStatus.HUY).reduce((s, t) => s + Number(t.amount), 0);
   }

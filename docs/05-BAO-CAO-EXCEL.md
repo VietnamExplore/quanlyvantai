@@ -23,3 +23,10 @@ Menu **Báo cáo** (`/reports`). Chọn kỳ: Tháng này / Tháng trước / Qu
 - Nút **Xuất Excel** tạo một file `.xlsx` gồm tất cả các tab (mỗi tab một sheet), có tiêu đề, cố định dòng tiêu đề, bộ lọc, định dạng tiền và dòng **Tổng cộng** bằng công thức SUM.
 - Các nút xuất ở Công nợ khách hàng, Công nợ nhà xe, Sổ thu chi cũng xuất `.xlsx` cùng kiểu.
 - API: `GET /api/reports/trips?from=YYYY-MM-DD&to=YYYY-MM-DD`. File Excel tạo ngay trên trình duyệt (thư viện exceljs, chỉ tải khi bấm xuất).
+
+## Lương lái xe công ty (lương cứng + % doanh số)
+- Cài ở **Danh mục → Lái xe**, cột "Lương (tháng này)" (chỉ Admin, Kế toán thấy). Mỗi mức lương có **tháng bắt đầu áp dụng**; tăng lương thì thêm mức mới, các tháng trước vẫn tính theo mức cũ (bảng `DriverSalary`).
+- Lương kỳ = Σ theo từng tháng: lương cứng × (số ngày của kỳ trong tháng / số ngày của tháng) + % × doanh thu các chuyến lái xe đã chạy trong tháng.
+- Doanh thu tính lương: chuyến xe công ty do lái xe chạy, không hủy, booking đã xác nhận / hoàn thành, **giờ đón đã qua**; đã phân bổ giảm giá, chưa gồm VAT.
+- Xem ở **Báo cáo → Hiệu suất lái xe → Bảng lương lái xe** (bấm dòng để xem từng chuyến, kỳ nhiều tháng có chi tiết theo tháng). Excel có thêm sheet "Bảng lương lái xe" và "Chuyến tính lương LX".
+- API: `GET/PUT /api/drivers/:id/salaries`, `DELETE /api/drivers/salaries/:id`, `GET /api/drivers/salaries/current`, `GET /api/reports/driver-pay?from&to` – chỉ Admin, Kế toán.
