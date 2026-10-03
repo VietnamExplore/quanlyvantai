@@ -37,6 +37,14 @@ export class UsersService {
     });
   }
 
+  salesStaff() {
+    return this.prisma.user.findMany({
+      where: { isActive: true, roles: { has: Role.KINH_DOANH } },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: 'asc' },
+    });
+  }
+
   findOne(id: number) {
     return this.prisma.user.findUniqueOrThrow({ where: { id }, select: userSelect });
   }

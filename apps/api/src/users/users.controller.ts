@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
+import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { CreateUserDto, UpdateUserDto } from './users.dto';
 import { UsersService } from './users.service';
 
@@ -12,6 +12,13 @@ export class UsersController {
   @Get()
   findAll(@Query('q') q?: string, @Query('role') role?: Role) {
     return this.users.findAll(q, role);
+  }
+
+  /** Danh sách nhân viên kinh doanh để chọn người phụ trách khách hàng. */
+  @Get('sales-staff')
+  @Roles(...OFFICE_ROLES)
+  salesStaff() {
+    return this.users.salesStaff();
   }
 
   @Get(':id')
