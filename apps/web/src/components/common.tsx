@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Tag, Tooltip } from 'antd';
+import { InputNumber, Tag, Tooltip, type InputNumberProps } from 'antd';
 import dayjs from 'dayjs';
 import { api } from '../api';
-import type { Driver, Partner, VehicleType } from '../types';
+import type { Customer, Driver, Location, Partner, Settings, VehicleType } from '../types';
 
 export const DATE_FORMAT = 'DD/MM/YYYY';
 
@@ -29,7 +29,41 @@ export function ExpiryCell({ value }: { value: string | null }) {
 export const formatVnd = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === '' ? '' : Number(v).toLocaleString('vi-VN');
 
+/** Ô nhập tiền VND có dấu chấm phân cách hàng nghìn */
+export function MoneyInput(props: InputNumberProps<number>) {
+  return (
+    <InputNumber<number>
+      min={0}
+      step={50_000}
+      style={{ width: '100%' }}
+      formatter={(v) => formatVnd(v)}
+      parser={(v) => Number((v ?? '').replace(/\D/g, ''))}
+      suffix="đ"
+      {...props}
+    />
+  );
+}
+
+/** Hiển thị số tiền: 1.250.000 đ */
+export const Money = ({ value, strong }: { value: number | string | null | undefined; strong?: boolean }) =>
+  value === null || value === undefined ? null : strong ? <b>{formatVnd(value)} đ</b> : <>{formatVnd(value)} đ</>;
+
 // ───── Danh sách lựa chọn dùng trong form ─────
+
+export function useLocations() {
+  const { data = [] } = useQuery({ queryKey: ['/locations', {}], queryFn: () => api<Location[]>('/locations') });
+  return data.filter((l) => l.isActive);
+}
+
+export function useCustomers() {
+  const { data = [] } = useQuery({ queryKey: ['/customers', {}], queryFn: () => api<Customer[]>('/customers') });
+  return data.filter((c) => c.isActive);
+}
+
+export function useSettings() {
+  const { data = {} } = useQuery({ queryKey: ['/settings'], queryFn: () => api<Settings>('/settings') });
+  return data;
+}
 
 export function useVehicleTypeOptions() {
   const { data = [] } = useQuery({ queryKey: ['/vehicle-types'], queryFn: () => api<VehicleType[]>('/vehicle-types') });

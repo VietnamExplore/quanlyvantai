@@ -20,6 +20,8 @@ export interface CrudPageProps<T extends { id: number }> {
   dateFields?: string[];
   /** Map bản ghi sang giá trị form khi sửa (ngoài việc đổi ngày) */
   toFormValues?: (row: T) => Record<string, unknown>;
+  /** Biến đổi dữ liệu form trước khi gửi lên API */
+  toPayload?: (payload: Record<string, unknown>) => Record<string, unknown>;
   /** Giá trị mặc định khi thêm mới */
   newDefaults?: Record<string, unknown>;
   canEdit: boolean;
@@ -95,7 +97,7 @@ export function CrudPage<T extends { id: number }>(props: CrudPageProps<T>) {
       if (value === null && !editing) continue;
       payload[k] = value;
     }
-    save.mutate(payload);
+    save.mutate(props.toPayload ? props.toPayload(payload) : payload);
   };
 
   const actionColumn: ColumnsType<T> = canEdit
@@ -162,7 +164,7 @@ export function CrudPage<T extends { id: number }>(props: CrudPageProps<T>) {
         width={props.modalWidth ?? 720}
         forceRender
       >
-        <Form form={form} layout="vertical" requiredMark="optional">
+        <Form form={form} layout="vertical">
           {renderForm({ form, editing })}
         </Form>
       </Modal>

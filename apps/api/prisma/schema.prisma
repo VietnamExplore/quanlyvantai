@@ -28,6 +28,8 @@ model User {
   isActive     Boolean    @default(true)
   driver       Driver?
   customers    Customer[] @relation("SalesOwner")
+  salesBookings   Booking[] @relation("BookingSales")
+  createdBookings Booking[] @relation("BookingCreator")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
@@ -43,6 +45,9 @@ model VehicleType {
   licenseClasses String[] // Hạng bằng lái phù hợp, Admin tự cấu hình
   isActive       Boolean   @default(true)
   vehicles       Vehicle[]
+  routePrices    RoutePriceItem[]
+  rentalRate     RentalRate?
+  trips          BookingTrip[]
 }
 
 enum Ownership {
@@ -153,6 +158,7 @@ model Customer {
   discountPercent Decimal?     @db.Decimal(5, 2)
   notes           String?
   isActive        Boolean      @default(true)
+  bookings        Booking[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 }
@@ -175,6 +181,185 @@ model Location {
   lat       Float?
   lng       Float?
   isActive  Boolean      @default(true)
+  routesFrom  RoutePrice[]  @relation("RouteFrom")
+  routesTo    RoutePrice[]  @relation("RouteTo")
+  tripPickups BookingTrip[] @relation("TripPickup")
+  tripDropoffs BookingTrip[] @relation("TripDropoff")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+}
+
+// ───────────── Bảng giá ─────────────
+
+enum ServiceType {
+  DON_TIEN_SAN_BAY
+  THEO_TUYEN
+  CITY_TOUR
+  THUE_THEO_NGAY
+  TOUR_NHIEU_NGAY
+}
+
+/// Giá theo tuyến: mỗi tuyến có giá bán riêng cho từng loại xe
+model RoutePrice {
+  id             Int              @id @default(autoincrement())
+  name           String
+  serviceType    ServiceType      @default(THEO_TUYEN)
+  fromLocationId Int?
+  fromLocation   Location?        @relation("RouteFrom", fields: [fromLocationId], references: [id])
+  toLocationId   Int?
+  toLocation     Location?        @relation("RouteTo", fields: [toLocationId], references: [id])
+  distanceKm     Int?
+  durationHours  Decimal?         @db.Decimal(5, 1) // Thời gian chạy dự kiến, dùng để tính giờ kết thúc chuyến
+  notes          String?
+  isActive       Boolean          @default(true)
+  items          RoutePriceItem[]
+  trips          BookingTrip[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model RoutePriceItem {
+  id            Int         @id @default(autoincrement())
+  routePriceId  Int
+  routePrice    RoutePrice  @relation(fields: [routePriceId], references: [id], onDelete: Cascade)
+  vehicleTypeId Int
+  vehicleType   VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  price         Decimal     @db.Decimal(15, 0) // Giá bán
+  partnerCost   Decimal?    @db.Decimal(15, 0) // Giá mua đối tác tham khảo
+
+  @@unique([routePriceId, vehicleTypeId])
+}
+
+/// Giá thuê theo ngày cho từng loại xe
+model RentalRate {
+  id                 Int         @id @default(autoincrement())
+  vehicleTypeId      Int         @unique
+  vehicleType        VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  fullDayPrice       Decimal     @db.Decimal(15, 0)
+  fullDayHours       Int         @default(10)
+  fullDayKm          Int         @default(100)
+  halfDayPrice       Decimal?    @db.Decimal(15, 0)
+  halfDayHours       Int         @default(4)
+  halfDayKm          Int         @default(50)
+  extraKmPrice       Decimal     @default(0) @db.Decimal(15, 0)
+  extraHourPrice     Decimal     @default(0) @db.Decimal(15, 0)
+  driverOvernightFee Decimal     @default(0) @db.Decimal(15, 0)
+  updatedAt          DateTime    @updatedAt
+}
+
+enum SurchargeRule {
+  BAN_DEM // Tự động khi giờ đón trong khung đêm
+  LE_TET // Tự động khi ngày đón trong danh sách ngày lễ
+  THU_CONG // Nhân viên chọn tay
+}
+
+model Surcharge {
+  id        Int           @id @default(autoincrement())
+  name      String
+  rule      SurchargeRule @default(THU_CONG)
+  isPercent Boolean       @default(true) // true: % giá chuyến; false: số tiền cố định
+  value     Decimal       @db.Decimal(15, 2)
+  isActive  Boolean       @default(true)
+}
+
+model Holiday {
+  id        Int      @id @default(autoincrement())
+  name      String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+}
+
+/// Cài đặt chung dạng khóa – giá trị (thông tin công ty in trên báo giá…)
+model Setting {
+  key   String @id
+  value String
+}
+
+// ───────────── Booking ─────────────
+
+enum BookingSource {
+  HOTLINE
+  ZALO
+  WEBSITE
+  EMAIL
+  DAI_LY
+  KHAC
+}
+
+enum BookingStatus {
+  NHAP
+  BAO_GIA
+  XAC_NHAN
+  HOAN_THANH
+  HUY
+}
+
+enum TripStatus {
+  CHO_DIEU
+  DA_GAN
+  TAI_XE_NHAN
+  DANG_DEN_DON
+  DA_DON_KHACH
+  HOAN_THANH
+  HUY
+}
+
+model Booking {
+  id              Int           @id @default(autoincrement())
+  code            String        @unique
+  customerId      Int?
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+  contactName     String
+  contactPhone    String
+  source          BookingSource @default(HOTLINE)
+  status          BookingStatus @default(NHAP)
+  salesUserId     Int?
+  salesUser       User?         @relation("BookingSales", fields: [salesUserId], references: [id])
+  discountAmount  Decimal       @default(0) @db.Decimal(15, 0)
+  vatPercent      Decimal       @default(0) @db.Decimal(5, 2)
+  depositAmount   Decimal       @default(0) @db.Decimal(15, 0)
+  quoteValidUntil DateTime?     @db.Date
+  notes           String? // Ghi chú cho khách (in trên báo giá)
+  internalNotes   String? // Ghi chú nội bộ
+  cancelReason    String?
+  createdById     Int
+  createdBy       User          @relation("BookingCreator", fields: [createdById], references: [id])
+  trips           BookingTrip[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model BookingTrip {
+  id                Int          @id @default(autoincrement())
+  bookingId         Int
+  booking           Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  seq               Int
+  serviceType       ServiceType
+  pickupTime        DateTime
+  endTime           DateTime // Giờ kết thúc dự kiến, dùng để kiểm tra trùng lịch khi điều xe
+  pickupLocationId  Int?
+  pickupLocation    Location?    @relation("TripPickup", fields: [pickupLocationId], references: [id])
+  pickupAddress     String
+  dropoffLocationId Int?
+  dropoffLocation   Location?    @relation("TripDropoff", fields: [dropoffLocationId], references: [id])
+  dropoffAddress    String?
+  flightNumber      String?
+  passengers        Int
+  vehicleTypeId     Int
+  vehicleType       VehicleType  @relation(fields: [vehicleTypeId], references: [id])
+  routePriceId      Int?
+  routePrice        RoutePrice?  @relation(fields: [routePriceId], references: [id])
+  days              Int          @default(1)
+  extraKm           Int          @default(0)
+  extraHours        Int          @default(0)
+  unitPrice         Decimal      @db.Decimal(15, 0) // Giá cơ bản của chuyến
+  surcharges        Json         @default("[]") // [{ name, amount }]
+  amount            Decimal      @db.Decimal(15, 0) // = unitPrice + tổng phụ thu
+  itinerary         String? // Lịch trình chi tiết
+  notes             String?
+  status            TripStatus   @default(CHO_DIEU)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([pickupTime])
 }

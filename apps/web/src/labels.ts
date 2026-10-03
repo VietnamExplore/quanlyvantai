@@ -1,4 +1,16 @@
-import type { CustomerType, DriverStatus, LocationType, Ownership, Role, VehicleStatus } from './types';
+import type {
+  BookingSource,
+  BookingStatus,
+  CustomerType,
+  DriverStatus,
+  LocationType,
+  Ownership,
+  Role,
+  ServiceType,
+  SurchargeRule,
+  TripStatus,
+  VehicleStatus,
+} from './types';
 
 type Labels<K extends string> = Record<K, { label: string; color?: string }>;
 
@@ -41,6 +53,50 @@ export const LOCATION_TYPE: Labels<LocationType> = {
   BEN_XE: { label: 'Bến xe', color: 'orange' },
   KHAC: { label: 'Khác' },
 };
+
+export const SERVICE_TYPE: Labels<ServiceType> = {
+  DON_TIEN_SAN_BAY: { label: 'Đón/tiễn sân bay', color: 'blue' },
+  THEO_TUYEN: { label: 'Đưa đón theo tuyến', color: 'cyan' },
+  CITY_TOUR: { label: 'City tour', color: 'green' },
+  THUE_THEO_NGAY: { label: 'Thuê xe theo ngày', color: 'purple' },
+  TOUR_NHIEU_NGAY: { label: 'Tour nhiều ngày', color: 'magenta' },
+};
+
+export const SURCHARGE_RULE: Labels<SurchargeRule> = {
+  BAN_DEM: { label: 'Tự động: ban đêm 22h–5h', color: 'geekblue' },
+  LE_TET: { label: 'Tự động: ngày lễ, Tết', color: 'red' },
+  THU_CONG: { label: 'Chọn tay khi báo giá' },
+};
+
+export const BOOKING_SOURCE: Labels<BookingSource> = {
+  HOTLINE: { label: 'Hotline' },
+  ZALO: { label: 'Zalo' },
+  WEBSITE: { label: 'Website' },
+  EMAIL: { label: 'Email' },
+  DAI_LY: { label: 'Đại lý' },
+  KHAC: { label: 'Khác' },
+};
+
+export const BOOKING_STATUS: Labels<BookingStatus> = {
+  NHAP: { label: 'Nháp', color: 'default' },
+  BAO_GIA: { label: 'Đã báo giá', color: 'gold' },
+  XAC_NHAN: { label: 'Đã xác nhận', color: 'blue' },
+  HOAN_THANH: { label: 'Hoàn thành', color: 'green' },
+  HUY: { label: 'Đã hủy', color: 'red' },
+};
+
+export const TRIP_STATUS: Labels<TripStatus> = {
+  CHO_DIEU: { label: 'Chờ điều xe', color: 'orange' },
+  DA_GAN: { label: 'Đã gán xe', color: 'blue' },
+  TAI_XE_NHAN: { label: 'Tài xế đã nhận', color: 'cyan' },
+  DANG_DEN_DON: { label: 'Đang đến đón', color: 'geekblue' },
+  DA_DON_KHACH: { label: 'Đã đón khách', color: 'purple' },
+  HOAN_THANH: { label: 'Hoàn thành', color: 'green' },
+  HUY: { label: 'Đã hủy', color: 'red' },
+};
+
+/** Dịch vụ tính theo giá thuê ngày khi không chọn tuyến */
+export const RENTAL_SERVICES: ServiceType[] = ['THUE_THEO_NGAY', 'TOUR_NHIEU_NGAY', 'CITY_TOUR'];
 
 /** Chuyển bộ nhãn thành danh sách option cho Select / Radio. */
 export const toOptions = <K extends string>(labels: Labels<K>) =>

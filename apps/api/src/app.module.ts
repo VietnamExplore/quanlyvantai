@@ -5,6 +5,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { AlertsModule } from './alerts/alerts.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
+import { BookingsModule } from './bookings/bookings.module';
+import { PricingModule } from './pricing/pricing.module';
+import { SettingsModule } from './settings/settings.module';
 import { CustomersModule } from './customers/customers.module';
 import { DriversModule } from './drivers/drivers.module';
 import { LocationsModule } from './locations/locations.module';
@@ -35,6 +38,9 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     CustomersModule,
     LocationsModule,
     AlertsModule,
+    PricingModule,
+    SettingsModule,
+    BookingsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

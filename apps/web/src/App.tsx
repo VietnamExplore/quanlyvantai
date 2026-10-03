@@ -2,12 +2,19 @@ import { Button, Flex, Result, Spin } from 'antd';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth';
 import { AppLayout } from './components/AppLayout';
+import BookingEditPage from './pages/BookingEditPage';
+import BookingsPage from './pages/BookingsPage';
 import CustomersPage from './pages/CustomersPage';
 import DashboardPage from './pages/DashboardPage';
 import DriversPage from './pages/DriversPage';
 import LocationsPage from './pages/LocationsPage';
 import LoginPage from './pages/LoginPage';
 import PartnersPage from './pages/PartnersPage';
+import QuotePage from './pages/QuotePage';
+import RentalRatesPage from './pages/RentalRatesPage';
+import RoutePricesPage from './pages/RoutePricesPage';
+import SettingsPage from './pages/SettingsPage';
+import SurchargesPage from './pages/SurchargesPage';
 import UsersPage from './pages/UsersPage';
 import VehicleTypesPage from './pages/VehicleTypesPage';
 import VehiclesPage from './pages/VehiclesPage';
@@ -38,8 +45,15 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Trang in báo giá: không có menu */}
+      <Route path="bookings/:id/quote" element={<QuotePage />} />
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />
+        <Route path="bookings" element={<BookingsPage />} />
+        <Route path="bookings/:id" element={<BookingEditPage />} />
+        <Route path="route-prices" element={<RoutePricesPage />} />
+        <Route path="rental-rates" element={<RentalRatesPage />} />
+        <Route path="surcharges" element={<SurchargesPage />} />
         <Route path="vehicles" element={<VehiclesPage />} />
         <Route path="drivers" element={<DriversPage />} />
         <Route path="partners" element={<PartnersPage />} />
@@ -47,6 +61,7 @@ export default function App() {
         <Route path="locations" element={<LocationsPage />} />
         <Route path="vehicle-types" element={<VehicleTypesPage />} />
         {hasRole('ADMIN') && <Route path="users" element={<UsersPage />} />}
+        {hasRole('ADMIN') && <Route path="settings" element={<SettingsPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

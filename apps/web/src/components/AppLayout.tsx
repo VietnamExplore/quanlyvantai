@@ -1,5 +1,10 @@
 import {
+  BankOutlined,
+  CalendarOutlined,
   CarOutlined,
+  FileTextOutlined,
+  NodeIndexOutlined,
+  PercentageOutlined,
   DashboardOutlined,
   EnvironmentOutlined,
   IdcardOutlined,
@@ -26,16 +31,43 @@ interface NavItem {
   roles?: Role[];
 }
 
-const NAV: NavItem[] = [
-  { key: '/', label: 'Tổng quan', icon: <DashboardOutlined /> },
-  { key: '/vehicles', label: 'Xe', icon: <CarOutlined /> },
-  { key: '/drivers', label: 'Lái xe', icon: <IdcardOutlined /> },
-  { key: '/partners', label: 'Nhà xe đối tác', icon: <ShopOutlined /> },
-  { key: '/customers', label: 'Khách hàng', icon: <TeamOutlined /> },
-  { key: '/locations', label: 'Địa điểm', icon: <EnvironmentOutlined /> },
-  { key: '/vehicle-types', label: 'Loại xe', icon: <SettingOutlined /> },
-  { key: '/users', label: 'Người dùng', icon: <UserOutlined />, roles: ['ADMIN'] },
+const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
+  {
+    items: [
+      { key: '/', label: 'Tổng quan', icon: <DashboardOutlined /> },
+      { key: '/bookings', label: 'Booking', icon: <FileTextOutlined /> },
+    ],
+  },
+  {
+    label: 'Bảng giá',
+    items: [
+      { key: '/route-prices', label: 'Giá theo tuyến', icon: <NodeIndexOutlined /> },
+      { key: '/rental-rates', label: 'Giá thuê theo ngày', icon: <CalendarOutlined /> },
+      { key: '/surcharges', label: 'Phụ thu & ngày lễ', icon: <PercentageOutlined /> },
+    ],
+  },
+  {
+    label: 'Danh mục',
+    items: [
+      { key: '/vehicles', label: 'Xe', icon: <CarOutlined /> },
+      { key: '/drivers', label: 'Lái xe', icon: <IdcardOutlined /> },
+      { key: '/partners', label: 'Nhà xe đối tác', icon: <ShopOutlined /> },
+      { key: '/customers', label: 'Khách hàng', icon: <TeamOutlined /> },
+      { key: '/locations', label: 'Địa điểm', icon: <EnvironmentOutlined /> },
+      { key: '/vehicle-types', label: 'Loại xe', icon: <SettingOutlined /> },
+    ],
+  },
+  {
+    label: 'Hệ thống',
+    roles: ['ADMIN'],
+    items: [
+      { key: '/users', label: 'Người dùng', icon: <UserOutlined /> },
+      { key: '/settings', label: 'Thông tin công ty', icon: <BankOutlined /> },
+    ],
+  },
 ];
+
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
 export function AppLayout() {
   const { user, logout, hasRole } = useAuth();
@@ -46,7 +78,10 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
 
-  const items = NAV.filter((n) => !n.roles || hasRole(...n.roles)).map(({ key, label, icon }) => ({ key, label, icon }));
+  const items = NAV_GROUPS.filter((g) => !g.roles || hasRole(...g.roles)).map((g, i) => {
+    const children = g.items.map(({ key, label, icon }) => ({ key, label, icon }));
+    return g.label ? { type: 'group' as const, key: `g${i}`, label: g.label, children } : { type: 'group' as const, key: `g${i}`, children };
+  });
   const selected = NAV.filter((n) => n.key !== '/' && pathname.startsWith(n.key)).map((n) => n.key);
 
   const menu = (

@@ -114,6 +114,132 @@ export interface User extends Ref {
   driver: { id: number; fullName: string } | null;
 }
 
+// ───── Bảng giá & booking ─────
+
+export type ServiceType = 'DON_TIEN_SAN_BAY' | 'THEO_TUYEN' | 'CITY_TOUR' | 'THUE_THEO_NGAY' | 'TOUR_NHIEU_NGAY';
+export type SurchargeRule = 'BAN_DEM' | 'LE_TET' | 'THU_CONG';
+export type BookingSource = 'HOTLINE' | 'ZALO' | 'WEBSITE' | 'EMAIL' | 'DAI_LY' | 'KHAC';
+export type BookingStatus = 'NHAP' | 'BAO_GIA' | 'XAC_NHAN' | 'HOAN_THANH' | 'HUY';
+export type TripStatus = 'CHO_DIEU' | 'DA_GAN' | 'TAI_XE_NHAN' | 'DANG_DEN_DON' | 'DA_DON_KHACH' | 'HOAN_THANH' | 'HUY';
+
+export interface RoutePrice extends Ref {
+  name: string;
+  serviceType: ServiceType;
+  fromLocationId: number | null;
+  fromLocation: { id: number; name: string } | null;
+  toLocationId: number | null;
+  toLocation: { id: number; name: string } | null;
+  distanceKm: number | null;
+  durationHours: string | null;
+  notes: string | null;
+  isActive: boolean;
+  items: { vehicleTypeId: number; price: string; partnerCost: string | null; vehicleType: { id: number; code: string; name: string; seats: number } }[];
+}
+
+export interface RentalRate {
+  fullDayPrice: string;
+  fullDayHours: number;
+  fullDayKm: number;
+  halfDayPrice: string | null;
+  halfDayHours: number;
+  halfDayKm: number;
+  extraKmPrice: string;
+  extraHourPrice: string;
+  driverOvernightFee: string;
+}
+
+export interface RentalRateRow extends Ref {
+  code: string;
+  name: string;
+  seats: number;
+  rentalRate: RentalRate | null;
+}
+
+export interface Surcharge extends Ref {
+  name: string;
+  rule: SurchargeRule;
+  isPercent: boolean;
+  value: string;
+  isActive: boolean;
+}
+
+export interface Holiday extends Ref {
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface PriceLine {
+  name: string;
+  amount: number;
+  auto?: boolean;
+}
+
+export interface PriceResult {
+  unitPrice: number;
+  breakdown: PriceLine[];
+  surcharges: PriceLine[];
+  amount: number;
+  partnerCost: number | null;
+  endTime: string;
+}
+
+export interface BookingTrip extends Ref {
+  seq: number;
+  serviceType: ServiceType;
+  pickupTime: string;
+  endTime: string;
+  pickupLocationId: number | null;
+  pickupAddress: string;
+  dropoffLocationId: number | null;
+  dropoffAddress: string | null;
+  flightNumber: string | null;
+  passengers: number;
+  vehicleTypeId: number;
+  vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number };
+  routePriceId: number | null;
+  routePrice: { id: number; name: string } | null;
+  days: number;
+  extraKm: number;
+  extraHours: number;
+  unitPrice: string;
+  surcharges: PriceLine[];
+  amount: string;
+  itinerary: string | null;
+  notes: string | null;
+  status: TripStatus;
+}
+
+export interface Booking extends Ref {
+  code: string;
+  customerId: number | null;
+  customer: { id: number; name: string; type: CustomerType; phone: string | null; email: string | null; taxCode: string | null; address: string | null } | null;
+  contactName: string;
+  contactPhone: string;
+  source: BookingSource;
+  status: BookingStatus;
+  salesUserId: number | null;
+  salesUser: { id: number; fullName: string } | null;
+  createdBy: { id: number; fullName: string };
+  discountAmount: string;
+  vatPercent: string;
+  depositAmount: string;
+  quoteValidUntil: string | null;
+  notes: string | null;
+  internalNotes: string | null;
+  cancelReason: string | null;
+  trips: BookingTrip[];
+  createdAt: string;
+  subtotal: number;
+  vatAmount: number;
+  total: number;
+  remaining: number;
+}
+
+export type Settings = Partial<
+  Record<'companyName' | 'companyAddress' | 'companyPhone' | 'companyEmail' | 'companyTaxCode' | 'bankInfo' | 'quoteFooter', string>
+>;
+
 export interface ExpiryAlert {
   kind: 'XE' | 'LAI_XE';
   id: number;
