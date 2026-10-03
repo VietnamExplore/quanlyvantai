@@ -19,7 +19,10 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["POST_NOTIFICATIONS", "VIBRATE"],
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
@@ -30,6 +33,12 @@
           "color": "#1668dc"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e228ec5e-f7a3-4afe-b2a0-ec013ca10493"
+      }
+    },
+    "owner": "vietnamexplore"
   }
 }
