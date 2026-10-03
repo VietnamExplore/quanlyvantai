@@ -261,13 +261,26 @@ interface SignCardProps {
   defaultTitle: string;
   canPrint: boolean;
   bookingId?: number;
+  /** Booking mới (chưa lưu): file bảng đón khách gửi đang chờ, sẽ tải lên ngay sau khi lưu booking */
+  pendingFile?: File | null;
+  onPendingFile?: (f: File | null) => void;
 }
 
 /** Thông tin bảng đón khách (cầm ở sân bay / khách sạn) */
-export function SignCard({ form, defaultTitle, canPrint, bookingId }: SignCardProps) {
+export function SignCard({ form, defaultTitle, canPrint, bookingId, pendingFile, onPendingFile }: SignCardProps) {
   const title: string = Form.useWatch('signTitle', form) || defaultTitle;
   const subtitle: string | undefined = Form.useWatch('signSubtitle', form);
-  const file = useSignFile(bookingId);
+  const saved = useSignFile(bookingId);
+  const pendingUrl = useObjectUrl(bookingId ? null : pendingFile);
+
+  // Booking đã lưu: dùng file trên máy chủ; booking mới: dùng file đang chờ
+  const shown: ShownFile | null = bookingId
+    ? saved.info?.signFile
+      ? { name: saved.info.signFileName ?? 'bang-don', type: saved.info.signFileType ?? '', url: saved.url }
+      : null
+    : pendingFile
+      ? { name: pendingFile.name, type: pendingFile.type, url: pendingUrl, pending: true }
+      : null;
 
   return (
     <Card
@@ -279,7 +292,7 @@ export function SignCard({ form, defaultTitle, canPrint, bookingId }: SignCardPr
           href={bookingId ? `/bookings/${bookingId}/sign` : undefined}
           target="_blank"
           // Đã có file của khách thì in được ngay; bảng tự tạo cần lưu booking trước
-          disabled={!bookingId || (!file.info?.signFile && !canPrint)}
+          disabled={!bookingId || (!saved.info?.signFile && !canPrint)}
         >
           In bảng đón (A4 ngang)
         </Button>
@@ -293,13 +306,25 @@ export function SignCard({ form, defaultTitle, canPrint, bookingId }: SignCardPr
           <Form.Item name="signSubtitle" label="Dòng phụ">
             <Input placeholder="Welcome to Da Nang · Đoàn khảo sát ABC" />
           </Form.Item>
-          <SignFileBox bookingId={bookingId} file={file} />
+          <SignFileBox bookingId={bookingId} shown={shown} onSaved={saved.refetch} onPendingFile={onPendingFile} />
         </Col>
         <Col xs={24} md={12}>
-          <Typography.Text type="secondary">{file.url ? 'Xem trước: bảng đón khách gửi (sẽ được in)' : 'Xem trước'}</Typography.Text>
-          {file.url && file.info?.signFileType?.startsWith('image/') ? (
+          <Typography.Text type="secondary">{shown?.url ? 'Xem trước: bảng đón khách gửi (sẽ được in)' : 'Xem trước'}</Typography.Text>
+          {shown?.url && shown.type.startsWith('image/') ? (
             <Flex align="center" justify="center" style={{ border: '1px solid #d9d9d9', borderRadius: 6, aspectRatio: '297 / 210', marginTop: 4, overflow: 'hidden', background: '#fafafa' }}>
-              <img src={file.url} alt="Bảng đón khách gửi" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              <img src={shown.url} alt="Bảng đón khách gửi" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+            </Flex>
+          ) : shown?.type === 'application/pdf' ? (
+            <Flex
+              vertical
+              align="center"
+              justify="center"
+              gap={8}
+              style={{ border: '1px solid #d9d9d9', borderRadius: 6, aspectRatio: '297 / 210', marginTop: 4, background: '#fafafa', padding: 12, textAlign: 'center' }}
+            >
+              <FilePdfOutlined style={{ fontSize: 40, color: '#cf1322' }} />
+              <Typography.Text>{shown.name}</Typography.Text>
+              <Typography.Text type="secondary">Bấm "Xem file" để mở PDF</Typography.Text>
             </Flex>
           ) : (
             <Flex
@@ -316,6 +341,29 @@ export function SignCard({ form, defaultTitle, canPrint, bookingId }: SignCardPr
       </Row>
     </Card>
   );
+}
+
+interface ShownFile {
+  name: string;
+  type: string;
+  url: string | null;
+  /** File mới chọn, chưa tải lên (booking chưa lưu) */
+  pending?: boolean;
+}
+
+/** Đường dẫn tạm để xem trước một file trên máy (tự thu hồi khi đổi file) */
+function useObjectUrl(file?: File | null) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  return url;
 }
 
 type SignFileInfo = Pick<Booking, 'signFile' | 'signFileName' | 'signFileType'>;
@@ -358,26 +406,49 @@ export function useSignFile(bookingId?: number) {
 const SIGN_ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
 const SIGN_MAX_MB = 100;
 
-function SignFileBox({ bookingId, file }: { bookingId?: number; file: ReturnType<typeof useSignFile> }) {
+/** Kiểm tra loại / dung lượng file bảng đón; trả về câu báo lỗi hoặc null */
+function checkSignFile(f: File) {
+  if (!SIGN_ACCEPT.split(',').includes(f.type)) return 'Chỉ nhận file ảnh (JPG, PNG, WEBP) hoặc PDF';
+  if (f.size > SIGN_MAX_MB * 1024 * 1024) return `File quá lớn (tối đa ${SIGN_MAX_MB} MB)`;
+  return null;
+}
+
+/** Tải file bảng đón lên một booking đã lưu */
+export const uploadSignFile = (bookingId: number, f: File) => apiUpload(`/bookings/${bookingId}/sign-file`, f);
+
+function SignFileBox({
+  bookingId,
+  shown,
+  onSaved,
+  onPendingFile,
+}: {
+  bookingId?: number;
+  shown: ShownFile | null;
+  onSaved: () => void;
+  onPendingFile?: (f: File | null) => void;
+}) {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
   const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
   const [uploading, setUploading] = useState(false);
+  // Booking mới: chỉ giữ file trên trang, tải lên khi lưu booking
+  const deferred = !bookingId;
 
-  async function upload(f: File) {
-    if (!SIGN_ACCEPT.split(',').includes(f.type)) {
-      message.error('Chỉ nhận file ảnh (JPG, PNG, WEBP) hoặc PDF');
+  async function pick(f: File) {
+    const err = checkSignFile(f);
+    if (err) {
+      message.error(err);
       return;
     }
-    if (f.size > SIGN_MAX_MB * 1024 * 1024) {
-      message.error(`File quá lớn (tối đa ${SIGN_MAX_MB} MB)`);
+    if (deferred) {
+      onPendingFile?.(f);
       return;
     }
     setUploading(true);
     try {
-      await apiUpload(`/bookings/${bookingId}/sign-file`, f);
+      await uploadSignFile(bookingId!, f);
       message.success('Đã tải lên bảng đón của khách');
-      file.refetch();
+      onSaved();
     } catch (e) {
       message.error((e as Error).message);
     } finally {
@@ -386,46 +457,59 @@ function SignFileBox({ bookingId, file }: { bookingId?: number; file: ReturnType
   }
 
   async function remove() {
+    if (deferred) {
+      onPendingFile?.(null);
+      return;
+    }
     try {
       await api(`/bookings/${bookingId}/sign-file`, { method: 'DELETE' });
       message.success('Đã xóa file bảng đón');
-      file.refetch();
+      onSaved();
     } catch (e) {
       message.error((e as Error).message);
     }
   }
 
-  if (!bookingId) {
-    return <Typography.Text type="secondary">Lưu booking trước, sau đó có thể tải lên file bảng đón do khách gửi.</Typography.Text>;
-  }
+  if (deferred && !onPendingFile) return null;
 
-  if (file.info?.signFile) {
-    const isPdf = file.info.signFileType === 'application/pdf';
+  if (shown) {
+    const isPdf = shown.type === 'application/pdf';
     return (
       <div style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: 12 }}>
         <Typography.Text type="secondary">Bảng đón khách gửi</Typography.Text>
         <Flex align="center" gap={8} style={{ marginTop: 4 }} wrap>
           {isPdf ? <FilePdfOutlined style={{ fontSize: 20, color: '#cf1322' }} /> : <FileImageOutlined style={{ fontSize: 20, color: '#1668dc' }} />}
           <Typography.Text strong ellipsis style={{ maxWidth: 260 }}>
-            {file.info.signFileName}
+            {shown.name}
           </Typography.Text>
         </Flex>
+        {shown.pending && (
+          <Typography.Text type="warning" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
+            Chưa tải lên – file sẽ được tải lên khi bấm Lưu booking
+          </Typography.Text>
+        )}
         <Space wrap style={{ marginTop: 8 }}>
-          <Button size="small" icon={<EyeOutlined />} disabled={!file.url} onClick={() => file.url && window.open(file.url, '_blank')}>
+          <Button size="small" icon={<EyeOutlined />} disabled={!shown.url} onClick={() => shown.url && window.open(shown.url, '_blank')}>
             Xem file
           </Button>
           {canEdit && (
             <>
-              <Upload accept={SIGN_ACCEPT} showUploadList={false} beforeUpload={(f) => (upload(f), false)}>
+              <Upload accept={SIGN_ACCEPT} showUploadList={false} beforeUpload={(f) => (pick(f), false)}>
                 <Button size="small" icon={<SwapOutlined />} loading={uploading}>
                   Đổi file
                 </Button>
               </Upload>
-              <Popconfirm title="Xóa file bảng đón của khách?" okText="Xóa" cancelText="Không" onConfirm={remove}>
-                <Button size="small" danger icon={<DeleteOutlined />}>
-                  Xóa
+              {shown.pending ? (
+                <Button size="small" danger icon={<DeleteOutlined />} onClick={remove}>
+                  Bỏ file
                 </Button>
-              </Popconfirm>
+              ) : (
+                <Popconfirm title="Xóa file bảng đón của khách?" okText="Xóa" cancelText="Không" onConfirm={remove}>
+                  <Button size="small" danger icon={<DeleteOutlined />}>
+                    Xóa
+                  </Button>
+                </Popconfirm>
+              )}
             </>
           )}
         </Space>
@@ -435,7 +519,7 @@ function SignFileBox({ bookingId, file }: { bookingId?: number; file: ReturnType
 
   if (!canEdit) return null;
   return (
-    <Upload.Dragger accept={SIGN_ACCEPT} showUploadList={false} beforeUpload={(f) => (upload(f), false)} disabled={uploading}>
+    <Upload.Dragger accept={SIGN_ACCEPT} showUploadList={false} beforeUpload={(f) => (pick(f), false)} disabled={uploading}>
       <p className="ant-upload-drag-icon" style={{ marginBottom: 4 }}>
         <InboxOutlined />
       </p>

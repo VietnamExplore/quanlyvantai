@@ -68,7 +68,7 @@ import {
   TRIP_STATUS,
   toOptions,
 } from "../labels";
-import { PassengersCard, SignCard } from "../components/BookingExtras";
+import { PassengersCard, SignCard, uploadSignFile } from "../components/BookingExtras";
 import { PaymentsCard } from "../components/finance";
 import { QuickSelect } from "../components/QuickCreate";
 import type { Booking, BookingStatus, Customer, Passenger } from "../types";
@@ -92,6 +92,8 @@ export default function BookingEditPage() {
   const [tripModalOpen, setTripModalOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Booking mới: file bảng đón khách gửi, tải lên ngay sau khi tạo booking
+  const [pendingSignFile, setPendingSignFile] = useState<File | null>(null);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["/bookings", Number(id)],
@@ -193,6 +195,15 @@ export default function BookingEditPage() {
       setDirty(false);
       if (isNew) {
         message.success(`Đã tạo booking ${saved.code}`);
+        if (pendingSignFile) {
+          try {
+            await uploadSignFile(saved.id, pendingSignFile);
+            setPendingSignFile(null);
+            queryClient.invalidateQueries({ queryKey: ["/bookings/sign-file", saved.id] });
+          } catch (e) {
+            message.warning(`Booking đã lưu nhưng chưa tải lên được bảng đón: ${(e as Error).message}. Hãy tải lại file ở mục Bảng đón khách.`);
+          }
+        }
         navigate(`/bookings/${saved.id}`, { replace: true });
       } else {
         message.success("Đã lưu");
@@ -723,6 +734,8 @@ export default function BookingEditPage() {
           defaultTitle={signDefault}
           canPrint={!isNew && !dirty}
           bookingId={booking?.id}
+          pendingFile={pendingSignFile}
+          onPendingFile={setPendingSignFile}
         />
         {/* Thu tiền độc lập với việc sửa booking: không bị khóa theo form booking (kế toán, booking đã hoàn thành vẫn thu được) */}
         {!isNew && booking && (
