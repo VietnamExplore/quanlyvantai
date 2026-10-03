@@ -7,6 +7,7 @@ import BookingsPage from './pages/BookingsPage';
 import CostCategoriesPage from './pages/CostCategoriesPage';
 import CustomersPage from './pages/CustomersPage';
 import LedgerPage from './pages/LedgerPage';
+import ReportsPage from './pages/ReportsPage';
 import PayablesPage from './pages/PayablesPage';
 import ReceivablesPage from './pages/ReceivablesPage';
 import DashboardPage from './pages/DashboardPage';
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="bookings" element={<BookingsPage />} />
         <Route path="bookings/:id" element={<BookingEditPage />} />
         <Route path="dispatch" element={<DispatchPage />} />
+        <Route path="reports" element={<ReportsPage />} />
         <Route path="route-prices" element={<RoutePricesPage />} />
         <Route path="rental-rates" element={<RentalRatesPage />} />
         <Route path="surcharges" element={<SurchargesPage />} />

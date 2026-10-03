@@ -170,6 +170,107 @@ export class ReportsController {
     };
   }
 
+  /**
+   * Dữ liệu chi tiết từng chuyến trong khoảng ngày (theo ngày đón) để lập các báo cáo:
+   * chi tiết chuyến, hiệu suất xe, hiệu suất lái xe, nhà xe đối tác, khách hàng, NV kinh doanh.
+   * Chỉ tính chuyến không hủy của booking đã xác nhận / hoàn thành (giống báo cáo tổng quan).
+   */
+  @Get('trips')
+  async trips(@CurrentUser() user: AuthUser, @Query('from') fromQ?: string, @Query('to') toQ?: string) {
+    const today = vnDate(new Date());
+    const from = isYmd(fromQ) ? fromQ! : `${today.slice(0, 8)}01`;
+    const to = isYmd(toQ) ? toQ! : today;
+    if (startOfVnDay(from) > startOfVnDay(to)) throw new BadRequestException('Ngày bắt đầu phải trước ngày kết thúc');
+    const days = Math.round((startOfVnDay(to).getTime() - startOfVnDay(from).getTime()) / DAY_MS) + 1;
+    if (days > 731) throw new BadRequestException('Chỉ xem tối đa 2 năm mỗi lần');
+
+    const ownOnly = !user.roles.some((r) => r === Role.ADMIN || r === Role.KE_TOAN || r === Role.DIEU_HANH);
+    const bookingScope: Prisma.BookingWhereInput = ownOnly ? { salesUserId: user.id } : {};
+
+    const [rows, vehicles, drivers] = await Promise.all([
+      this.prisma.bookingTrip.findMany({
+        where: {
+          status: { not: TripStatus.HUY },
+          pickupTime: { gte: startOfVnDay(from), lte: endOfVnDay(to) },
+          booking: { ...bookingScope, status: { in: REVENUE_STATUSES } },
+        },
+        select: {
+          id: true,
+          seq: true,
+          status: true,
+          pickupTime: true,
+          endTime: true,
+          pickupAddress: true,
+          dropoffAddress: true,
+          passengers: true,
+          days: true,
+          amount: true,
+          estimatedCost: true,
+          partnerId: true,
+          partnerCost: true,
+          partnerPlate: true,
+          partnerDriverName: true,
+          costs: { select: { amount: true, byDriver: true } },
+          service: { select: { code: true, name: true } },
+          vehicleType: { select: { id: true, name: true } },
+          vehicle: { select: { id: true, plateNumber: true } },
+          driver: { select: { id: true, fullName: true } },
+          partner: { select: { id: true, name: true } },
+          booking: {
+            select: {
+              id: true,
+              code: true,
+              customerRef: true,
+              status: true,
+              discountAmount: true,
+              contactName: true,
+              customer: { select: { id: true, name: true } },
+              salesUser: { select: { id: true, fullName: true } },
+              trips: { select: { amount: true, status: true } },
+            },
+          },
+        },
+        orderBy: { pickupTime: 'asc' },
+      }),
+      ownOnly
+        ? []
+        : this.prisma.vehicle.findMany({
+            where: { ownership: 'CONG_TY' },
+            select: { id: true, plateNumber: true, status: true, vehicleType: { select: { name: true } } },
+            orderBy: [{ vehicleType: { seats: 'asc' } }, { plateNumber: 'asc' }],
+          }),
+      ownOnly
+        ? []
+        : this.prisma.driver.findMany({
+            where: { partnerId: null },
+            select: { id: true, fullName: true, phone: true, status: true },
+            orderBy: { fullName: 'asc' },
+          }),
+    ]);
+
+    const trips = rows.map(({ costs, booking, amount, estimatedCost, partnerCost, ...t }) => {
+      const subtotal = this.subtotal(booking.trips);
+      const factor = subtotal > 0 ? Math.max(0, subtotal - Number(booking.discountAmount)) / subtotal : 0;
+      const { cost, known, actual } = tripCost({ partnerId: t.partnerId, partnerCost, estimatedCost, costs });
+      // Giữ 2 số lẻ để tổng nhiều chuyến của cùng booking không lệch vài đồng do làm tròn
+      const revenue = Math.round(Number(amount) * factor * 100) / 100;
+      const { trips: _trips, discountAmount: _discount, ...b } = booking;
+      return {
+        ...t,
+        booking: b,
+        revenue,
+        cost: Math.round(cost * 100) / 100,
+        profit: Math.round((revenue - cost) * 100) / 100,
+        costKnown: known,
+        costActual: actual,
+        partnerCost: partnerCost === null ? null : Number(partnerCost),
+        driverCosts: Math.round(costs.filter((c) => c.byDriver).reduce((s, c) => s + Number(c.amount), 0)),
+      };
+    });
+
+    return { from, to, ownOnly, trips, vehicles, drivers };
+  }
+
   private subtotal(trips: { amount: Prisma.Decimal; status: TripStatus }[]) {
     return trips.filter((t) => t.status !== TripStatus.HUY).reduce((s, t) => s + Number(t.amount), 0);
   }

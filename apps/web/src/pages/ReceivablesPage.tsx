@@ -8,7 +8,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { DATE_FORMAT, EnumTag, formatVnd, Money } from '../components/common';
 import { PaymentModal } from '../components/finance';
-import { downloadCsv } from '../csv';
+import { downloadExcel } from '../excel';
 import { BOOKING_STATUS, CUSTOMER_TYPE } from '../labels';
 import type { BookingStatus, CustomerType } from '../types';
 
@@ -64,25 +64,30 @@ export default function ReceivablesPage() {
   );
 
   function exportCsv() {
-    downloadCsv(
-      `cong-no-khach-hang-${dayjs().format('YYYYMMDD')}.csv`,
-      ['Khách hàng', 'SĐT', 'Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)'],
-      customers.flatMap((c) =>
-        c.bookings.map((b) => [
-          c.name,
-          c.phone,
-          b.code,
-          b.customerRef,
-          b.firstPickup ? dayjs(b.firstPickup).format(DATE_FORMAT) : '',
-          b.salesUser,
-          b.total,
-          b.paid,
-          b.balance,
-          dayjs(b.dueDate).format(DATE_FORMAT),
-          b.overdueDays || '',
-        ]),
-      ),
-    );
+    downloadExcel(`cong-no-khach-hang-${dayjs().format('YYYYMMDD')}.xlsx`, [
+      {
+        name: 'Công nợ khách hàng',
+        title: `CÔNG NỢ KHÁCH HÀNG – ngày ${dayjs().format('DD/MM/YYYY')}`,
+        headers: ['Khách hàng', 'SĐT', 'Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)'],
+        sumColumns: [6, 7, 8],
+        totalLabel: 'Tổng cộng',
+        rows: customers.flatMap((c) =>
+          c.bookings.map((b) => [
+            c.name,
+            c.phone,
+            b.code,
+            b.customerRef,
+            b.firstPickup ? dayjs(b.firstPickup).format(DATE_FORMAT) : '',
+            b.salesUser,
+            b.total,
+            b.paid,
+            b.balance,
+            dayjs(b.dueDate).format(DATE_FORMAT),
+            b.overdueDays || null,
+          ]),
+        ),
+      },
+    ]);
   }
 
   return (

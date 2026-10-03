@@ -1,5 +1,6 @@
 import {
   AppstoreOutlined,
+  BarChartOutlined,
   BankOutlined,
   BookOutlined,
   TagsOutlined,
@@ -44,6 +45,7 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
       { key: '/', label: 'Tổng quan', icon: <DashboardOutlined /> },
       { key: '/bookings', label: 'Booking', icon: <FileTextOutlined /> },
       { key: '/dispatch', label: 'Điều xe', icon: <ScheduleOutlined /> },
+      { key: '/reports', label: 'Báo cáo', icon: <BarChartOutlined /> },
     ],
   },
   {

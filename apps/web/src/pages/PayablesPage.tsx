@@ -9,7 +9,7 @@ import { useAuth } from '../auth';
 import { fmtTime } from '../booking-utils';
 import { DATE_FORMAT, EnumTag, formatVnd, Money } from '../components/common';
 import { PaymentModal } from '../components/finance';
-import { downloadCsv } from '../csv';
+import { downloadExcel } from '../excel';
 import { PAYMENT_METHOD, TRIP_STATUS } from '../labels';
 import type { Payment, TripStatus } from '../types';
 
@@ -66,21 +66,26 @@ export default function PayablesPage() {
   }
 
   function exportCsv() {
-    downloadCsv(
-      `cong-no-nha-xe-${dayjs().format('YYYYMMDD')}.csv`,
-      ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê', 'Trạng thái'],
-      (data?.partners ?? []).flatMap((p) =>
-        p.trips.map((t) => [
-          p.name,
-          dayjs(t.pickupTime).format('DD/MM/YYYY HH:mm'),
-          t.booking.code,
-          [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → '),
-          t.partnerPlate,
-          Number(t.partnerCost ?? 0),
-          TRIP_STATUS[t.status].label,
-        ]),
-      ),
-    );
+    downloadExcel(`cong-no-nha-xe-${dayjs().format('YYYYMMDD')}.xlsx`, [
+      {
+        name: 'Công nợ nhà xe',
+        title: `CÔNG NỢ NHÀ XE ĐỐI TÁC – ngày ${dayjs().format('DD/MM/YYYY')}`,
+        headers: ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê', 'Trạng thái'],
+        sumColumns: [5],
+        totalLabel: 'Tổng cộng',
+        rows: (data?.partners ?? []).flatMap((p) =>
+          p.trips.map((t) => [
+            p.name,
+            dayjs(t.pickupTime).format('DD/MM/YYYY HH:mm'),
+            t.booking.code,
+            [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → '),
+            t.partnerPlate,
+            Number(t.partnerCost ?? 0),
+            TRIP_STATUS[t.status].label,
+          ]),
+        ),
+      },
+    ]);
   }
 
   return (

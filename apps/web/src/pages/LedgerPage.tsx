@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { DATE_FORMAT, EnumTag, formatVnd } from '../components/common';
-import { downloadCsv } from '../csv';
+import { downloadExcel } from '../excel';
 import { PAYMENT_METHOD } from '../labels';
 import type { PaymentMethod } from '../types';
 
@@ -44,22 +44,27 @@ export default function LedgerPage() {
   const entries = (data?.entries ?? []).filter((e) => type === 'ALL' || e.type === type);
 
   function exportCsv() {
-    downloadCsv(
-      `so-thu-chi-${from}-${to}.csv`,
-      ['Ngày', 'Loại', 'Khoản mục', 'Diễn giải', 'Thu', 'Chi', 'Hình thức', 'Chứng từ', 'Ghi chú', 'Người ghi'],
-      entries.map((e) => [
-        dayjs(e.date).format(DATE_FORMAT),
-        e.type === 'THU' ? 'Thu' : 'Chi',
-        e.category,
-        e.description,
-        e.type === 'THU' ? e.amount : '',
-        e.type === 'CHI' ? e.amount : '',
-        e.method ? PAYMENT_METHOD[e.method].label : '',
-        e.reference,
-        e.note,
-        e.by,
-      ]),
-    );
+    downloadExcel(`so-thu-chi-${from}-${to}.xlsx`, [
+      {
+        name: 'Sổ thu chi',
+        title: `SỔ THU CHI ${dayjs(from).format(DATE_FORMAT)} – ${dayjs(to).format(DATE_FORMAT)}`,
+        headers: ['Ngày', 'Loại', 'Khoản mục', 'Diễn giải', 'Thu', 'Chi', 'Hình thức', 'Chứng từ', 'Ghi chú', 'Người ghi'],
+        sumColumns: [4, 5],
+        totalLabel: 'Tổng cộng',
+        rows: entries.map((e) => [
+          dayjs(e.date).format(DATE_FORMAT),
+          e.type === 'THU' ? 'Thu' : 'Chi',
+          e.category,
+          e.description,
+          e.type === 'THU' ? e.amount : null,
+          e.type === 'CHI' ? e.amount : null,
+          e.method ? PAYMENT_METHOD[e.method].label : '',
+          e.reference,
+          e.note,
+          e.by,
+        ]),
+      },
+    ]);
   }
 
   return (
