@@ -1,0 +1,13 @@
+# Giao diện web (React) được build sẵn, phục vụ bằng Caddy (tự cấp HTTPS) và chuyển /api sang API
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+RUN npm ci -w web --no-audit --no-fund
+COPY apps/web apps/web
+RUN npm run build -w web
+
+FROM caddy:2-alpine
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/web/dist /srv
