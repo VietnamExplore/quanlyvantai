@@ -28,6 +28,8 @@ export interface TripDraft {
   estimatedCost: number | null;
   itinerary: string | null;
   notes: string | null;
+  /** Xe / nhà xe đã gán (chỉ để hiển thị) */
+  assignment?: string;
 }
 
 export const newKey = () => Math.random().toString(36).slice(2);
@@ -60,11 +62,16 @@ export function fromTrip(t: BookingTrip): TripDraft {
     estimatedCost: t.estimatedCost === null ? null : Number(t.estimatedCost),
     itinerary: t.itinerary,
     notes: t.notes,
+    assignment: t.vehicle
+      ? `${t.vehicle.plateNumber}${t.driver ? ` · ${t.driver.fullName}` : ''}`
+      : t.partner
+        ? t.partner.name
+        : undefined,
   };
 }
 
 /** Bỏ các trường chỉ dùng trên giao diện trước khi gửi API */
-export function toTripPayload({ key: _k, status: _s, vehicleTypeName: _v, ...t }: TripDraft) {
+export function toTripPayload({ key: _k, status: _s, vehicleTypeName: _v, assignment: _a, ...t }: TripDraft) {
   return t;
 }
 

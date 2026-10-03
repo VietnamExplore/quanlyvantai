@@ -5,6 +5,7 @@ import {
   FileTextOutlined,
   NodeIndexOutlined,
   PercentageOutlined,
+  ScheduleOutlined,
   DashboardOutlined,
   EnvironmentOutlined,
   IdcardOutlined,
@@ -36,6 +37,7 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
     items: [
       { key: '/', label: 'Tổng quan', icon: <DashboardOutlined /> },
       { key: '/bookings', label: 'Booking', icon: <FileTextOutlined /> },
+      { key: '/dispatch', label: 'Điều xe', icon: <ScheduleOutlined /> },
     ],
   },
   {

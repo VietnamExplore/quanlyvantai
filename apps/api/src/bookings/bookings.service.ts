@@ -17,6 +17,9 @@ const bookingInclude = {
     include: {
       vehicleType: { select: { id: true, code: true, name: true, seats: true, maxPassengers: true } },
       routePrice: { select: { id: true, name: true } },
+      vehicle: { select: { plateNumber: true } },
+      driver: { select: { fullName: true } },
+      partner: { select: { name: true } },
     },
   },
 } satisfies Prisma.BookingInclude;

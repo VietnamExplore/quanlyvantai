@@ -28,6 +28,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Nội dung lỗi đầy đủ từ máy chủ (ví dụ danh sách cảnh báo cần xác nhận) */
+    public data?: { warnings?: string[]; needConfirm?: boolean },
   ) {
     super(message);
   }
@@ -62,7 +64,7 @@ export async function api<T = unknown>(
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const msg = Array.isArray(data?.message) ? data.message.join('\n') : (data?.message ?? 'Có lỗi xảy ra');
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, msg, data ?? undefined);
   }
   return data as T;
 }

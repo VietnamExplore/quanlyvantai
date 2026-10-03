@@ -209,6 +209,9 @@ export interface BookingTrip extends Ref {
   itinerary: string | null;
   notes: string | null;
   status: TripStatus;
+  vehicle?: { plateNumber: string } | null;
+  driver?: { fullName: string } | null;
+  partner?: { name: string } | null;
 }
 
 export interface Booking extends Ref {
@@ -235,6 +238,65 @@ export interface Booking extends Ref {
   vatAmount: number;
   total: number;
   remaining: number;
+}
+
+// ───── Điều phối ─────
+
+export interface DispatchTrip extends Omit<BookingTrip, 'vehicleType' | 'routePrice'> {
+  bookingId: number;
+  booking: { id: number; code: string; status: BookingStatus; contactName: string; contactPhone: string; customer: { id: number; name: string } | null };
+  vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number };
+  vehicleId: number | null;
+  vehicle: { id: number; plateNumber: string; vehicleType: { name: string } } | null;
+  driverId: number | null;
+  driver: { id: number; fullName: string; phone: string } | null;
+  partnerId: number | null;
+  partner: { id: number; name: string; phone: string | null } | null;
+  partnerPlate: string | null;
+  partnerDriverName: string | null;
+  partnerDriverPhone: string | null;
+  partnerCost: string | null;
+  dispatchNote: string | null;
+  assignedAt: string | null;
+  assignedBy: { id: number; fullName: string } | null;
+  events?: { id: number; status: TripStatus; note: string | null; createdAt: string; user: { fullName: string } | null }[];
+}
+
+export interface ScheduleVehicle {
+  id: number;
+  plateNumber: string;
+  status: VehicleStatus;
+  vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number };
+  defaultDriver: { id: number; fullName: string } | null;
+  trips: DispatchTrip[];
+}
+
+export interface Schedule {
+  from: string;
+  to: string;
+  vehicles: ScheduleVehicle[];
+  partnerTrips: DispatchTrip[];
+  waiting: DispatchTrip[];
+  overdueCount: number;
+}
+
+interface Conflict {
+  code: string;
+  pickupTime: string;
+  endTime: string;
+}
+
+export interface DispatchOptions {
+  vehicles: {
+    id: number;
+    plateNumber: string;
+    status: VehicleStatus;
+    vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number; licenseClasses: string[] };
+    defaultDriver: { id: number; fullName: string } | null;
+    exactType: boolean;
+    conflicts: Conflict[];
+  }[];
+  drivers: { id: number; fullName: string; phone: string; status: DriverStatus; licenseClass: string | null; conflicts: Conflict[] }[];
 }
 
 export type Settings = Partial<

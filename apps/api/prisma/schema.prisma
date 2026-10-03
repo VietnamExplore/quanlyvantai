@@ -30,6 +30,8 @@ model User {
   customers    Customer[] @relation("SalesOwner")
   salesBookings   Booking[] @relation("BookingSales")
   createdBookings Booking[] @relation("BookingCreator")
+  assignedTrips   BookingTrip[] @relation("TripAssigner")
+  tripEvents      TripEvent[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
@@ -80,6 +82,7 @@ model Vehicle {
   odometerKm         Int?
   defaultDriverId    Int?
   defaultDriver      Driver?       @relation(fields: [defaultDriverId], references: [id])
+  trips              BookingTrip[]
   notes              String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
@@ -108,6 +111,7 @@ model Driver {
   userId            Int?         @unique
   user              User?        @relation(fields: [userId], references: [id])
   defaultVehicles   Vehicle[]
+  trips             BookingTrip[]
   notes             String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -131,6 +135,7 @@ model Partner {
   isActive         Boolean   @default(true)
   vehicles         Vehicle[]
   drivers          Driver[]
+  trips            BookingTrip[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
@@ -359,8 +364,42 @@ model BookingTrip {
   itinerary         String? // Lịch trình chi tiết
   notes             String?
   status            TripStatus   @default(CHO_DIEU)
+
+  // ── Điều xe ──
+  vehicleId          Int? // Xe công ty
+  vehicle            Vehicle?     @relation(fields: [vehicleId], references: [id])
+  driverId           Int? // Lái xe công ty
+  driver             Driver?      @relation(fields: [driverId], references: [id])
+  partnerId          Int? // Giao cho nhà xe đối tác
+  partner            Partner?     @relation(fields: [partnerId], references: [id])
+  partnerPlate       String?
+  partnerDriverName  String?
+  partnerDriverPhone String?
+  partnerCost        Decimal?     @db.Decimal(15, 0) // Giá thuê đối tác thực tế
+  dispatchNote       String? // Ghi chú cho tài xế / nhà xe
+  assignedAt         DateTime?
+  assignedById       Int?
+  assignedBy         User?        @relation("TripAssigner", fields: [assignedById], references: [id])
+  events             TripEvent[]
+
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   @@index([pickupTime])
+  @@index([vehicleId, pickupTime])
+  @@index([driverId, pickupTime])
+}
+
+/// Nhật ký thay đổi trạng thái / điều xe của chuyến
+model TripEvent {
+  id        Int         @id @default(autoincrement())
+  tripId    Int
+  trip      BookingTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  status    TripStatus
+  note      String?
+  userId    Int?
+  user      User?       @relation(fields: [userId], references: [id])
+  createdAt DateTime    @default(now())
+
+  @@index([tripId])
 }

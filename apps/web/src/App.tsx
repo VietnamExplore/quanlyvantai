@@ -6,6 +6,7 @@ import BookingEditPage from './pages/BookingEditPage';
 import BookingsPage from './pages/BookingsPage';
 import CustomersPage from './pages/CustomersPage';
 import DashboardPage from './pages/DashboardPage';
+import DispatchPage from './pages/DispatchPage';
 import DriversPage from './pages/DriversPage';
 import LocationsPage from './pages/LocationsPage';
 import LoginPage from './pages/LoginPage';
@@ -51,6 +52,7 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="bookings" element={<BookingsPage />} />
         <Route path="bookings/:id" element={<BookingEditPage />} />
+        <Route path="dispatch" element={<DispatchPage />} />
         <Route path="route-prices" element={<RoutePricesPage />} />
         <Route path="rental-rates" element={<RentalRatesPage />} />
         <Route path="surcharges" element={<SurchargesPage />} />

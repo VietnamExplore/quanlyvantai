@@ -450,7 +450,20 @@ export default function BookingEditPage() {
                 ),
               },
               ...(status !== 'NHAP' && status !== 'BAO_GIA'
-                ? [{ title: 'Điều xe', render: (_: unknown, t: TripDraft) => (t.status ? <EnumTag labels={TRIP_STATUS} value={t.status} /> : <Tag>Chưa lưu</Tag>) }]
+                ? [
+                    {
+                      title: 'Điều xe',
+                      render: (_: unknown, t: TripDraft) =>
+                        t.status ? (
+                          <>
+                            <EnumTag labels={TRIP_STATUS} value={t.status} />
+                            {t.assignment && <div><Typography.Text type="secondary">{t.assignment}</Typography.Text></div>}
+                          </>
+                        ) : (
+                          <Tag>Chưa lưu</Tag>
+                        ),
+                    },
+                  ]
                 : []),
               ...(!readOnly
                 ? [
