@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   App,
+  ConfigProvider,
   Button,
   Card,
   Col,
@@ -521,7 +522,12 @@ export default function BookingEditPage() {
           onChanged={() => setDirty(true)}
         />
         <SignCard form={form} defaultTitle={signDefault} canPrint={!isNew && !dirty} bookingId={booking?.id} />
-        {!isNew && booking && <PaymentsCard bookingId={booking.id} />}
+        {/* Thu tiền độc lập với việc sửa booking: không bị khóa theo form booking (kế toán, booking đã hoàn thành vẫn thu được) */}
+        {!isNew && booking && (
+          <ConfigProvider componentDisabled={false}>
+            <PaymentsCard bookingId={booking.id} />
+          </ConfigProvider>
+        )}
 
         <Row gutter={16} style={{ marginTop: 16 }}>
           <Col xs={24} lg={14}>

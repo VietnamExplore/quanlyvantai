@@ -80,7 +80,7 @@ export function PaymentModal({
   return (
     <Modal title={title} open={open} onCancel={onClose} onOk={submit} okText="Lưu" cancelText="Hủy" confirmLoading={saving} width={520} forceRender>
       {hint}
-      <Form form={form} layout="vertical">
+      <Form form={form} layout="vertical" name="payment_form" disabled={false}>
         {allowNegative && (
           <Radio.Group value={refund} onChange={(e) => setRefund(e.target.value)} style={{ marginBottom: 12 }} optionType="button">
             <Radio.Button value={false}>Thu tiền</Radio.Button>
@@ -337,7 +337,7 @@ export function TripCostsSection({ tripId, amount, partnerCost, estimatedCost }:
         </Button>
       )}
       {adding && (
-        <Form form={form} name={`trip_cost_${tripId}`} layout="vertical" style={{ marginTop: 8, padding: 12, background: 'var(--ant-color-fill-quaternary)', borderRadius: 8 }}>
+        <Form form={form} name={`trip_cost_${tripId}`} layout="vertical" disabled={false} style={{ marginTop: 8, padding: 12, background: 'var(--ant-color-fill-quaternary)', borderRadius: 8 }}>
           <Row gutter={8}>
             <Col span={12}>
               <Form.Item name="categoryCode" label="Loại chi phí" rules={[{ required: true, message: 'Chọn loại' }]}>
