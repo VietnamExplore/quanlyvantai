@@ -1,0 +1,48 @@
+# Chạy phần mềm NGẦM trên máy văn phòng (không cần các cửa sổ PowerShell API / WEB / TUNNEL).
+# Dùng chung cơ sở dữ liệu (container "db" của docker-compose.yml ở thư mục gốc) và thư mục file bảng đón apps/api/uploads.
+#
+#   Bật / cập nhật sau khi sửa code:  docker compose -f deploy/docker-compose.office.yml up -d --build
+#   Tắt:                              docker compose -f deploy/docker-compose.office.yml down
+#   Xem địa chỉ tunnel cho app LX:    docker compose -f deploy/docker-compose.office.yml logs tunnel | findstr trycloudflare
+#
+# Mở trình duyệt: http://localhost
+# Các container tự chạy lại khi Docker Desktop khởi động (bật "Start Docker Desktop when you sign in").
+name: transfer-office
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    env_file: ../apps/api/.env
+    environment:
+      # Cơ sở dữ liệu chạy trong container "db" (cổng 5432 của máy)
+      DATABASE_URL: postgresql://transfer:transfer@host.docker.internal:5432/transfer?schema=public
+      UPLOAD_DIR: /data/uploads
+      PORT: 3000
+      TZ: Asia/Ho_Chi_Minh
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../apps/api/uploads:/data/uploads
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      DOMAIN: ":80"
+    ports:
+      - "80:80"
+
+  # Đường hầm Cloudflare để app lái xe kết nối từ Internet (địa chỉ đổi mỗi lần tunnel khởi động lại)
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - api
+    command: tunnel --no-autoupdate --url http://api:3000
