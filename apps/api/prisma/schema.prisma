@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────── Người dùng & phân quyền ─────────────
+
+enum Role {
+  ADMIN
+  DIEU_HANH
+  KINH_DOANH
+  KE_TOAN
+  LAI_XE
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  username     String     @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  email        String?
+  roles        Role[]
+  isActive     Boolean    @default(true)
+  driver       Driver?
+  customers    Customer[] @relation("SalesOwner")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// ───────────── Xe ─────────────
+
+model VehicleType {
+  id             Int       @id @default(autoincrement())
+  code           String    @unique
+  name           String
+  seats          Int // Tổng số chỗ, gồm cả ghế lái
+  maxPassengers  Int
+  licenseClasses String[] // Hạng bằng lái phù hợp, Admin tự cấu hình
+  isActive       Boolean   @default(true)
+  vehicles       Vehicle[]
+}
+
+enum Ownership {
+  CONG_TY
+  DOI_TAC
+}
+
+enum VehicleStatus {
+  SAN_SANG
+  BAO_DUONG
+  NGUNG_HOAT_DONG
+}
+
+model Vehicle {
+  id                 Int           @id @default(autoincrement())
+  plateNumber        String        @unique
+  vehicleTypeId      Int
+  vehicleType        VehicleType   @relation(fields: [vehicleTypeId], references: [id])
+  brand              String?
+  model              String?
+  year               Int?
+  color              String?
+  ownership          Ownership     @default(CONG_TY)
+  partnerId          Int?
+  partner            Partner?      @relation(fields: [partnerId], references: [id])
+  status             VehicleStatus @default(SAN_SANG)
+  registrationExpiry DateTime?     @db.Date // Hạn đăng kiểm
+  insuranceExpiry    DateTime?     @db.Date // Hạn bảo hiểm
+  badgeExpiry        DateTime?     @db.Date // Hạn phù hiệu
+  odometerKm         Int?
+  defaultDriverId    Int?
+  defaultDriver      Driver?       @relation(fields: [defaultDriverId], references: [id])
+  notes              String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+// ───────────── Lái xe ─────────────
+
+enum DriverStatus {
+  DANG_LAM
+  NGHI_PHEP
+  NGHI_VIEC
+}
+
+model Driver {
+  id                Int          @id @default(autoincrement())
+  fullName          String
+  phone             String
+  idCardNumber      String?
+  licenseClass      String?
+  licenseNumber     String?
+  licenseExpiry     DateTime?    @db.Date
+  healthCheckExpiry DateTime?    @db.Date
+  partnerId         Int? // null = lái xe công ty
+  partner           Partner?     @relation(fields: [partnerId], references: [id])
+  status            DriverStatus @default(DANG_LAM)
+  userId            Int?         @unique
+  user              User?        @relation(fields: [userId], references: [id])
+  defaultVehicles   Vehicle[]
+  notes             String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+// ───────────── Nhà xe đối tác ─────────────
+
+model Partner {
+  id               Int       @id @default(autoincrement())
+  name             String
+  contactName      String?
+  phone            String?
+  zalo             String?
+  taxCode          String?
+  address          String?
+  bankName         String?
+  bankAccount      String?
+  vehicleTypeCodes String[] // Loại xe đối tác cung cấp được, ví dụ ["XE29","XE45"]
+  rating           Int? // 1–5
+  notes            String?
+  isActive         Boolean   @default(true)
+  vehicles         Vehicle[]
+  drivers          Driver[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// ───────────── Khách hàng ─────────────
+
+enum CustomerType {
+  KHACH_LE
+  DOANH_NGHIEP
+  DAI_LY
+  KHACH_SAN
+}
+
+model Customer {
+  id              Int          @id @default(autoincrement())
+  type            CustomerType @default(KHACH_LE)
+  name            String
+  phone           String?
+  email           String?
+  taxCode         String?
+  address         String?
+  salesUserId     Int?
+  salesUser       User?        @relation("SalesOwner", fields: [salesUserId], references: [id])
+  creditLimit     Decimal?     @db.Decimal(15, 0) // Hạn mức công nợ (VND)
+  discountPercent Decimal?     @db.Decimal(5, 2)
+  notes           String?
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+// ───────────── Địa điểm ─────────────
+
+enum LocationType {
+  SAN_BAY
+  KHACH_SAN
+  DIEM_THAM_QUAN
+  BEN_XE
+  KHAC
+}
+
+model Location {
+  id        Int          @id @default(autoincrement())
+  name      String
+  type      LocationType @default(KHAC)
+  address   String?
+  lat       Float?
+  lng       Float?
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
