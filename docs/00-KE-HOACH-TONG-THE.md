@@ -23,7 +23,7 @@
  App tài xế (Expo) ────REST/WS─────┘    └──► Push (FCM/APNs), Zalo/SMS (sau)
 ```
 
-## 3. Cấu trúc mã nguồn (monorepo, pnpm workspaces)
+## 3. Cấu trúc mã nguồn (monorepo, npm workspaces)
 
 ```
 D:\TRANSFER
