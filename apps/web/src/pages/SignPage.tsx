@@ -1,9 +1,10 @@
-import { MinusOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
+import { FilePdfOutlined, MinusOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Checkbox, Flex, Space, Spin } from 'antd';
+import { Button, Checkbox, Flex, Segmented, Space, Spin } from 'antd';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
+import { useSignFile } from '../components/BookingExtras';
 import { useSettings } from '../components/common';
 import type { Booking } from '../types';
 
@@ -33,6 +34,12 @@ export default function SignPage() {
   const settings = useSettings();
   const { data: b, isLoading } = useQuery({ queryKey: ['/bookings', Number(id)], queryFn: () => api<Booking>(`/bookings/${id}`) });
   const [showCompany, setShowCompany] = useState(true);
+  // Có file bảng đón khách gửi thì mặc định in file đó
+  const signFile = useSignFile(Number(id));
+  const hasFile = !!b?.signFile;
+  const [mode, setMode] = useState<'file' | 'generated'>('file');
+  const showFile = hasFile && mode === 'file';
+  const isPdf = b?.signFileType === 'application/pdf';
   const [scale, setScale] = useState(1); // Hệ số người dùng chỉnh thêm
   const [fitSize, setFitSize] = useState(60); // Cỡ chữ (mm) vừa khung
   const [zoom, setZoom] = useState(1); // Thu nhỏ để xem trọn trang trên màn hình nhỏ
@@ -59,7 +66,7 @@ export default function SignPage() {
       el.style.fontSize = `${size}mm`;
     }
     setFitSize(size);
-  }, [title, subtitle, showCompany, b]);
+  }, [title, subtitle, showCompany, b, showFile]);
 
   // Màn hình nhỏ hơn khổ A4: thu nhỏ khi xem (khi in vẫn đúng khổ)
   useEffect(() => {
@@ -81,31 +88,67 @@ export default function SignPage() {
     <>
       <style>{css}</style>
       <Flex className="toolbar" justify="center" align="center" gap={12} wrap>
-        <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()}>
-          In / Lưu PDF
-        </Button>
-        <Space.Compact>
-          <Button icon={<MinusOutlined />} onClick={() => setScale((s) => Math.max(0.5, s - 0.1))} title="Chữ nhỏ hơn" />
-          <Button onClick={() => setScale(1)}>Cỡ chữ {Math.round(scale * 100)}%</Button>
-          <Button icon={<PlusOutlined />} onClick={() => setScale((s) => Math.min(1.5, s + 0.1))} title="Chữ to hơn" />
-        </Space.Compact>
-        <Checkbox checked={showCompany} onChange={(e) => setShowCompany(e.target.checked)}>
-          Hiện tên công ty
-        </Checkbox>
+        {hasFile && (
+          <Segmented
+            value={mode}
+            onChange={(v) => setMode(v as 'file' | 'generated')}
+            options={[
+              { value: 'file', label: 'Bảng của khách' },
+              { value: 'generated', label: 'Bảng tự tạo' },
+            ]}
+          />
+        )}
+        {showFile && isPdf ? (
+          <Button type="primary" icon={<FilePdfOutlined />} disabled={!signFile.url} onClick={() => signFile.url && window.open(signFile.url, '_blank')}>
+            Mở file PDF để in
+          </Button>
+        ) : (
+          <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()} disabled={showFile && !signFile.url}>
+            In / Lưu PDF
+          </Button>
+        )}
+        {!showFile && (
+          <>
+            <Space.Compact>
+              <Button icon={<MinusOutlined />} onClick={() => setScale((s) => Math.max(0.5, s - 0.1))} title="Chữ nhỏ hơn" />
+              <Button onClick={() => setScale(1)}>Cỡ chữ {Math.round(scale * 100)}%</Button>
+              <Button icon={<PlusOutlined />} onClick={() => setScale((s) => Math.min(1.5, s + 0.1))} title="Chữ to hơn" />
+            </Space.Compact>
+            <Checkbox checked={showCompany} onChange={(e) => setShowCompany(e.target.checked)}>
+              Hiện tên công ty
+            </Checkbox>
+          </>
+        )}
         <Button onClick={() => window.close()}>Đóng</Button>
       </Flex>
 
       <div className="zoom" style={{ transform: `scale(${zoom})`, height: zoom < 1 ? `calc(210mm * ${zoom} + 32px)` : undefined }}>
-        <div className="sign-page">
-          {showCompany && settings.companyName && <div className="sign-head">{settings.companyName}</div>}
-          <div className="sign-body" ref={bodyRef}>
-            <div className="sign-title" ref={titleRef} style={{ fontSize: `${fitSize * scale}mm` }}>
-              {title}
-            </div>
-            {subtitle && <div className="sign-sub">{subtitle}</div>}
+        {showFile ? (
+          <div className="sign-page" style={{ padding: isPdf ? '14mm 16mm' : 0, alignItems: 'center', justifyContent: 'center' }}>
+            {!signFile.url ? (
+              <Spin />
+            ) : isPdf ? (
+              <div style={{ textAlign: 'center', fontSize: '6mm', color: '#333' }}>
+                <FilePdfOutlined style={{ fontSize: '24mm', color: '#cf1322' }} />
+                <p style={{ margin: '6mm 0 2mm' }}>Bảng đón khách gửi là file PDF: {b.signFileName}</p>
+                <p style={{ margin: 0, fontSize: '4.5mm', color: '#666' }}>Bấm “Mở file PDF để in” ở trên, rồi in từ trình xem PDF (chọn khổ A4 ngang).</p>
+              </div>
+            ) : (
+              <img src={signFile.url} alt="Bảng đón khách gửi" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+            )}
           </div>
-          {showCompany && settings.companyPhone && <div className="sign-foot">Hotline: {settings.companyPhone}</div>}
-        </div>
+        ) : (
+          <div className="sign-page">
+            {showCompany && settings.companyName && <div className="sign-head">{settings.companyName}</div>}
+            <div className="sign-body" ref={bodyRef}>
+              <div className="sign-title" ref={titleRef} style={{ fontSize: `${fitSize * scale}mm` }}>
+                {title}
+              </div>
+              {subtitle && <div className="sign-sub">{subtitle}</div>}
+            </div>
+            {showCompany && settings.companyPhone && <div className="sign-foot">Hotline: {settings.companyPhone}</div>}
+          </div>
+        )}
       </div>
     </>
   );

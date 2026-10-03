@@ -286,6 +286,9 @@ export interface Booking extends Ref {
   passengers: Passenger[];
   signTitle: string | null;
   signSubtitle: string | null;
+  signFile: string | null;
+  signFileName: string | null;
+  signFileType: string | null;
   code: string;
   customerId: number | null;
   customer: { id: number; name: string; type: CustomerType; phone: string | null; email: string | null; taxCode: string | null; address: string | null } | null;

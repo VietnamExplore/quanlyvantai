@@ -351,6 +351,9 @@ model Booking {
   payments        Payment[]
   signTitle       String? // Dòng chính trên bảng đón khách
   signSubtitle    String? // Dòng phụ trên bảng đón khách
+  signFile        String? // Tên file bảng đón khách gửi (lưu trong thư mục uploads/signs)
+  signFileName    String? // Tên file gốc
+  signFileType    String? // image/png, image/jpeg, image/webp, application/pdf
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }

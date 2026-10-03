@@ -1,7 +1,20 @@
-import { DeleteOutlined, FileExcelOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
-import { Alert, App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Typography, type FormInstance } from 'antd';
-import { useState } from 'react';
-import type { Passenger } from '../types';
+import {
+  DeleteOutlined,
+  EyeOutlined,
+  FileExcelOutlined,
+  FileImageOutlined,
+  FilePdfOutlined,
+  InboxOutlined,
+  PlusOutlined,
+  PrinterOutlined,
+  SwapOutlined,
+} from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { Alert, App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Typography, Upload, type FormInstance } from 'antd';
+import { useEffect, useState } from 'react';
+import { api, apiBlob, apiUpload } from '../api';
+import { useAuth } from '../auth';
+import type { Booking, Passenger } from '../types';
 
 const GENDER_OPTIONS = [
   { value: 'NAM', label: 'Nam' },
@@ -254,12 +267,20 @@ interface SignCardProps {
 export function SignCard({ form, defaultTitle, canPrint, bookingId }: SignCardProps) {
   const title: string = Form.useWatch('signTitle', form) || defaultTitle;
   const subtitle: string | undefined = Form.useWatch('signSubtitle', form);
+  const file = useSignFile(bookingId);
+
   return (
     <Card
       title="Bảng đón khách"
       style={{ marginTop: 16 }}
       extra={
-        <Button icon={<PrinterOutlined />} href={bookingId ? `/bookings/${bookingId}/sign` : undefined} target="_blank" disabled={!canPrint}>
+        <Button
+          icon={<PrinterOutlined />}
+          href={bookingId ? `/bookings/${bookingId}/sign` : undefined}
+          target="_blank"
+          // Đã có file của khách thì in được ngay; bảng tự tạo cần lưu booking trước
+          disabled={!bookingId || (!file.info?.signFile && !canPrint)}
+        >
           In bảng đón (A4 ngang)
         </Button>
       }
@@ -269,23 +290,157 @@ export function SignCard({ form, defaultTitle, canPrint, bookingId }: SignCardPr
           <Form.Item name="signTitle" label="Dòng chính (tên khách / đoàn)" extra="Bỏ trống sẽ dùng tên khách hàng">
             <Input placeholder={defaultTitle || 'MR. JOHN SMITH'} />
           </Form.Item>
-          <Form.Item name="signSubtitle" label="Dòng phụ" style={{ marginBottom: 0 }}>
+          <Form.Item name="signSubtitle" label="Dòng phụ">
             <Input placeholder="Welcome to Da Nang · Đoàn khảo sát ABC" />
           </Form.Item>
+          <SignFileBox bookingId={bookingId} file={file} />
         </Col>
         <Col xs={24} md={12}>
-          <Typography.Text type="secondary">Xem trước</Typography.Text>
-          <Flex
-            vertical
-            align="center"
-            justify="center"
-            style={{ border: '2px solid #1f1f1f', borderRadius: 6, aspectRatio: '297 / 210', padding: 12, marginTop: 4, textAlign: 'center', overflow: 'hidden' }}
-          >
-            <div style={{ fontSize: 'clamp(14px, 3.2vw, 34px)', fontWeight: 800, lineHeight: 1.15, textTransform: 'uppercase', wordBreak: 'break-word' }}>{title || '—'}</div>
-            {subtitle && <div style={{ fontSize: 'clamp(10px, 1.4vw, 16px)', marginTop: 8 }}>{subtitle}</div>}
-          </Flex>
+          <Typography.Text type="secondary">{file.url ? 'Xem trước: bảng đón khách gửi (sẽ được in)' : 'Xem trước'}</Typography.Text>
+          {file.url && file.info?.signFileType?.startsWith('image/') ? (
+            <Flex align="center" justify="center" style={{ border: '1px solid #d9d9d9', borderRadius: 6, aspectRatio: '297 / 210', marginTop: 4, overflow: 'hidden', background: '#fafafa' }}>
+              <img src={file.url} alt="Bảng đón khách gửi" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+            </Flex>
+          ) : (
+            <Flex
+              vertical
+              align="center"
+              justify="center"
+              style={{ border: '2px solid #1f1f1f', borderRadius: 6, aspectRatio: '297 / 210', padding: 12, marginTop: 4, textAlign: 'center', overflow: 'hidden' }}
+            >
+              <div style={{ fontSize: 'clamp(14px, 3.2vw, 34px)', fontWeight: 800, lineHeight: 1.15, textTransform: 'uppercase', wordBreak: 'break-word' }}>{title || '—'}</div>
+              {subtitle && <div style={{ fontSize: 'clamp(10px, 1.4vw, 16px)', marginTop: 8 }}>{subtitle}</div>}
+            </Flex>
+          )}
         </Col>
       </Row>
     </Card>
+  );
+}
+
+type SignFileInfo = Pick<Booking, 'signFile' | 'signFileName' | 'signFileType'>;
+
+/** Thông tin + đường dẫn xem file bảng đón khách gửi (tải riêng, không ảnh hưởng form booking) */
+export function useSignFile(bookingId?: number) {
+  const { data: info, refetch } = useQuery({
+    queryKey: ['/bookings/sign-file', bookingId],
+    queryFn: async () => {
+      const b = await api<Booking>(`/bookings/${bookingId}`);
+      return { signFile: b.signFile, signFileName: b.signFileName, signFileType: b.signFileType } as SignFileInfo;
+    },
+    enabled: !!bookingId,
+  });
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!bookingId || !info?.signFile) {
+      setUrl(null);
+      return;
+    }
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    apiBlob(`/bookings/${bookingId}/sign-file`)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      })
+      .catch(() => setUrl(null));
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [bookingId, info?.signFile]);
+
+  return { info, url, refetch };
+}
+
+const SIGN_ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
+const SIGN_MAX_MB = 10;
+
+function SignFileBox({ bookingId, file }: { bookingId?: number; file: ReturnType<typeof useSignFile> }) {
+  const { message } = App.useApp();
+  const { hasRole } = useAuth();
+  const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
+  const [uploading, setUploading] = useState(false);
+
+  async function upload(f: File) {
+    if (!SIGN_ACCEPT.split(',').includes(f.type)) {
+      message.error('Chỉ nhận file ảnh (JPG, PNG, WEBP) hoặc PDF');
+      return;
+    }
+    if (f.size > SIGN_MAX_MB * 1024 * 1024) {
+      message.error(`File quá lớn (tối đa ${SIGN_MAX_MB} MB)`);
+      return;
+    }
+    setUploading(true);
+    try {
+      await apiUpload(`/bookings/${bookingId}/sign-file`, f);
+      message.success('Đã tải lên bảng đón của khách');
+      file.refetch();
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function remove() {
+    try {
+      await api(`/bookings/${bookingId}/sign-file`, { method: 'DELETE' });
+      message.success('Đã xóa file bảng đón');
+      file.refetch();
+    } catch (e) {
+      message.error((e as Error).message);
+    }
+  }
+
+  if (!bookingId) {
+    return <Typography.Text type="secondary">Lưu booking trước, sau đó có thể tải lên file bảng đón do khách gửi.</Typography.Text>;
+  }
+
+  if (file.info?.signFile) {
+    const isPdf = file.info.signFileType === 'application/pdf';
+    return (
+      <div style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: 12 }}>
+        <Typography.Text type="secondary">Bảng đón khách gửi</Typography.Text>
+        <Flex align="center" gap={8} style={{ marginTop: 4 }} wrap>
+          {isPdf ? <FilePdfOutlined style={{ fontSize: 20, color: '#cf1322' }} /> : <FileImageOutlined style={{ fontSize: 20, color: '#1668dc' }} />}
+          <Typography.Text strong ellipsis style={{ maxWidth: 260 }}>
+            {file.info.signFileName}
+          </Typography.Text>
+        </Flex>
+        <Space wrap style={{ marginTop: 8 }}>
+          <Button size="small" icon={<EyeOutlined />} disabled={!file.url} onClick={() => file.url && window.open(file.url, '_blank')}>
+            Xem file
+          </Button>
+          {canEdit && (
+            <>
+              <Upload accept={SIGN_ACCEPT} showUploadList={false} beforeUpload={(f) => (upload(f), false)}>
+                <Button size="small" icon={<SwapOutlined />} loading={uploading}>
+                  Đổi file
+                </Button>
+              </Upload>
+              <Popconfirm title="Xóa file bảng đón của khách?" okText="Xóa" cancelText="Không" onConfirm={remove}>
+                <Button size="small" danger icon={<DeleteOutlined />}>
+                  Xóa
+                </Button>
+              </Popconfirm>
+            </>
+          )}
+        </Space>
+      </div>
+    );
+  }
+
+  if (!canEdit) return null;
+  return (
+    <Upload.Dragger accept={SIGN_ACCEPT} showUploadList={false} beforeUpload={(f) => (upload(f), false)} disabled={uploading}>
+      <p className="ant-upload-drag-icon" style={{ marginBottom: 4 }}>
+        <InboxOutlined />
+      </p>
+      <p style={{ margin: 0 }}>{uploading ? 'Đang tải lên…' : 'Khách gửi sẵn bảng đón? Kéo thả hoặc bấm để tải lên'}</p>
+      <p style={{ margin: 0, fontSize: 12, color: '#8c8c8c' }}>Ảnh JPG, PNG, WEBP hoặc PDF, tối đa {SIGN_MAX_MB} MB</p>
+    </Upload.Dragger>
   );
 }
