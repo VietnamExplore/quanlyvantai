@@ -9,8 +9,8 @@ import {
   PlusOutlined,
   SaveOutlined,
   SendOutlined,
-} from '@ant-design/icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+} from "@ant-design/icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   App,
@@ -34,12 +34,12 @@ import {
   Tag,
   Tooltip,
   Typography,
-} from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { api } from '../api';
-import { useAuth } from '../auth';
+} from "antd";
+import dayjs, { type Dayjs } from "dayjs";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { api } from "../api";
+import { useAuth } from "../auth";
 import {
   buildQuoteText,
   computeTotals,
@@ -50,20 +50,34 @@ import {
   toTripPayload,
   tripAmount,
   type TripDraft,
-} from '../booking-utils';
-import { DATE_FORMAT, EnumTag, Money, MoneyInput, ServiceTag, useCustomers, useSalesStaffOptions, useSettings } from '../components/common';
-import { TripModal } from '../components/TripModal';
-import { BOOKING_SOURCE, BOOKING_STATUS, TRIP_STATUS, toOptions } from '../labels';
-import { PassengersCard, SignCard } from '../components/BookingExtras';
-import { PaymentsCard } from '../components/finance';
-import { QuickSelect } from '../components/QuickCreate';
-import type { Booking, BookingStatus, Customer, Passenger } from '../types';
+} from "../booking-utils";
+import {
+  DATE_FORMAT,
+  EnumTag,
+  Money,
+  MoneyInput,
+  ServiceTag,
+  useCustomers,
+  useSalesStaffOptions,
+  useSettings,
+} from "../components/common";
+import { TripModal } from "../components/TripModal";
+import {
+  BOOKING_SOURCE,
+  BOOKING_STATUS,
+  TRIP_STATUS,
+  toOptions,
+} from "../labels";
+import { PassengersCard, SignCard } from "../components/BookingExtras";
+import { PaymentsCard } from "../components/finance";
+import { QuickSelect } from "../components/QuickCreate";
+import type { Booking, BookingStatus, Customer, Passenger } from "../types";
 
-const LOCKED: BookingStatus[] = ['HOAN_THANH', 'HUY'];
+const LOCKED: BookingStatus[] = ["HOAN_THANH", "HUY"];
 
 export default function BookingEditPage() {
   const { id } = useParams();
-  const isNew = id === 'new';
+  const isNew = id === "new";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { message, modal } = App.useApp();
@@ -80,7 +94,7 @@ export default function BookingEditPage() {
   const [saving, setSaving] = useState(false);
 
   const { data: booking, isLoading } = useQuery({
-    queryKey: ['/bookings', Number(id)],
+    queryKey: ["/bookings", Number(id)],
     queryFn: () => api<Booking>(`/bookings/${id}`),
     enabled: !isNew,
   });
@@ -88,12 +102,12 @@ export default function BookingEditPage() {
   useEffect(() => {
     if (isNew) {
       form.setFieldsValue({
-        source: 'HOTLINE',
+        source: "HOTLINE",
         vatPercent: 0,
         discountAmount: 0,
         depositAmount: 0,
-        salesUserId: user?.roles.includes('KINH_DOANH') ? user.id : undefined,
-        quoteValidUntil: dayjs().add(7, 'day'),
+        salesUserId: user?.roles.includes("KINH_DOANH") ? user.id : undefined,
+        quoteValidUntil: dayjs().add(7, "day"),
       });
       setTrips([]);
     } else if (booking) {
@@ -102,24 +116,30 @@ export default function BookingEditPage() {
         discountAmount: Number(booking.discountAmount),
         vatPercent: Number(booking.vatPercent),
         depositAmount: Number(booking.depositAmount),
-        quoteValidUntil: booking.quoteValidUntil ? dayjs(booking.quoteValidUntil) : null,
+        quoteValidUntil: booking.quoteValidUntil
+          ? dayjs(booking.quoteValidUntil)
+          : null,
       });
       setTrips(booking.trips.map(fromTrip));
     }
     setDirty(false);
   }, [isNew, booking, form, user]);
 
-  const status: BookingStatus = booking?.status ?? 'NHAP';
-  const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
+  const status: BookingStatus = booking?.status ?? "NHAP";
+  const canEdit = hasRole("ADMIN", "DIEU_HANH", "KINH_DOANH");
   const readOnly = !canEdit || LOCKED.includes(status);
 
-  const discount = Form.useWatch('discountAmount', form) ?? 0;
-  const vatPercent = Form.useWatch('vatPercent', form) ?? 0;
-  const deposit = Form.useWatch('depositAmount', form) ?? 0;
+  const discount = Form.useWatch("discountAmount", form) ?? 0;
+  const vatPercent = Form.useWatch("vatPercent", form) ?? 0;
+  const deposit = Form.useWatch("depositAmount", form) ?? 0;
   const totals = computeTotals(trips, discount, vatPercent, deposit);
-  const watchCustomerId = Form.useWatch('customerId', form);
-  const watchContact = Form.useWatch('contactName', form);
-  const signDefault = (customers.find((c) => c.id === watchCustomerId)?.name ?? watchContact ?? '').toUpperCase();
+  const watchCustomerId = Form.useWatch("customerId", form);
+  const watchContact = Form.useWatch("contactName", form);
+  const signDefault = (
+    customers.find((c) => c.id === watchCustomerId)?.name ??
+    watchContact ??
+    ""
+  ).toUpperCase();
 
   /** Lưu booking. Trả về booking đã lưu, hoặc null nếu dữ liệu chưa hợp lệ / lỗi. */
   async function save(): Promise<Booking | null> {
@@ -127,7 +147,7 @@ export default function BookingEditPage() {
     try {
       v = await form.validateFields();
     } catch {
-      message.warning('Vui lòng kiểm tra lại thông tin khách hàng');
+      message.warning("Vui lòng kiểm tra lại thông tin khách hàng");
       return null;
     }
     const payload = {
@@ -140,7 +160,9 @@ export default function BookingEditPage() {
       discountAmount: v.discountAmount || 0,
       vatPercent: v.vatPercent || 0,
       depositAmount: v.depositAmount || 0,
-      quoteValidUntil: v.quoteValidUntil ? (v.quoteValidUntil as Dayjs).format('YYYY-MM-DD') : null,
+      quoteValidUntil: v.quoteValidUntil
+        ? (v.quoteValidUntil as Dayjs).format("YYYY-MM-DD")
+        : null,
       notes: v.notes || null,
       internalNotes: v.internalNotes || null,
       signTitle: v.signTitle?.trim() || null,
@@ -161,16 +183,19 @@ export default function BookingEditPage() {
     setSaving(true);
     try {
       const saved = isNew
-        ? await api<Booking>('/bookings', { method: 'POST', body: payload })
-        : await api<Booking>(`/bookings/${id}`, { method: 'PATCH', body: payload });
-      queryClient.setQueryData(['/bookings', saved.id], saved);
-      queryClient.invalidateQueries({ queryKey: ['/bookings'] });
+        ? await api<Booking>("/bookings", { method: "POST", body: payload })
+        : await api<Booking>(`/bookings/${id}`, {
+            method: "PATCH",
+            body: payload,
+          });
+      queryClient.setQueryData(["/bookings", saved.id], saved);
+      queryClient.invalidateQueries({ queryKey: ["/bookings"] });
       setDirty(false);
       if (isNew) {
         message.success(`Đã tạo booking ${saved.code}`);
         navigate(`/bookings/${saved.id}`, { replace: true });
       } else {
-        message.success('Đã lưu');
+        message.success("Đã lưu");
       }
       return saved;
     } catch (e) {
@@ -185,9 +210,12 @@ export default function BookingEditPage() {
     const saved = dirty || isNew ? await save() : booking;
     if (!saved) return;
     try {
-      const res = await api<Booking>(`/bookings/${saved.id}/status`, { method: 'POST', body: { status: next, cancelReason } });
-      queryClient.setQueryData(['/bookings', res.id], res);
-      queryClient.invalidateQueries({ queryKey: ['/bookings'] });
+      const res = await api<Booking>(`/bookings/${saved.id}/status`, {
+        method: "POST",
+        body: { status: next, cancelReason },
+      });
+      queryClient.setQueryData(["/bookings", res.id], res);
+      queryClient.invalidateQueries({ queryKey: ["/bookings"] });
       message.success(`Booking: ${BOOKING_STATUS[next].label}`);
     } catch (e) {
       message.error((e as Error).message);
@@ -195,19 +223,25 @@ export default function BookingEditPage() {
   }
 
   function askCancel() {
-    let reason = '';
+    let reason = "";
     modal.confirm({
-      title: 'Hủy booking?',
-      content: <Input.TextArea rows={3} placeholder="Lý do hủy (bắt buộc)" onChange={(e) => (reason = e.target.value)} />,
-      okText: 'Hủy booking',
+      title: "Hủy booking?",
+      content: (
+        <Input.TextArea
+          rows={3}
+          placeholder="Lý do hủy (bắt buộc)"
+          onChange={(e) => (reason = e.target.value)}
+        />
+      ),
+      okText: "Hủy booking",
       okButtonProps: { danger: true },
-      cancelText: 'Không',
+      cancelText: "Không",
       onOk: () => {
         if (!reason.trim()) {
-          message.warning('Vui lòng nhập lý do hủy');
+          message.warning("Vui lòng nhập lý do hủy");
           return Promise.reject();
         }
-        return changeStatus('HUY', reason);
+        return changeStatus("HUY", reason);
       },
     });
   }
@@ -215,25 +249,36 @@ export default function BookingEditPage() {
   async function copyQuote() {
     if (!booking) return;
     if (dirty) {
-      message.warning('Hãy lưu booking trước khi sao chép báo giá');
+      message.warning("Hãy lưu booking trước khi sao chép báo giá");
       return;
     }
     try {
       await navigator.clipboard.writeText(buildQuoteText(booking, settings));
-      message.success('Đã sao chép nội dung báo giá. Dán (Ctrl+V) vào Zalo hoặc email.');
+      message.success(
+        "Đã sao chép nội dung báo giá. Dán (Ctrl+V) vào Zalo hoặc email.",
+      );
     } catch {
-      message.error('Trình duyệt chặn sao chép. Hãy dùng nút "Xem / In báo giá".');
+      message.error(
+        'Trình duyệt chặn sao chép. Hãy dùng nút "Xem / In báo giá".',
+      );
     }
   }
 
   const saveTrip = (t: TripDraft) => {
-    setTrips((list) => (list.some((x) => x.key === t.key) ? list.map((x) => (x.key === t.key ? t : x)) : [...list, t]));
+    setTrips((list) =>
+      list.some((x) => x.key === t.key)
+        ? list.map((x) => (x.key === t.key ? t : x))
+        : [...list, t],
+    );
     setTripModalOpen(false);
     setDirty(true);
   };
 
   const duplicateTrip = (t: TripDraft) => {
-    setTrips((list) => [...list, { ...t, key: newKey(), id: undefined, status: undefined }]);
+    setTrips((list) => [
+      ...list,
+      { ...t, key: newKey(), id: undefined, status: undefined },
+    ]);
     setDirty(true);
   };
 
@@ -252,9 +297,9 @@ export default function BookingEditPage() {
     const cur = form.getFieldsValue();
     form.setFieldsValue({
       contactName: cur.contactName || c.name,
-      contactPhone: cur.contactPhone || c.phone || '',
+      contactPhone: cur.contactPhone || c.phone || "",
       salesUserId: cur.salesUserId ?? c.salesUserId ?? undefined,
-      source: c.type === 'DAI_LY' ? 'DAI_LY' : cur.source,
+      source: c.type === "DAI_LY" ? "DAI_LY" : cur.source,
     });
   };
 
@@ -268,19 +313,36 @@ export default function BookingEditPage() {
 
   const statusActions = !readOnly && (
     <>
-      {status === 'BAO_GIA' && <Button onClick={() => changeStatus('NHAP')}>Về nháp</Button>}
-      {status === 'NHAP' && (
-        <Button icon={<SendOutlined />} onClick={() => changeStatus('BAO_GIA')} disabled={!trips.length}>
+      {status === "BAO_GIA" && (
+        <Button onClick={() => changeStatus("NHAP")}>Về nháp</Button>
+      )}
+      {status === "NHAP" && (
+        <Button
+          icon={<SendOutlined />}
+          onClick={() => changeStatus("BAO_GIA")}
+          disabled={!trips.length}
+        >
           Đã gửi báo giá
         </Button>
       )}
-      {(status === 'NHAP' || status === 'BAO_GIA') && (
-        <Button type="primary" ghost icon={<CheckCircleOutlined />} onClick={() => changeStatus('XAC_NHAN')} disabled={!trips.length}>
+      {(status === "NHAP" || status === "BAO_GIA") && (
+        <Button
+          type="primary"
+          ghost
+          icon={<CheckCircleOutlined />}
+          onClick={() => changeStatus("XAC_NHAN")}
+          disabled={!trips.length}
+        >
           Khách xác nhận
         </Button>
       )}
-      {status === 'XAC_NHAN' && (
-        <Popconfirm title="Đánh dấu booking đã hoàn thành?" okText="Hoàn thành" cancelText="Không" onConfirm={() => changeStatus('HOAN_THANH')}>
+      {status === "XAC_NHAN" && (
+        <Popconfirm
+          title="Đánh dấu booking đã hoàn thành?"
+          okText="Hoàn thành"
+          cancelText="Không"
+          onConfirm={() => changeStatus("HOAN_THANH")}
+        >
           <Button type="primary" ghost icon={<CheckCircleOutlined />}>
             Hoàn thành
           </Button>
@@ -295,13 +357,17 @@ export default function BookingEditPage() {
   );
 
   return (
-    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
       <Card>
         <Flex justify="space-between" align="center" wrap gap={12}>
           <Space wrap>
-            <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/bookings')} />
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate("/bookings")}
+            />
             <Typography.Title level={4} style={{ margin: 0 }}>
-              {isNew ? 'Booking mới' : booking?.code}
+              {isNew ? "Booking mới" : booking?.code}
             </Typography.Title>
             {!isNew && <EnumTag labels={BOOKING_STATUS} value={status} />}
             {booking?.customerRef && <Tag>Mã khách: {booking.customerRef}</Tag>}
@@ -310,7 +376,12 @@ export default function BookingEditPage() {
           <Space wrap>
             {!isNew && (
               <>
-                <Button icon={<FilePdfOutlined />} href={`/bookings/${id}/quote`} target="_blank" disabled={dirty}>
+                <Button
+                  icon={<FilePdfOutlined />}
+                  href={`/bookings/${id}/quote`}
+                  target="_blank"
+                  disabled={dirty}
+                >
                   Xem / In báo giá
                 </Button>
                 <Button icon={<CopyOutlined />} onClick={copyQuote}>
@@ -320,44 +391,85 @@ export default function BookingEditPage() {
             )}
             {statusActions}
             {!readOnly && (
-              <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={save}>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={saving}
+                onClick={save}
+              >
                 Lưu
               </Button>
             )}
           </Space>
         </Flex>
-        {booking?.status === 'HUY' && <Alert type="error" showIcon style={{ marginTop: 12 }} title={`Đã hủy: ${booking.cancelReason}`} />}
-        {booking?.status === 'XAC_NHAN' && (
-          <Alert type="info" showIcon style={{ marginTop: 12 }} title="Booking đã xác nhận: các chuyến đang chờ Điều hành xếp xe." />
+        {booking?.status === "HUY" && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginTop: 12 }}
+            title={`Đã hủy: ${booking.cancelReason}`}
+          />
+        )}
+        {booking?.status === "XAC_NHAN" && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginTop: 12 }}
+            title="Booking đã xác nhận: các chuyến đang chờ Điều hành xếp xe."
+          />
         )}
       </Card>
 
-      <Form form={form} layout="vertical" disabled={readOnly} onValuesChange={() => setDirty(true)}>
+      <Form
+        form={form}
+        layout="vertical"
+        disabled={readOnly}
+        onValuesChange={() => setDirty(true)}
+      >
         <Card title="Khách hàng">
           <Row gutter={16}>
             <Col xs={24} md={7}>
-              <Form.Item name="customerId" label="Khách hàng / đại lý" extra="Bỏ trống nếu là khách lẻ chưa có trong danh mục">
+              <Form.Item
+                name="customerId"
+                label="Khách hàng / đại lý"
+                extra="Bỏ trống nếu là khách lẻ chưa có trong danh mục"
+              >
                 <QuickSelect
                   entity="customer"
                   allowClear
                   onChange={(id) => onCustomerChange(id as number | undefined)}
                   onCreated={(c) => fillContact(c as unknown as Customer)}
-                  options={customers.map((c) => ({ value: c.id, label: c.phone ? `${c.name} – ${c.phone}` : c.name }))}
+                  options={customers.map((c) => ({
+                    value: c.id,
+                    label: c.phone ? `${c.name} – ${c.phone}` : c.name,
+                  }))}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} md={5}>
-              <Form.Item name="customerRef" label="Mã booking của khách" tooltip="Mã do khách / đại lý đặt cho đơn này (nếu có), dùng để đối chiếu. In trên báo giá, lệnh điều xe, danh sách hành khách.">
+              <Form.Item
+                name="customerRef"
+                label="Mã booking của khách"
+                tooltip="Mã do khách / đại lý đặt cho đơn này (nếu có), dùng để đối chiếu. In trên báo giá, lệnh điều xe, danh sách hành khách."
+              >
                 <Input placeholder="Ví dụ: HN-2611-045" allowClear />
               </Form.Item>
             </Col>
             <Col xs={24} md={6}>
-              <Form.Item name="contactName" label="Người liên hệ" rules={[{ required: true, message: 'Nhập tên người liên hệ' }]}>
+              <Form.Item
+                name="contactName"
+                label="Người liên hệ"
+                rules={[{ required: true, message: "Nhập tên người liên hệ" }]}
+              >
                 <Input />
               </Form.Item>
             </Col>
             <Col xs={24} md={6}>
-              <Form.Item name="contactPhone" label="SĐT liên hệ" rules={[{ required: true, message: 'Nhập số điện thoại' }]}>
+              <Form.Item
+                name="contactPhone"
+                label="SĐT liên hệ"
+                rules={[{ required: true, message: "Nhập số điện thoại" }]}
+              >
                 <Input />
               </Form.Item>
             </Col>
@@ -368,19 +480,27 @@ export default function BookingEditPage() {
             </Col>
             <Col xs={12} md={6}>
               <Form.Item name="salesUserId" label="NV kinh doanh">
-                <QuickSelect entity="salesUser" allowClear options={salesOptions} />
+                <QuickSelect
+                  entity="salesUser"
+                  allowClear
+                  options={salesOptions}
+                />
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>
               <Form.Item name="quoteValidUntil" label="Báo giá hiệu lực đến">
-                <DatePicker format={DATE_FORMAT} style={{ width: '100%' }} />
+                <DatePicker format={DATE_FORMAT} style={{ width: "100%" }} />
               </Form.Item>
             </Col>
             {!isNew && booking && (
               <Col xs={12} md={6}>
                 <Descriptions size="small" column={1} style={{ marginTop: 4 }}>
-                  <Descriptions.Item label="Người tạo">{booking.createdBy.fullName}</Descriptions.Item>
-                  <Descriptions.Item label="Ngày tạo">{dayjs(booking.createdAt).format('HH:mm DD/MM/YYYY')}</Descriptions.Item>
+                  <Descriptions.Item label="Người tạo">
+                    {booking.createdBy.fullName}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Ngày tạo">
+                    {dayjs(booking.createdAt).format("HH:mm DD/MM/YYYY")}
+                  </Descriptions.Item>
                 </Descriptions>
               </Col>
             )}
@@ -411,64 +531,91 @@ export default function BookingEditPage() {
             size="middle"
             dataSource={trips}
             pagination={false}
-            scroll={{ x: 'max-content' }}
-            locale={{ emptyText: <Empty description="Chưa có chuyến nào. Bấm “Thêm chuyến” để bắt đầu." /> }}
+            scroll={{ x: "max-content" }}
+            locale={{
+              emptyText: (
+                <Empty description="Chưa có chuyến nào. Bấm “Thêm chuyến” để bắt đầu." />
+              ),
+            }}
             columns={[
-              { title: '#', width: 40, render: (_, __, i) => i + 1 },
-              { title: 'Dịch vụ', dataIndex: 'serviceType', render: (v) => <ServiceTag code={v} /> },
+              { title: "#", width: 40, render: (_, __, i) => i + 1 },
               {
-                title: 'Thời gian',
+                title: "Dịch vụ",
+                dataIndex: "serviceType",
+                render: (v) => <ServiceTag code={v} />,
+              },
+              {
+                title: "Thời gian",
                 render: (_, t) => (
                   <>
                     <b>{fmtTime(t.pickupTime)}</b>
                     {t.endTime && (
                       <>
                         <br />
-                        <Typography.Text type="secondary">đến {fmtTime(t.endTime)}</Typography.Text>
+                        <Typography.Text type="secondary">
+                          đến {fmtTime(t.endTime)}
+                        </Typography.Text>
                       </>
                     )}
                   </>
                 ),
               },
               {
-                title: 'Hành trình',
+                title: "Hành trình",
                 render: (_, t) => (
-                  <div style={{ maxWidth: 320, whiteSpace: 'normal' }}>
+                  <div style={{ maxWidth: 320, whiteSpace: "normal" }}>
                     {routeText(t)}
-                    {t.flightNumber && <Tag style={{ marginLeft: 4 }}>✈ {t.flightNumber}</Tag>}
+                    {t.flightNumber && (
+                      <Tag style={{ marginLeft: 4 }}>✈ {t.flightNumber}</Tag>
+                    )}
+                    {t.itinerary && (
+                      <>
+                        <br />
+                        <Typography.Text
+                          type="secondary"
+                          style={{ whiteSpace: "pre-line" }}
+                        >
+                          Lịch trình: {t.itinerary}
+                        </Typography.Text>
+                      </>
+                    )}
                     {t.notes && (
                       <>
                         <br />
-                        <Typography.Text type="secondary">{t.notes}</Typography.Text>
+                        <Typography.Text type="secondary">
+                          {t.notes}
+                        </Typography.Text>
                       </>
                     )}
                   </div>
                 ),
               },
               {
-                title: 'Xe / khách',
+                title: "Xe / khách",
                 render: (_, t) => (
                   <>
                     {t.vehicleTypeName}
                     <br />
                     <Typography.Text type="secondary">
-                      {t.passengers} khách{t.days > 1 ? ` · ${t.days} ngày` : ''}
+                      {t.passengers} khách
+                      {t.days > 1 ? ` · ${t.days} ngày` : ""}
                     </Typography.Text>
                   </>
                 ),
               },
               {
-                title: 'Thành tiền',
-                align: 'right',
+                title: "Thành tiền",
+                align: "right",
                 render: (_, t) => (
                   <Tooltip
                     title={
                       t.surcharges.length ? (
                         <>
-                          Giá: {Number(t.unitPrice).toLocaleString('vi-VN')}đ
+                          Giá: {Number(t.unitPrice).toLocaleString("vi-VN")}đ
                           {t.surcharges.map((s, i) => (
                             <div key={i}>
-                              + {s.name}: {Number(s.amount).toLocaleString('vi-VN')}đ
+                              + {s.name}:{" "}
+                              {Number(s.amount).toLocaleString("vi-VN")}đ
                             </div>
                           ))}
                         </>
@@ -476,19 +623,31 @@ export default function BookingEditPage() {
                     }
                   >
                     <Money value={tripAmount(t)} strong />
-                    {t.surcharges.length > 0 && <div><Typography.Text type="secondary">gồm {t.surcharges.length} phụ thu</Typography.Text></div>}
+                    {t.surcharges.length > 0 && (
+                      <div>
+                        <Typography.Text type="secondary">
+                          gồm {t.surcharges.length} phụ thu
+                        </Typography.Text>
+                      </div>
+                    )}
                   </Tooltip>
                 ),
               },
-              ...(status !== 'NHAP' && status !== 'BAO_GIA'
+              ...(status !== "NHAP" && status !== "BAO_GIA"
                 ? [
                     {
-                      title: 'Điều xe',
+                      title: "Điều xe",
                       render: (_: unknown, t: TripDraft) =>
                         t.status ? (
                           <>
                             <EnumTag labels={TRIP_STATUS} value={t.status} />
-                            {t.assignment && <div><Typography.Text type="secondary">{t.assignment}</Typography.Text></div>}
+                            {t.assignment && (
+                              <div>
+                                <Typography.Text type="secondary">
+                                  {t.assignment}
+                                </Typography.Text>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <Tag>Chưa lưu</Tag>
@@ -499,16 +658,44 @@ export default function BookingEditPage() {
               ...(!readOnly
                 ? [
                     {
-                      key: '_actions',
-                      fixed: 'right' as const,
+                      key: "_actions",
+                      fixed: "right" as const,
                       render: (_: unknown, t: TripDraft) => {
-                        const locked = !!t.status && t.status !== 'CHO_DIEU' && t.status !== 'HUY';
+                        const locked =
+                          !!t.status &&
+                          t.status !== "CHO_DIEU" &&
+                          t.status !== "HUY";
                         return (
                           <Space size={0}>
-                            <Button type="text" icon={<EditOutlined />} title="Sửa" onClick={() => { setEditingTrip(t); setTripModalOpen(true); }} />
-                            <Button type="text" icon={<CopyOutlined />} title="Nhân bản (thêm xe cùng lịch)" onClick={() => duplicateTrip(t)} />
-                            <Popconfirm title="Xóa chuyến này?" okText="Xóa" cancelText="Không" onConfirm={() => removeTrip(t)} disabled={locked}>
-                              <Button type="text" danger icon={<DeleteOutlined />} title={locked ? 'Chuyến đã điều xe' : 'Xóa'} disabled={locked} />
+                            <Button
+                              type="text"
+                              icon={<EditOutlined />}
+                              title="Sửa"
+                              onClick={() => {
+                                setEditingTrip(t);
+                                setTripModalOpen(true);
+                              }}
+                            />
+                            <Button
+                              type="text"
+                              icon={<CopyOutlined />}
+                              title="Nhân bản (thêm xe cùng lịch)"
+                              onClick={() => duplicateTrip(t)}
+                            />
+                            <Popconfirm
+                              title="Xóa chuyến này?"
+                              okText="Xóa"
+                              cancelText="Không"
+                              onConfirm={() => removeTrip(t)}
+                              disabled={locked}
+                            >
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                title={locked ? "Chuyến đã điều xe" : "Xóa"}
+                                disabled={locked}
+                              />
                             </Popconfirm>
                           </Space>
                         );
@@ -523,12 +710,20 @@ export default function BookingEditPage() {
         <PassengersCard
           form={form}
           readOnly={readOnly}
-          tripPassengers={Math.max(0, ...trips.filter((t) => t.status !== 'HUY').map((t) => t.passengers))}
+          tripPassengers={Math.max(
+            0,
+            ...trips.filter((t) => t.status !== "HUY").map((t) => t.passengers),
+          )}
           canPrint={!isNew && !dirty}
           bookingId={booking?.id}
           onChanged={() => setDirty(true)}
         />
-        <SignCard form={form} defaultTitle={signDefault} canPrint={!isNew && !dirty} bookingId={booking?.id} />
+        <SignCard
+          form={form}
+          defaultTitle={signDefault}
+          canPrint={!isNew && !dirty}
+          bookingId={booking?.id}
+        />
         {/* Thu tiền độc lập với việc sửa booking: không bị khóa theo form booking (kế toán, booking đã hoàn thành vẫn thu được) */}
         {!isNew && booking && (
           <ConfigProvider componentDisabled={false}>
@@ -538,17 +733,24 @@ export default function BookingEditPage() {
 
         <Row gutter={16} style={{ marginTop: 16 }}>
           <Col xs={24} lg={14}>
-            <Card title="Ghi chú" style={{ height: '100%' }}>
-              <Form.Item name="notes" label="Ghi chú cho khách (in trên báo giá)">
+            <Card title="Ghi chú" style={{ height: "100%" }}>
+              <Form.Item
+                name="notes"
+                label="Ghi chú cho khách (in trên báo giá)"
+              >
                 <Input.TextArea rows={3} />
               </Form.Item>
-              <Form.Item name="internalNotes" label="Ghi chú nội bộ (khách không thấy)" style={{ marginBottom: 0 }}>
+              <Form.Item
+                name="internalNotes"
+                label="Ghi chú nội bộ (khách không thấy)"
+                style={{ marginBottom: 0 }}
+              >
                 <Input.TextArea rows={3} />
               </Form.Item>
             </Card>
           </Col>
           <Col xs={24} lg={10}>
-            <Card title="Thanh toán" style={{ height: '100%' }}>
+            <Card title="Thanh toán" style={{ height: "100%" }}>
               <Row gutter={12}>
                 <Col span={12}>
                   <Form.Item name="discountAmount" label="Giảm giá">
@@ -556,8 +758,12 @@ export default function BookingEditPage() {
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item name="vatPercent" label="VAT (%)" extra="0 nếu không xuất hóa đơn">
-                    <InputNumber min={0} max={100} style={{ width: '100%' }} />
+                  <Form.Item
+                    name="vatPercent"
+                    label="VAT (%)"
+                    extra="0 nếu không xuất hóa đơn"
+                  >
+                    <InputNumber min={0} max={100} style={{ width: "100%" }} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
@@ -581,8 +787,11 @@ export default function BookingEditPage() {
                   </Descriptions.Item>
                 )}
                 <Descriptions.Item label={<b>TỔNG CỘNG</b>}>
-                  <Typography.Text strong style={{ fontSize: 18, color: 'var(--ant-color-primary)' }}>
-                    {totals.total.toLocaleString('vi-VN')} đ
+                  <Typography.Text
+                    strong
+                    style={{ fontSize: 18, color: "var(--ant-color-primary)" }}
+                  >
+                    {totals.total.toLocaleString("vi-VN")} đ
                   </Typography.Text>
                 </Descriptions.Item>
                 {deposit > 0 && (
@@ -592,20 +801,42 @@ export default function BookingEditPage() {
                 )}
               </Descriptions>
               {trips.length > 0 && (
-                <Descriptions column={1} size="small" bordered style={{ marginTop: 12 }} title={<Typography.Text type="secondary">Nội bộ (khách không thấy)</Typography.Text>}>
+                <Descriptions
+                  column={1}
+                  size="small"
+                  bordered
+                  style={{ marginTop: 12 }}
+                  title={
+                    <Typography.Text type="secondary">
+                      Nội bộ (khách không thấy)
+                    </Typography.Text>
+                  }
+                >
                   <Descriptions.Item label="Chi phí dự kiến">
                     <Money value={totals.cost} />
                   </Descriptions.Item>
                   <Descriptions.Item label="Lợi nhuận dự kiến">
-                    <Typography.Text strong type={totals.profit < 0 ? 'danger' : undefined}>
-                      {totals.profit.toLocaleString('vi-VN')} đ
+                    <Typography.Text
+                      strong
+                      type={totals.profit < 0 ? "danger" : undefined}
+                    >
+                      {totals.profit.toLocaleString("vi-VN")} đ
                     </Typography.Text>
                     {totals.subtotal - discount > 0 && (
-                      <Typography.Text type="secondary"> ({Math.round((totals.profit / (totals.subtotal - discount)) * 100)}%)</Typography.Text>
+                      <Typography.Text type="secondary">
+                        {" "}
+                        (
+                        {Math.round(
+                          (totals.profit / (totals.subtotal - discount)) * 100,
+                        )}
+                        %)
+                      </Typography.Text>
                     )}
                     {totals.missingCost > 0 && (
                       <div>
-                        <Typography.Text type="warning">{totals.missingCost} chuyến chưa nhập chi phí</Typography.Text>
+                        <Typography.Text type="warning">
+                          {totals.missingCost} chuyến chưa nhập chi phí
+                        </Typography.Text>
                       </div>
                     )}
                   </Descriptions.Item>
@@ -616,7 +847,12 @@ export default function BookingEditPage() {
         </Row>
       </Form>
 
-      <TripModal open={tripModalOpen} trip={editingTrip} onCancel={() => setTripModalOpen(false)} onSave={saveTrip} />
+      <TripModal
+        open={tripModalOpen}
+        trip={editingTrip}
+        onCancel={() => setTripModalOpen(false)}
+        onSave={saveTrip}
+      />
     </Space>
   );
 }

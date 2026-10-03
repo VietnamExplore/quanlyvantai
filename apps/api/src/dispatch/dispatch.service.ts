@@ -116,8 +116,9 @@ export class DispatchService {
         include: dispatchTripInclude,
         orderBy: { pickupTime: 'asc' },
       }),
+      // Tất cả chuyến chờ điều xe (không giới hạn theo ngày đang xem), sắp theo giờ đón
       this.prisma.bookingTrip.findMany({
-        where: { ...activeInRange, status: TripStatus.CHO_DIEU },
+        where: { status: TripStatus.CHO_DIEU, booking: { status: BookingStatus.XAC_NHAN } },
         include: dispatchTripInclude,
         orderBy: { pickupTime: 'asc' },
       }),
