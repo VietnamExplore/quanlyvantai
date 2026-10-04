@@ -590,3 +590,14 @@ model CashVoucher {
   @@index([vehicleId])
   @@index([partnerId])
 }
+
+/// Bản dịch chữ trên giao diện phần mềm (dịch tự động một lần, dùng chung cho mọi người)
+model UiTranslation {
+  lang      String // en | ko | zh | ja
+  hash      String // sha1 của câu gốc tiếng Việt
+  source    String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@id([lang, hash])
+}

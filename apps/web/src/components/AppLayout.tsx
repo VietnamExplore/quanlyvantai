@@ -35,6 +35,7 @@ import { BRAND } from '../theme';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { useSettings } from './common';
 import { logoUrl } from './PrintDoc';
+import { UiLanguageSwitcher } from './UiLanguage';
 import { QUICK_ENTITIES, QuickCreateModal, type QuickEntity } from './QuickCreate';
 
 interface NavItem {
@@ -292,6 +293,7 @@ export function AppLayout() {
             </div>
           </Flex>
           <Space size={isMobile ? 8 : 14}>
+            <UiLanguageSwitcher compact={isMobile || !screens.xl} />
             {quickItems.length > 0 && (
               <Dropdown menu={{ items: quickItems }} trigger={['click']} placement="bottomRight">
                 <Button type="primary" icon={<PlusOutlined />}>
@@ -303,7 +305,7 @@ export function AppLayout() {
               placement="bottomRight"
               menu={{
                 items: [
-                  { key: 'me', label: <div style={{ padding: '2px 0' }}><b>{user?.fullName}</b><div style={{ fontSize: 12, color: BRAND.muted }}>{roleText}</div></div>, disabled: true },
+                  { key: 'me', label: <div style={{ padding: '2px 0' }}><b className="notranslate">{user?.fullName}</b><div style={{ fontSize: 12, color: BRAND.muted }}>{roleText}</div></div>, disabled: true },
                   { type: 'divider' },
                   { key: 'pwd', icon: <KeyOutlined />, label: 'Đổi mật khẩu', onClick: () => setPwdOpen(true) },
                   { type: 'divider' },
@@ -315,7 +317,7 @@ export function AppLayout() {
                 <Avatar style={{ background: `linear-gradient(135deg, ${BRAND.primary}, #7c3aed)`, fontWeight: 600 }}>{initials(user?.fullName)}</Avatar>
                 {!isMobile && (
                   <div style={{ lineHeight: 1.2, maxWidth: 220 }}>
-                    <div style={{ fontWeight: 600, color: BRAND.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.fullName}</div>
+                    <div className="notranslate" style={{ fontWeight: 600, color: BRAND.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.fullName}</div>
                     <div style={{ fontSize: 12, color: BRAND.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{roleText}</div>
                   </div>
                 )}
