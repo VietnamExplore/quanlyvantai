@@ -39,6 +39,8 @@ const DICT = {
     ja: 'ご依頼の車両サービスについて、下記の通りお見積りいたします',
   },
   no: { vi: 'Số', en: 'No.', ko: '번호', zh: '编号', ja: '番号' },
+  arrivalFlight: { vi: 'Chuyến bay đến', en: 'Arrival flight', ko: '도착 항공편', zh: '抵达航班', ja: '到着便' },
+  departureFlight: { vi: 'Chuyến bay về', en: 'Departure flight', ko: '출발 항공편', zh: '离开航班', ja: '出発便' },
   yourRef: { vi: 'Mã của Quý khách', en: 'Your ref.', ko: '고객 예약번호', zh: '贵方订单号', ja: 'お客様予約番号' },
   date: { vi: 'Ngày', en: 'Date', ko: '날짜', zh: '日期', ja: '日付' },
   printDate: { vi: 'Ngày in', en: 'Printed', ko: '출력일', zh: '打印日期', ja: '印刷日' },

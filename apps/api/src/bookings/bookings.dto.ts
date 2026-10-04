@@ -95,6 +95,16 @@ export class CreateBookingDto {
   @IsString()
   customerRef?: string | null;
 
+  /** Số hiệu chuyến bay đón (khách đến) / tiễn (khách về): viết hoa, bỏ khoảng trắng thừa */
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() || null : value))
+  @IsOptional()
+  @IsString()
+  arrivalFlight?: string | null;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() || null : value))
+  @IsOptional()
+  @IsString()
+  departureFlight?: string | null;
+
   /** Ngôn ngữ giấy tờ gửi khách (báo giá, danh sách hành khách, bảng đón) */
   @IsOptional() @IsIn(DOC_LANGUAGES, { message: 'Ngôn ngữ giấy tờ không hợp lệ' }) docLanguage?: string;
 

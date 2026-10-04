@@ -68,9 +68,11 @@ interface Props {
   title?: string;
   okText?: string;
   saving?: boolean;
+  /** Chuyến bay đón / tiễn đã nhập ở booking: hiện nút điền nhanh */
+  bookingFlights?: { arrival?: string | null; departure?: string | null };
 }
 
-export function TripModal({ open, trip, onCancel, onSave, withContact, title, okText, saving }: Props) {
+export function TripModal({ open, trip, onCancel, onSave, withContact, title, okText, saving, bookingFlights }: Props) {
   const customers = useCustomers();
   const [form] = Form.useForm();
   const { vehicleTypes } = useVehicleTypeOptions();
@@ -599,7 +601,27 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
           </Col>
           {hasFlight && (
             <Col xs={24} md={8}>
-              <Form.Item name="flightNumber" label="Số hiệu chuyến bay">
+              <Form.Item
+                name="flightNumber"
+                label="Số hiệu chuyến bay"
+                normalize={(v?: string) => v?.toUpperCase()}
+                extra={
+                  (bookingFlights?.arrival || bookingFlights?.departure) && (
+                    <Space size={4} wrap style={{ marginTop: 4 }}>
+                      {bookingFlights.arrival && (
+                        <Button size="small" type="dashed" onClick={() => form.setFieldValue("flightNumber", bookingFlights.arrival)}>
+                          Đón: {bookingFlights.arrival}
+                        </Button>
+                      )}
+                      {bookingFlights.departure && (
+                        <Button size="small" type="dashed" onClick={() => form.setFieldValue("flightNumber", bookingFlights.departure)}>
+                          Tiễn: {bookingFlights.departure}
+                        </Button>
+                      )}
+                    </Space>
+                  )
+                }
+              >
                 <Input placeholder="VN123" />
               </Form.Item>
             </Col>

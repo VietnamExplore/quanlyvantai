@@ -59,6 +59,16 @@ export default function PassengerListPage() {
                   {t('yourRef')}: <b>{b.customerRef}</b>
                 </div>
               )}
+              {b.arrivalFlight && (
+                <div>
+                  {t('arrivalFlight')}: <b>{b.arrivalFlight}</b>
+                </div>
+              )}
+              {b.departureFlight && (
+                <div>
+                  {t('departureFlight')}: <b>{b.departureFlight}</b>
+                </div>
+              )}
               <div>
                 {t('printDate')}: {docDate(dayjs(), lang)}
               </div>

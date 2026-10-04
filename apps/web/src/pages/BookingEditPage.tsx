@@ -145,6 +145,8 @@ export default function BookingEditPage() {
   const discount = Form.useWatch("discountAmount", form) ?? 0;
   const vatPercent = Form.useWatch("vatPercent", form) ?? 0;
   const deposit = Form.useWatch("depositAmount", form) ?? 0;
+  const arrivalFlight = Form.useWatch("arrivalFlight", form);
+  const departureFlight = Form.useWatch("departureFlight", form);
   const totals = computeTotals(trips, discount, vatPercent, deposit);
   const watchCustomerId = Form.useWatch("customerId", form);
   const watchContact = Form.useWatch("contactName", form);
@@ -166,6 +168,8 @@ export default function BookingEditPage() {
     const payload = {
       customerId: v.customerId ?? null,
       customerRef: v.customerRef?.trim() || null,
+      arrivalFlight: v.arrivalFlight?.trim().toUpperCase() || null,
+      departureFlight: v.departureFlight?.trim().toUpperCase() || null,
       docLanguage: v.docLanguage || "vi",
       leaderRole: v.leaderRole || null,
       leaderName: v.leaderName?.trim() || null,
@@ -411,6 +415,8 @@ export default function BookingEditPage() {
             </Typography.Title>
             {!isNew && <EnumTag labels={BOOKING_STATUS} value={status} />}
             {booking?.customerRef && <Tag>Mã khách: {booking.customerRef}</Tag>}
+            {booking?.arrivalFlight && <Tag color="blue">✈ Đến {booking.arrivalFlight}</Tag>}
+            {booking?.departureFlight && <Tag color="purple">✈ Về {booking.departureFlight}</Tag>}
             {dirty && <Tag color="orange">Chưa lưu</Tag>}
           </Space>
           <Space wrap>
@@ -571,6 +577,26 @@ export default function BookingEditPage() {
             <Col xs={12} md={6}>
               <Form.Item name="source" label="Nguồn khách">
                 <QuickSelect entity="customerSource" showSearch optionFilterProp="label" />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={6}>
+              <Form.Item
+                name="arrivalFlight"
+                label="Chuyến bay đón (khách đến)"
+                tooltip="Số hiệu chuyến bay khách đến, ví dụ VN123. In trên báo giá, danh sách hành khách, lệnh điều xe; điền nhanh được vào chuyến đón sân bay."
+                normalize={(v?: string) => v?.toUpperCase()}
+              >
+                <Input placeholder="VD: VN123" allowClear prefix="✈" />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={6}>
+              <Form.Item
+                name="departureFlight"
+                label="Chuyến bay tiễn (khách về)"
+                tooltip="Số hiệu chuyến bay khách về, ví dụ VJ636. In trên báo giá, danh sách hành khách, lệnh điều xe; điền nhanh được vào chuyến tiễn sân bay."
+                normalize={(v?: string) => v?.toUpperCase()}
+              >
+                <Input placeholder="VD: VJ636" allowClear prefix="✈" />
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>
@@ -964,6 +990,7 @@ export default function BookingEditPage() {
       <TripModal
         open={tripModalOpen}
         trip={editingTrip}
+        bookingFlights={{ arrival: arrivalFlight, departure: departureFlight }}
         onCancel={() => setTripModalOpen(false)}
         onSave={saveTrip}
       />

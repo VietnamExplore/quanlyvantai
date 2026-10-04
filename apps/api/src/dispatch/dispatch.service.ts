@@ -15,6 +15,8 @@ export const dispatchTripInclude = {
       id: true,
       code: true,
       customerRef: true,
+      arrivalFlight: true,
+      departureFlight: true,
       status: true,
       contactName: true,
       contactPhone: true,

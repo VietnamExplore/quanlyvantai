@@ -104,6 +104,8 @@ export function buildQuoteText(raw: Booking, s: Settings, lang: DocLang = toDocL
     `${t('no')}: ${b.code}${b.customerRef ? ` | ${t('yourRef')}: ${b.customerRef}` : ''} | ${t('date')}: ${docDate(dayjs(), lang)}`,
   );
   lines.push(`${t('to')}: ${b.customer?.name ?? b.contactName} – ${b.contactPhone}`);
+  const flights = [b.arrivalFlight && `${t('arrivalFlight')}: ${b.arrivalFlight}`, b.departureFlight && `${t('departureFlight')}: ${b.departureFlight}`].filter(Boolean);
+  if (flights.length) lines.push(`✈ ${flights.join(' | ')}`);
   lines.push('');
 
   b.trips

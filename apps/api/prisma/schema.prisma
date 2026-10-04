@@ -358,6 +358,8 @@ model Booking {
   id              Int                @id @default(autoincrement())
   code            String             @unique
   customerRef     String? // Mã booking của khách / đại lý (nếu có), dùng để đối chiếu
+  arrivalFlight   String? // Số hiệu chuyến bay đón (khách đến)
+  departureFlight String? // Số hiệu chuyến bay tiễn (khách về)
   /// Ngôn ngữ giấy tờ gửi khách: vi | en | ko | zh | ja
   docLanguage     String             @default("vi")
   /// Bản dịch nội dung booking cho giấy tờ ngoại ngữ: { "en": { "trip.12.pickupAddress": { "src": "…", "text": "…" } } }

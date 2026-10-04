@@ -116,6 +116,8 @@ export class BookingsService {
           OR: [
             { code: { contains: q, mode: 'insensitive' } },
             { customerRef: { contains: q, mode: 'insensitive' } },
+            { arrivalFlight: { contains: q, mode: 'insensitive' } },
+            { departureFlight: { contains: q, mode: 'insensitive' } },
             { contactName: { contains: q, mode: 'insensitive' } },
             { contactPhone: { contains: q } },
             { customer: { name: { contains: q, mode: 'insensitive' } } },

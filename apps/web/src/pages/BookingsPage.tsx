@@ -83,6 +83,13 @@ export default function BookingsPage() {
                     <Typography.Text type="secondary">Mã khách: {r.customerRef}</Typography.Text>
                   </div>
                 )}
+                {(r.arrivalFlight || r.departureFlight) && (
+                  <div style={{ fontSize: 12 }}>
+                    <Typography.Text type="secondary">
+                      ✈ {[r.arrivalFlight && `Đến ${r.arrivalFlight}`, r.departureFlight && `Về ${r.departureFlight}`].filter(Boolean).join(' · ')}
+                    </Typography.Text>
+                  </div>
+                )}
               </>
             ),
           },
