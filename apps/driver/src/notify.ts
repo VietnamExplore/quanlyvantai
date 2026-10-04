@@ -1,5 +1,5 @@
-import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import type * as NotificationsModule from 'expo-notifications';
 import { storage } from './storage';
 import { Platform } from 'react-native';
 import { api } from './api';
@@ -8,8 +8,15 @@ import type { Trip } from './types';
 
 const KNOWN_KEY = 'known_trip_ids';
 
+/**
+ * Expo Go (dùng để test trên máy ảo) không còn hỗ trợ expo-notifications trên Android:
+ * chỉ nạp thư viện khi chạy bản APK thật. Trong Expo Go app vẫn chạy, chỉ không hiện thông báo.
+ */
+const inExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const Notifications: typeof NotificationsModule | null = inExpoGo ? null : require('expo-notifications');
+
 // Hiện thông báo cả khi app đang mở
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
     shouldSetBadge: false,
@@ -19,6 +26,7 @@ Notifications.setNotificationHandler({
 });
 
 export async function setupNotifications() {
+  if (!Notifications) return;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('trips', {
       name: 'Chuyến xe',
@@ -55,6 +63,7 @@ export async function notifyChanges(trips: Trip[]) {
   if (!known) return; // lần đầu đăng nhập: không báo các chuyến đã có sẵn
 
   const added = trips.filter((t) => !known.includes(t.id));
+  if (!Notifications) return;
   for (const t of added) {
     try {
       await Notifications.scheduleNotificationAsync({
@@ -65,6 +74,16 @@ export async function notifyChanges(trips: Trip[]) {
       /* thiết bị không hỗ trợ / chưa cho phép thông báo */
     }
   }
+}
+
+/** Bấm vào thông báo: gọi lại với mã chuyến. Trả về hàm hủy đăng ký. */
+export function onNotificationOpen(cb: (tripId: number) => void) {
+  if (!Notifications) return () => undefined;
+  const sub = Notifications.addNotificationResponseReceivedListener((res) => {
+    const tripId = Number(res.notification.request.content.data?.tripId);
+    if (tripId) cb(tripId);
+  });
+  return () => sub.remove();
 }
 
 export async function clearKnownTrips() {

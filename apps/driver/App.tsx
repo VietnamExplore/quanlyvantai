@@ -1,10 +1,9 @@
-import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { api, loadSession, setToken, setUnauthorizedHandler } from './src/api';
-import { clearKnownTrips, setupNotifications } from './src/notify';
+import { clearKnownTrips, onNotificationOpen, setupNotifications } from './src/notify';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { TripDetailScreen } from './src/screens/TripDetailScreen';
@@ -39,11 +38,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     setupNotifications().catch(() => undefined);
-    const sub = Notifications.addNotificationResponseReceivedListener((res) => {
-      const tripId = Number(res.notification.request.content.data?.tripId);
-      if (tripId) setScreen({ name: 'trip', id: tripId });
-    });
-    return () => sub.remove();
+    return onNotificationOpen((tripId) => setScreen({ name: 'trip', id: tripId }));
   }, [user]);
 
   // Nút Back của Android: quay về danh sách thay vì thoát app
