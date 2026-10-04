@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
-import { colors, fmtTime, NEXT_STEP, SERVICE } from '../theme';
+import { colors, fmtDate, fmtHour, fmtTime, NEXT_STEP, SERVICE } from '../theme';
 import type { Passenger, Trip } from '../types';
 import { Button, Card, Row, StatusBadge, styles as ui } from '../ui';
+import { contactGuest, APP_LABEL, guessApp, pickupMessage } from '../contact';
+import { ContactCard, ContactChooser, type GuestContact } from './ContactCard';
 import { SignScreen } from './SignScreen';
 import { TripCosts } from './TripCosts';
 
@@ -12,9 +14,7 @@ const GENDER: Record<string, string> = { NAM: 'Nam', NU: 'Nữ' };
 /** Số khách hiện sẵn; nhiều hơn thì bấm "Xem tất cả" */
 const PAX_PREVIEW = 5;
 
-const call = (phone: string) => Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`);
-
-function PassengerRow({ p }: { p: Passenger }) {
+function PassengerRow({ p, onContact }: { p: Passenger; onContact: (c: GuestContact) => void }) {
   const info = [p.gender && GENDER[p.gender], p.nationality].filter(Boolean).join(' · ');
   return (
     <View style={s.paxRow}>
@@ -24,8 +24,9 @@ function PassengerRow({ p }: { p: Passenger }) {
         {(info || p.note) && <Text style={s.paxInfo}>{[info, p.note].filter(Boolean).join(' · ')}</Text>}
       </View>
       {p.phone && (
-        <Pressable onPress={() => call(p.phone!)} hitSlop={8} style={s.paxCall}>
-          <Text style={{ color: colors.primary, fontWeight: '600' }}>📞 {p.phone}</Text>
+        <Pressable onPress={() => onContact({ role: 'Khách', name: p.fullName, phone: p.phone })} hitSlop={8} style={s.paxCall}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>💬 {p.phone}</Text>
+          <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'right' }}>{APP_LABEL[guessApp(p.phone)]}</Text>
         </Pressable>
       )}
     </View>
@@ -43,6 +44,11 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   const [reason, setReason] = useState('');
   const [signOpen, setSignOpen] = useState(false);
   const [allPax, setAllPax] = useState(false);
+  // Không mở được ứng dụng của khách: cho chọn cách khác
+  const [choosing, setChoosing] = useState<GuestContact | null>(null);
+  const contactPax = async (c: GuestContact) => {
+    if (!(await contactGuest(c.phone, c.app, c.appId))) setChoosing(c);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -112,6 +118,17 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
 
   const b = trip.booking;
   const pax = b.passengers ?? [];
+  // Người liên hệ đón khách: HDV / trưởng đoàn; chưa có thì lấy khách đầu tiên có số điện thoại
+  const firstPax = pax.find((p) => p.phone);
+  const baseContact: GuestContact | null = b.leaderName || b.leaderPhone || b.leaderAppId
+    ? { role: LEADER_ROLE[b.leaderRole ?? ''] ?? 'Người liên hệ', name: b.leaderName ?? 'Người liên hệ', phone: b.leaderPhone ?? null, app: b.leaderApp, appId: b.leaderAppId }
+    : firstPax
+      ? { role: 'Khách đại diện', name: firstPax.fullName, phone: firstPax.phone }
+      : null;
+  // Tin nhắn mẫu: giờ đón, điểm đón, biển số xe (tiếng Anh cho khách nước ngoài)
+  const msgFor = (c: GuestContact) =>
+    pickupMessage({ phone: c.phone, name: c.name, time: `${fmtHour(trip.pickupTime)} ${fmtDate(trip.pickupTime).slice(0, 5)}`, place: trip.pickupAddress, plate: trip.vehicle?.plateNumber ?? null });
+  const guestContact = baseContact && { ...baseContact, message: msgFor(baseContact) };
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 140 }}>
@@ -126,6 +143,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           </Text>
           <Button title="🪧 Mở bảng đón khách" onPress={() => setSignOpen(true)} style={{ marginTop: 12 }} />
         </Card>
+
+        {guestContact && <ContactCard contact={guestContact} />}
 
         <Card>
           <Text style={s.section}>Điểm đón</Text>
@@ -155,20 +174,11 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           {trip.departureFlight && <Row label="Chuyến bay tiễn">{trip.departureFlight}</Row>}
         </Card>
 
-        {(b.leaderName || pax.length > 0) && (
+        {pax.length > 0 && (
           <Card>
-            <Text style={s.section}>Đoàn khách{pax.length ? ` (${pax.length} người)` : ''}</Text>
-            {b.leaderName && (
-              <View style={s.leader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.leaderRole}>{LEADER_ROLE[b.leaderRole ?? ''] ?? 'Người liên hệ trong chuyến'}</Text>
-                  <Text style={s.leaderName}>{b.leaderName}</Text>
-                </View>
-                {b.leaderPhone && <Button title={`📞 ${b.leaderPhone}`} onPress={() => call(b.leaderPhone!)} />}
-              </View>
-            )}
+            <Text style={s.section}>Đoàn khách ({pax.length} người)</Text>
             {(allPax ? pax : pax.slice(0, PAX_PREVIEW)).map((p) => (
-              <PassengerRow key={p.seq} p={p} />
+              <PassengerRow key={p.seq} p={p} onContact={contactPax} />
             ))}
             {pax.length > PAX_PREVIEW && (
               <Button
@@ -204,6 +214,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
       )}
 
       {signOpen && <SignScreen trip={trip} onClose={() => setSignOpen(false)} />}
+      {choosing && <ContactChooser contact={choosing} onClose={() => setChoosing(null)} />}
 
       <Modal visible={rejectOpen} transparent animationType="fade" onRequestClose={() => setRejectOpen(false)}>
         <View style={s.modalBg}>
@@ -230,9 +241,6 @@ const s = StyleSheet.create({
   itinerary: { backgroundColor: '#f6f8fb', borderLeftWidth: 3, borderLeftColor: colors.primary, borderRadius: 8, padding: 10 },
   itineraryText: { fontSize: 15, color: colors.text, lineHeight: 22 },
   dispatchNote: { backgroundColor: '#fffbe6', borderRadius: 8, padding: 10, marginTop: 10 },
-  leader: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eef5ff', borderRadius: 10, padding: 10, marginTop: 6, marginBottom: 6 },
-  leaderRole: { fontSize: 12, color: colors.primary, fontWeight: '700', textTransform: 'uppercase' },
-  leaderName: { fontSize: 17, fontWeight: '700', color: colors.text, marginTop: 2 },
   paxRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   paxSeq: { width: 26, color: colors.muted, fontSize: 14 },
   paxName: { fontSize: 15, fontWeight: '600', color: colors.text },

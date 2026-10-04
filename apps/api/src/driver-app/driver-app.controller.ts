@@ -23,7 +23,7 @@ import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { CreateTripCostDto } from '../finance/finance.dto';
 import { FinanceService } from '../finance/finance.service';
 import { receiptUpload, removeReceipt, sendReceipt } from '../finance/receipts';
-import { SIGN_DIR } from '../bookings/sign-file.controller';
+import { SIGN_DIR, signImage } from '../bookings/sign-file.controller';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Bước kế tiếp hợp lệ mà lái xe được bấm */
@@ -81,6 +81,8 @@ const driverTripSelect = {
       leaderRole: true,
       leaderName: true,
       leaderPhone: true,
+      leaderApp: true,
+      leaderAppId: true,
       passengers: { select: { seq: true, fullName: true, gender: true, nationality: true, phone: true, note: true }, orderBy: { seq: 'asc' } },
       // Bảng đón khách
       signTitle: true,
@@ -165,7 +167,7 @@ export class DriverAppController {
     return { message: 'Đã từ chối chuyến, văn phòng sẽ điều xe khác' };
   }
 
-  /** File bảng đón khách gửi (ảnh / PDF) của booking có chuyến này */
+  /** Bảng đón khách gửi của booking có chuyến này, dạng ảnh (PDF tự chuyển trang đầu thành ảnh) */
   @Get('trips/:id/sign-file')
   async signFile(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const trip = await this.prisma.bookingTrip.findFirst({
@@ -174,8 +176,11 @@ export class DriverAppController {
     });
     const b = trip?.booking;
     if (!b?.signFile || !existsSync(`${SIGN_DIR}/${b.signFile}`)) throw new NotFoundException('Booking chưa có file bảng đón');
-    res.setHeader('Content-Type', b.signFileType ?? 'application/octet-stream');
-    res.sendFile(b.signFile, { root: SIGN_DIR });
+    // Điện thoại chỉ hiện ảnh: file PDF được chuyển trang đầu thành ảnh
+    const img = await signImage(b.signFile, b.signFileType);
+    res.setHeader('Content-Type', img.type);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.sendFile(img.file, { root: SIGN_DIR });
   }
 
   // ───── Chi phí chuyến do lái xe nhập ─────

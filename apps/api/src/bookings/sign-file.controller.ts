@@ -13,11 +13,13 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Role } from '@prisma/client';
+import { execFile } from 'child_process';
 import { randomBytes } from 'crypto';
 import type { Response } from 'express';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join, resolve } from 'path';
+import { promisify } from 'util';
 import { OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -35,9 +37,43 @@ const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
 function removeFile(name: string | null) {
   if (!name) return;
-  const path = join(SIGN_DIR, name);
-  // Chỉ xóa trong thư mục bảng đón, không theo đường dẫn lạ
-  if (resolve(path).startsWith(SIGN_DIR) && existsSync(path)) unlinkSync(path);
+  // File gốc + ảnh trang đầu đã chuyển từ PDF (nếu có)
+  for (const n of [name, previewName(name)]) {
+    const path = join(SIGN_DIR, n);
+    // Chỉ xóa trong thư mục bảng đón, không theo đường dẫn lạ
+    if (resolve(path).startsWith(SIGN_DIR) && existsSync(path)) unlinkSync(path);
+  }
+}
+
+/** Tên ảnh trang đầu của bảng đón PDF (lưu cạnh file gốc) */
+const previewName = (signFile: string) => `${signFile}.p1.jpg`;
+const run = promisify(execFile);
+const converting = new Map<string, Promise<void>>();
+
+/**
+ * Ảnh để hiện bảng đón trên điện thoại: file ảnh thì dùng luôn;
+ * file PDF thì chuyển trang đầu thành ảnh JPG (một lần, lưu lại cho lần sau).
+ */
+export async function signImage(signFile: string, type: string | null): Promise<{ file: string; type: string }> {
+  if (type?.startsWith('image/')) return { file: signFile, type };
+  if (type !== 'application/pdf') throw new BadRequestException('File bảng đón không phải ảnh hoặc PDF');
+  const out = previewName(signFile);
+  if (!existsSync(join(SIGN_DIR, out))) {
+    let job = converting.get(out);
+    if (!job) {
+      // pdftoppm (poppler-utils): trang 1, ảnh JPG rộng tối đa 1800px
+      job = run('pdftoppm', ['-jpeg', '-f', '1', '-l', '1', '-singlefile', '-scale-to', '1800', join(SIGN_DIR, signFile), join(SIGN_DIR, out.replace(/\.jpg$/, ''))], { timeout: 60_000 })
+        .then(() => undefined)
+        .finally(() => converting.delete(out));
+      converting.set(out, job);
+    }
+    try {
+      await job;
+    } catch {
+      throw new BadRequestException('Không chuyển được file PDF bảng đón thành ảnh');
+    }
+  }
+  return { file: out, type: 'image/jpeg' };
 }
 
 @Controller('bookings/:id/sign-file')
@@ -73,6 +109,8 @@ export class SignFileController {
       select: { signFile: true, signFileName: true, signFileType: true },
     });
     removeFile(booking.signFile);
+    // PDF: chuyển sẵn trang đầu thành ảnh để app lái xe mở ngay (chạy nền, lỗi thì để lần mở sau thử lại)
+    if (file.mimetype === 'application/pdf') signImage(file.filename, file.mimetype).catch(() => undefined);
     return updated;
   }
 

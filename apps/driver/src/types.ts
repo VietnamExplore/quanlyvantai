@@ -36,6 +36,9 @@ export interface Trip {
     leaderRole?: string | null;
     leaderName?: string | null;
     leaderPhone?: string | null;
+    /** Ứng dụng liên lạc: ZALO | WHATSAPP | KAKAOTALK | WECHAT | LINE | VIBER | TELEGRAM (trống = đoán theo đầu số) */
+    leaderApp?: import('./contact').ContactApp | null;
+    leaderAppId?: string | null;
     passengers?: Passenger[];
     signTitle?: string | null;
     signSubtitle?: string | null;

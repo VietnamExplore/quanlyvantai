@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api, apiUpload, authImage } from '../api';
+import { api, apiUpload, useAuthImage } from '../api';
 import { colors, fmtDate } from '../theme';
 import type { CostCategory, TripCost } from '../types';
 import { Button, Card, styles as ui } from '../ui';
@@ -25,6 +25,17 @@ async function pickPhoto(source: 'camera' | 'library'): Promise<Photo | null> {
   const a = res.assets[0];
   const type = a.mimeType ?? 'image/jpeg';
   return { uri: a.uri, type, name: a.fileName ?? `hoa-don-${Date.now()}.${type.split('/')[1] ?? 'jpg'}` };
+}
+
+/** Ảnh hóa đơn đã gửi (tải kèm đăng nhập) */
+function ReceiptImage({ costId }: { costId: number }) {
+  const img = useAuthImage(`/driver/trip-costs/${costId}/receipt`);
+  if (img.uri) return <Image source={{ uri: img.uri }} style={s.viewerImg} resizeMode="contain" />;
+  return (
+    <View style={[s.viewerImg, { alignItems: 'center', justifyContent: 'center' }]}>
+      {img.error ? <Text style={{ color: '#fff' }}>{img.error}</Text> : <ActivityIndicator color="#fff" size="large" />}
+    </View>
+  );
 }
 
 /** Hỏi chụp mới hay chọn ảnh có sẵn */
@@ -222,7 +233,7 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
 
       <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
         <Pressable style={s.viewer} onPress={() => setViewing(null)}>
-          {viewing && <Image source={authImage(`/driver/trip-costs/${viewing.id}/receipt`)} style={s.viewerImg} resizeMode="contain" />}
+          {viewing && <ReceiptImage costId={viewing.id} />}
           <Text style={s.viewerHint}>
             {viewing ? `${viewing.category.name}: ${vnd(viewing.amount)}` : ''} · bấm để đóng
           </Text>

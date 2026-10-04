@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { CONTACT_APP, guessContactApp } from './contact-apps';
 import { fmtTime, routeText } from './booking-utils';
 import type { DispatchTrip, TripStatus } from './types';
 
@@ -51,7 +52,8 @@ export function buildDispatchText(t: DispatchTrip) {
   const b = t.booking;
   if (b.leaderName || b.leaderPhone) {
     const role = b.leaderRole === 'HDV' ? 'HDV' : 'Trưởng đoàn';
-    lines.push(`${role}: ${[b.leaderName, b.leaderPhone].filter(Boolean).join(' – ')}`);
+    const app = b.leaderPhone || b.leaderAppId ? CONTACT_APP[b.leaderApp ?? guessContactApp(b.leaderPhone)].label : '';
+    lines.push(`${role}: ${[b.leaderName, b.leaderPhone].filter(Boolean).join(' – ')}${app ? ` (liên hệ qua ${app}${b.leaderAppId ? ` ID: ${b.leaderAppId}` : ''})` : ''}`);
   }
   if (t.vehicle) lines.push(`Xe: ${t.vehicle.plateNumber} (${t.vehicle.vehicleType.name})${t.driver ? ` – Lái xe: ${t.driver.fullName} ${t.driver.phone}` : ''}`);
   if (t.partner) {

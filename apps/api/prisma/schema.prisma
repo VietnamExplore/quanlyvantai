@@ -366,6 +366,9 @@ model Booking {
   leaderRole      String?
   leaderName      String?
   leaderPhone     String?
+  /// Ứng dụng liên lạc với HDV / trưởng đoàn: ZALO | WHATSAPP | KAKAOTALK | WECHAT | LINE | VIBER | TELEGRAM (trống = tự đoán theo đầu số)
+  leaderApp       String?
+  leaderAppId     String? // ID trên ứng dụng nếu khác SĐT (KakaoTalk ID, WeChat ID, LINE ID…)
   customerId      Int?
   customer        Customer?          @relation(fields: [customerId], references: [id])
   contactName     String

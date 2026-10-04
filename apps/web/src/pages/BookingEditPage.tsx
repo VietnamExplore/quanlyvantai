@@ -170,6 +170,8 @@ export default function BookingEditPage() {
       leaderRole: v.leaderRole || null,
       leaderName: v.leaderName?.trim() || null,
       leaderPhone: v.leaderPhone?.trim() || null,
+      leaderApp: v.leaderApp || null,
+      leaderAppId: v.leaderAppId?.trim() || null,
       contactName: v.contactName,
       contactPhone: v.contactPhone,
       source: v.source,

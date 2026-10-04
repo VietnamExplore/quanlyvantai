@@ -14,6 +14,7 @@ import { Alert, App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, P
 import { useEffect, useState } from 'react';
 import { api, apiBlob, apiUpload } from '../api';
 import { useAuth } from '../auth';
+import { CONTACT_APP, guessContactApp, type ContactApp } from '../contact-apps';
 import type { Booking, Passenger } from '../types';
 
 const GENDER_OPTIONS = [
@@ -534,6 +535,9 @@ export const LEADER_ROLE: Record<'HDV' | 'TRUONG_DOAN', string> = { HDV: 'Hướ
 export function LeaderCard({ form, readOnly, onChanged }: { form: FormInstance; readOnly: boolean; onChanged: () => void }) {
   const passengers: Passenger[] = (Form.useWatch('passengers', form) ?? []).filter((p: Passenger) => p?.fullName?.trim());
   const leaderName: string | undefined = Form.useWatch('leaderName', form);
+  const leaderPhone: string | undefined = Form.useWatch('leaderPhone', form);
+  const leaderApp: ContactApp | undefined = Form.useWatch('leaderApp', form);
+  const effectiveApp = leaderApp ?? (leaderPhone ? guessContactApp(leaderPhone) : undefined);
   const picked = passengers.findIndex((p) => p.fullName.trim() === leaderName?.trim());
 
   /** Chọn 1 khách trong danh sách làm trưởng đoàn: điền tên + SĐT của khách đó */
@@ -581,8 +585,32 @@ export function LeaderCard({ form, readOnly, onChanged }: { form: FormInstance; 
           </Form.Item>
         </Col>
         <Col xs={24} md={6}>
-          <Form.Item name="leaderPhone" label="SĐT / Zalo / WhatsApp">
+          <Form.Item name="leaderPhone" label="Số điện thoại">
             <Input placeholder="+84… / +82…" allowClear onChange={onChanged} />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={6}>
+          <Form.Item
+            name="leaderApp"
+            label="Ứng dụng liên lạc"
+            tooltip="Lái xe bấm vào số sẽ mở ứng dụng này (không gọi điện thường). Để trống: tự chọn theo đầu số (+84 Zalo, +82 KakaoTalk, +86 WeChat, +81 LINE, còn lại WhatsApp)."
+          >
+            <Select
+              allowClear
+              placeholder={leaderPhone ? `Tự chọn: ${CONTACT_APP[guessContactApp(leaderPhone)].label}` : 'Tự chọn theo đầu số'}
+              options={Object.entries(CONTACT_APP).map(([value, a]) => ({ value, label: a.label }))}
+              onChange={onChanged}
+            />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={6}>
+          <Form.Item
+            name="leaderAppId"
+            label={`ID ${effectiveApp ? CONTACT_APP[effectiveApp].label : 'ứng dụng'}`}
+            tooltip="Chỉ cần khi khách kết bạn bằng ID thay vì số điện thoại (thường gặp ở KakaoTalk, WeChat, LINE)."
+            extra={effectiveApp && CONTACT_APP[effectiveApp].usesId ? 'Nên nhập ID: ứng dụng này kết bạn bằng ID' : undefined}
+          >
+            <Input placeholder="Để trống nếu dùng số điện thoại" allowClear onChange={onChanged} />
           </Form.Item>
         </Col>
       </Row>

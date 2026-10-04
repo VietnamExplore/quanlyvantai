@@ -316,6 +316,8 @@ export interface Booking extends Ref {
   leaderRole: 'HDV' | 'TRUONG_DOAN' | null;
   leaderName: string | null;
   leaderPhone: string | null;
+  leaderApp: import('./contact-apps').ContactApp | null;
+  leaderAppId: string | null;
   payments: Payment[];
   paid: number;
   balance: number;
@@ -365,6 +367,8 @@ export interface DispatchTrip extends Omit<BookingTrip, 'vehicleType' | 'routePr
     leaderRole?: 'HDV' | 'TRUONG_DOAN' | null;
     leaderName?: string | null;
     leaderPhone?: string | null;
+    leaderApp?: import('./contact-apps').ContactApp | null;
+    leaderAppId?: string | null;
     /** Hành khách đầu tiên trong danh sách hành khách (nếu có) */
     passengers?: { fullName: string; phone: string | null }[];
   };

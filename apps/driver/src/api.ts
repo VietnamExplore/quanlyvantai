@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { storage } from './storage';
 
 const SERVER_KEY = 'server_url';
@@ -47,8 +48,47 @@ export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
 }
 
-/** Ảnh cần đăng nhập mới xem được: dùng làm source của <Image> */
-export const authImage = (path: string) => ({ uri: `${serverUrl}/api${path}`, headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+/**
+ * Tải ảnh cần đăng nhập về thành data URI để hiện bằng <Image>
+ * (<Image> kèm header đăng nhập không ổn định trên Android).
+ */
+export async function loadAuthImage(path: string): Promise<string> {
+  if (!serverUrl) throw new ApiError(0, 'Chưa nhập địa chỉ máy chủ');
+  let res: Response;
+  try {
+    res = await fetch(`${serverUrl}/api${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new ApiError(0, 'Không tải được ảnh. Kiểm tra mạng điện thoại.');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(res.status, data?.message ?? `Không tải được ảnh (${res.status})`);
+  }
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => (typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Ảnh không hợp lệ')));
+    reader.onerror = () => reject(new Error('Không đọc được ảnh'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Hook: tải ảnh cần đăng nhập (null = đang tải / không có) */
+export function useAuthImage(path: string | null, reloadKey = 0) {
+  const [state, setState] = useState<{ uri: string | null; loading: boolean; error: string | null }>({ uri: null, loading: !!path, error: null });
+  useEffect(() => {
+    if (!path) return;
+    let alive = true;
+    setState({ uri: null, loading: true, error: null });
+    loadAuthImage(path)
+      .then((uri) => alive && setState({ uri, loading: false, error: null }))
+      .catch((e) => alive && setState({ uri: null, loading: false, error: (e as Error).message }));
+    return () => {
+      alive = false;
+    };
+  }, [path, reloadKey]);
+  return state;
+}
 
 /** Gửi một file ảnh lên máy chủ (trường "file") */
 export async function apiUpload<T = unknown>(path: string, file: { uri: string; name: string; type: string }): Promise<T> {

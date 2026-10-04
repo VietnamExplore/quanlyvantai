@@ -21,6 +21,8 @@ export const dispatchTripInclude = {
       leaderRole: true,
       leaderName: true,
       leaderPhone: true,
+      leaderApp: true,
+      leaderAppId: true,
       customer: { select: { id: true, name: true } },
       // Hành khách đầu tiên: dùng làm tên / SĐT khách trong lệnh điều xe
       passengers: { orderBy: { seq: 'asc' }, take: 1, select: { fullName: true, phone: true } },

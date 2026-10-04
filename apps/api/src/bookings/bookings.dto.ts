@@ -89,6 +89,8 @@ export class PassengerDto {
   @IsOptional() @IsString() note?: string | null;
 }
 
+export const CONTACT_APPS = ['ZALO', 'WHATSAPP', 'KAKAOTALK', 'WECHAT', 'LINE', 'VIBER', 'TELEGRAM'];
+
 export class CreateBookingDto {
   @IsOptional() @IsInt() customerId?: number | null;
 
@@ -111,6 +113,12 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   leaderPhone?: string | null;
+  /** Ứng dụng liên lạc với người liên hệ trong chuyến (trống = tự đoán theo đầu số) */
+  @IsOptional() @IsIn([...CONTACT_APPS, null], { message: 'Ứng dụng liên lạc không hợp lệ' }) leaderApp?: string | null;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() || null : value))
+  @IsOptional()
+  @IsString()
+  leaderAppId?: string | null;
 
   @IsString()
   @IsNotEmpty({ message: 'Chưa nhập tên người liên hệ' })
