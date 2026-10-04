@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Put } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { withDates } from '../common/utils';
@@ -6,10 +6,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CalculatePriceDto,
   CreateHolidayDto,
-  CreateRentalRateDto,
   CreateSurchargeDto,
+  RentalRateDto,
   UpdateHolidayDto,
-  UpdateRentalRateDto,
   UpdateSurchargeDto,
 } from './pricing.dto';
 import { PricingService } from './pricing.service';
@@ -34,39 +33,25 @@ export class RatesController {
 
   // ───── Giá thuê theo ngày ─────
 
-  /** Tất cả loại xe kèm các gói giá thuê theo ngày (mảng rỗng nếu chưa khai báo) */
+  /** Trả về tất cả loại xe kèm giá thuê (null nếu chưa khai báo) */
   @Get('rental-rates')
   rentalRates() {
     return this.prisma.vehicleType.findMany({
       where: { isActive: true },
-      select: {
-        id: true,
-        code: true,
-        name: true,
-        seats: true,
-        rentalRates: { orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }, { id: 'asc' }], include: { _count: { select: { trips: true } } } },
-      },
+      select: { id: true, code: true, name: true, seats: true, rentalRate: true },
       orderBy: { seats: 'asc' },
     });
   }
 
-  @Post('rental-rates')
+  @Put('rental-rates/:vehicleTypeId')
   @Roles(...PRICE_EDITORS)
-  createRentalRate(@Body() dto: CreateRentalRateDto) {
-    return this.prisma.rentalRate.create({ data: { ...dto, name: dto.name.trim() } });
-  }
-
-  @Patch('rental-rates/:id')
-  @Roles(...PRICE_EDITORS)
-  updateRentalRate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRentalRateDto) {
-    return this.prisma.rentalRate.update({ where: { id }, data: { ...dto, ...(dto.name !== undefined && { name: dto.name.trim() }) } });
-  }
-
-  /** Xóa gói giá: các chuyến đã dùng gói này giữ nguyên giá đã tính, chỉ bỏ liên kết tới gói */
-  @Delete('rental-rates/:id')
-  @Roles(...PRICE_EDITORS)
-  removeRentalRate(@Param('id', ParseIntPipe) id: number) {
-    return this.prisma.rentalRate.delete({ where: { id } });
+  saveRentalRate(@Param('vehicleTypeId', ParseIntPipe) vehicleTypeId: number, @Body() dto: RentalRateDto) {
+    const data = { ...dto, extraOptions: (dto.extraOptions ?? []).map((o) => ({ name: o.name, price: o.price, hours: o.hours, km: o.km ?? 0 })) };
+    return this.prisma.rentalRate.upsert({
+      where: { vehicleTypeId },
+      update: data,
+      create: { ...data, vehicleTypeId },
+    });
   }
 
   // ───── Phụ thu ─────

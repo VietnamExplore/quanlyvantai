@@ -22,8 +22,6 @@ export interface PriceResult {
   amount: number;
   /** Giá mua đối tác tham khảo (nếu tuyến có khai báo) */
   partnerCost: number | null;
-  /** Gói giá thuê theo ngày đã dùng (null nếu tính theo tuyến) */
-  rentalRateId: number | null;
   /** Giờ kết thúc dự kiến */
   endTime: string;
 }
@@ -50,7 +48,6 @@ export class PricingService {
     const breakdown: PriceLine[] = [];
     let partnerCost: number | null = null;
     let durationHours: number;
-    let rentalRateId: number | null = null;
 
     const vehicleType = await this.prisma.vehicleType.findUniqueOrThrow({ where: { id: dto.vehicleTypeId } });
 
@@ -68,25 +65,24 @@ export class PricingService {
       const service = await this.prisma.service.findUnique({ where: { code: dto.serviceType } });
       if (!service) throw new BadRequestException('Dịch vụ không tồn tại');
       if (service.pricingMode !== 'THEO_NGAY') throw new BadRequestException(`Dịch vụ "${service.name}" tính giá theo tuyến: hãy chọn tuyến`);
-      const rate = dto.rentalRateId
-        ? await this.prisma.rentalRate.findFirst({ where: { id: dto.rentalRateId, vehicleTypeId: dto.vehicleTypeId } })
-        : await this.prisma.rentalRate.findFirst({ where: { vehicleTypeId: dto.vehicleTypeId, isActive: true }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] });
-      if (!rate) {
-        throw new BadRequestException(
-          dto.rentalRateId
-            ? `Gói giá thuê đã chọn không thuộc ${vehicleType.name}`
-            : `${vehicleType.name} chưa có giá thuê theo ngày. Hãy chọn tuyến hoặc khai báo giá thuê.`,
-        );
-      }
-      rentalRateId = rate.id;
-      const pkg = rate.name && rate.name !== 'Giá chuẩn' ? ` – ${rate.name}` : '';
+      const rate = await this.prisma.rentalRate.findUnique({ where: { vehicleTypeId: dto.vehicleTypeId } });
+      if (!rate) throw new BadRequestException(`${vehicleType.name} chưa có giá thuê theo ngày. Hãy chọn tuyến hoặc khai báo giá thuê.`);
 
-      if (dto.halfDay && rate.halfDayPrice !== null) {
-        breakdown.push({ name: `Thuê nửa ngày${pkg} (${rate.halfDayHours}h/${rate.halfDayKm}km)`, amount: Number(rate.halfDayPrice) });
+      const options = (Array.isArray(rate.extraOptions) ? rate.extraOptions : []) as { name: string; price: number; hours: number; km?: number }[];
+      const option = dto.optionIndex !== null && dto.optionIndex !== undefined ? options[dto.optionIndex] : undefined;
+      if (dto.optionIndex !== null && dto.optionIndex !== undefined && !option) {
+        throw new BadRequestException(`Kiểu giá đã chọn không còn trong bảng giá thuê của ${vehicleType.name}`);
+      }
+
+      if (option) {
+        breakdown.push({ name: `${option.name} (${option.hours}h${option.km ? `/${option.km}km` : ''})`, amount: Number(option.price) });
+        durationHours = Number(option.hours);
+      } else if (dto.halfDay && rate.halfDayPrice !== null) {
+        breakdown.push({ name: `Thuê nửa ngày (${rate.halfDayHours}h/${rate.halfDayKm}km)`, amount: Number(rate.halfDayPrice) });
         durationHours = rate.halfDayHours;
       } else {
         breakdown.push({
-          name: `Thuê ${days} ngày${pkg} × ${Number(rate.fullDayPrice).toLocaleString('vi-VN')}đ (${rate.fullDayHours}h/${rate.fullDayKm}km mỗi ngày)`,
+          name: `Thuê ${days} ngày × ${Number(rate.fullDayPrice).toLocaleString('vi-VN')}đ (${rate.fullDayHours}h/${rate.fullDayKm}km mỗi ngày)`,
           amount: Number(rate.fullDayPrice) * days,
         });
         if (days > 1 && Number(rate.driverOvernightFee) > 0) {
@@ -108,7 +104,6 @@ export class PricingService {
       surcharges,
       amount: unitPrice + sumLines(surcharges),
       partnerCost,
-      rentalRateId,
       endTime: new Date(pickup.getTime() + durationHours * HOUR_MS).toISOString(),
     };
   }

@@ -1,31 +1,11 @@
-import { CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Card, Col, Empty, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Switch, Table, Tag, Typography } from 'antd';
-import { useState } from 'react';
+import { Alert, App, Button, Card, Col, Divider, Form, Input, InputNumber, Modal, Row, Table, Typography } from 'antd';
+import { useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { Money, MoneyInput } from '../components/common';
-import type { RentalRate, RentalRateRow } from '../types';
-
-/** Gói đang sửa: id có = sửa; không có = thêm mới cho loại xe */
-type Editing = { type: RentalRateRow; rate: RentalRate | null; copy?: boolean };
-
-const DEFAULTS = {
-  name: '',
-  isActive: true,
-  sortOrder: 0,
-  fullDayPrice: null,
-  fullDayHours: 10,
-  fullDayKm: 100,
-  halfDayPrice: null,
-  halfDayHours: 4,
-  halfDayKm: 50,
-  extraKmPrice: 0,
-  extraHourPrice: 0,
-  driverOvernightFee: 0,
-};
-
-const NUM_FIELDS = ['fullDayPrice', 'halfDayPrice', 'extraKmPrice', 'extraHourPrice', 'driverOvernightFee'] as const;
+import type { RentalRateRow } from '../types';
 
 export default function RentalRatesPage() {
   const { hasRole } = useAuth();
@@ -33,68 +13,42 @@ export default function RentalRatesPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const [editing, setEditing] = useState<Editing | null>(null);
+  const [editing, setEditing] = useState<RentalRateRow | null>(null);
 
   const { data = [], isLoading } = useQuery({ queryKey: ['/rental-rates'], queryFn: () => api<RentalRateRow[]>('/rental-rates') });
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['/rental-rates'] });
 
   const save = useMutation({
-    mutationFn: (values: Record<string, unknown>) =>
-      editing!.rate && !editing!.copy
-        ? api(`/rental-rates/${editing!.rate.id}`, { method: 'PATCH', body: values })
-        : api('/rental-rates', { method: 'POST', body: { ...values, vehicleTypeId: editing!.type.id } }),
+    mutationFn: (values: Record<string, unknown>) => api(`/rental-rates/${editing!.id}`, { method: 'PUT', body: values }),
     onSuccess: () => {
-      message.success('Đã lưu gói giá thuê');
+      message.success('Đã lưu giá thuê');
       setEditing(null);
-      refresh();
+      queryClient.invalidateQueries({ queryKey: ['/rental-rates'] });
     },
     onError: (e: Error) => message.error(e.message),
   });
 
-  const remove = async (r: RentalRate) => {
-    try {
-      await api(`/rental-rates/${r.id}`, { method: 'DELETE' });
-      message.success('Đã xóa gói giá');
-      refresh();
-    } catch (e) {
-      message.error((e as Error).message);
-    }
-  };
-
-  const open = (type: RentalRateRow, rate: RentalRate | null, copy = false) => {
-    setEditing({ type, rate, copy });
-    form.resetFields();
-    if (rate) {
-      const values: Record<string, unknown> = { ...rate };
-      for (const k of NUM_FIELDS) values[k] = rate[k] === null ? null : Number(rate[k]);
-      if (copy) values.name = `${rate.name} (bản sao)`;
-      form.setFieldsValue(values);
-    } else {
-      form.setFieldsValue({ ...DEFAULTS, name: type.rentalRates.length ? '' : 'Giá chuẩn', sortOrder: type.rentalRates.length });
-    }
+  const open = (row: RentalRateRow) => {
+    setEditing(row);
+    const r = row.rentalRate;
+    form.setFieldsValue(
+      r
+        ? Object.fromEntries(Object.entries(r).map(([k, v]) => [k, k === 'extraOptions' ? v : v === null || typeof v === 'number' ? v : Number(v)]))
+        : { extraOptions: [], fullDayHours: 10, fullDayKm: 100, halfDayHours: 4, halfDayKm: 50, extraKmPrice: 0, extraHourPrice: 0, driverOvernightFee: 0, fullDayPrice: null, halfDayPrice: null },
+    );
   };
 
   const submit = async () => {
     try {
       const v = await form.validateFields();
-      save.mutate({
-        name: v.name,
-        sortOrder: v.sortOrder ?? 0,
-        isActive: v.isActive ?? true,
-        fullDayPrice: v.fullDayPrice,
-        fullDayHours: v.fullDayHours,
-        fullDayKm: v.fullDayKm,
-        halfDayPrice: v.halfDayPrice ?? null,
-        halfDayHours: v.halfDayHours,
-        halfDayKm: v.halfDayKm,
-        extraKmPrice: v.extraKmPrice ?? 0,
-        extraHourPrice: v.extraHourPrice ?? 0,
-        driverOvernightFee: v.driverOvernightFee ?? 0,
-      });
+      const { id: _id, vehicleTypeId: _vt, updatedAt: _u, ...values } = v;
+      save.mutate(values);
     } catch {
       /* lỗi đã hiện dưới từng ô */
     }
   };
+
+  const r = (fn: (x: NonNullable<RentalRateRow['rentalRate']>) => ReactNode) => (_: unknown, row: RentalRateRow) =>
+    row.rentalRate ? fn(row.rentalRate) : <Typography.Text type="secondary">Chưa khai báo</Typography.Text>;
 
   return (
     <Card>
@@ -105,141 +59,54 @@ export default function RentalRatesPage() {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        title="Mỗi loại xe có thể có nhiều gói giá (ví dụ: Nội thành, Đi Hội An – Bà Nà, Đi Huế…). Khi nhập chuyến Thuê xe theo ngày / Tour / City tour không chọn tuyến, nhân viên chọn gói để hệ thống tự tính giá. Gói xếp đầu là gói mặc định."
+        title="Dùng cho dịch vụ Thuê xe theo ngày, Tour nhiều ngày và City tour khi không chọn tuyến cố định. Giá hiện tại là GIÁ MẪU, hãy sửa lại theo giá của công ty."
+      />
+      <Table<RentalRateRow>
+        rowKey="id"
+        loading={isLoading}
+        dataSource={data}
+        pagination={false}
+        scroll={{ x: 'max-content' }}
+        columns={[
+          { title: 'Loại xe', dataIndex: 'name', render: (v) => <b>{v}</b> },
+          { title: 'Giá 1 ngày', render: r((x) => (<><Money value={x.fullDayPrice} strong /><br /><small>{x.fullDayHours}h / {x.fullDayKm}km</small></>)) },
+          { title: 'Giá nửa ngày', render: r((x) => (x.halfDayPrice ? <><Money value={x.halfDayPrice} /><br /><small>{x.halfDayHours}h / {x.halfDayKm}km</small></> : '—')) },
+          { title: 'Vượt km', render: r((x) => <><Money value={x.extraKmPrice} />/km</>) },
+          { title: 'Vượt giờ', render: r((x) => <><Money value={x.extraHourPrice} />/giờ</>) },
+          { title: 'Lưu đêm tài xế', render: r((x) => <><Money value={x.driverOvernightFee} />/đêm</>) },
+          {
+            title: 'Giá khác',
+            render: r((x) =>
+              x.extraOptions?.length ? (
+                <div style={{ fontSize: 13, lineHeight: '20px' }}>
+                  {x.extraOptions.map((o, i) => (
+                    <div key={i}>
+                      {o.name}: <Money value={o.price} /> <Typography.Text type="secondary">({o.hours}h{o.km ? `/${o.km}km` : ''})</Typography.Text>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                '—'
+              ),
+            ),
+          },
+          ...(canEdit ? [{ key: 'edit', width: 50, render: (_: unknown, row: RentalRateRow) => <Button type="text" icon={<EditOutlined />} onClick={() => open(row)} /> }] : []),
+        ]}
       />
 
-      <Flex vertical gap={20}>
-        {data.map((type) => (
-          <div key={type.id}>
-            <Flex justify="space-between" align="center" style={{ marginBottom: 8 }} wrap gap={8}>
-              <Space>
-                <Typography.Title level={5} style={{ margin: 0 }}>
-                  {type.name}
-                </Typography.Title>
-                <Typography.Text type="secondary">{type.rentalRates.length} gói giá</Typography.Text>
-              </Space>
-              {canEdit && (
-                <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => open(type, null)}>
-                  Thêm gói giá
-                </Button>
-              )}
-            </Flex>
-            <Table<RentalRate>
-              rowKey="id"
-              size="small"
-              loading={isLoading}
-              dataSource={type.rentalRates}
-              pagination={false}
-              scroll={{ x: 'max-content' }}
-              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có gói giá thuê cho loại xe này" /> }}
-              onRow={(r) => (canEdit ? { onClick: () => open(type, r), style: { cursor: 'pointer' } } : {})}
-              columns={[
-                {
-                  title: 'Gói giá',
-                  render: (_, r, i) => (
-                    <>
-                      <b>{r.name}</b>
-                      {i === 0 && r.isActive && (
-                        <Tag color="blue" style={{ marginLeft: 6 }}>
-                          Mặc định
-                        </Tag>
-                      )}
-                      {!r.isActive && <Tag style={{ marginLeft: 6 }}>Ngừng dùng</Tag>}
-                    </>
-                  ),
-                },
-                {
-                  title: 'Giá 1 ngày',
-                  align: 'right',
-                  render: (_, x) => (
-                    <>
-                      <Money value={x.fullDayPrice} strong />
-                      <div>
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          {x.fullDayHours}h / {x.fullDayKm}km
-                        </Typography.Text>
-                      </div>
-                    </>
-                  ),
-                },
-                {
-                  title: 'Giá nửa ngày',
-                  align: 'right',
-                  render: (_, x) =>
-                    x.halfDayPrice ? (
-                      <>
-                        <Money value={x.halfDayPrice} />
-                        <div>
-                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                            {x.halfDayHours}h / {x.halfDayKm}km
-                          </Typography.Text>
-                        </div>
-                      </>
-                    ) : (
-                      '—'
-                    ),
-                },
-                { title: 'Vượt km', align: 'right', render: (_, x) => <><Money value={x.extraKmPrice} />/km</> },
-                { title: 'Vượt giờ', align: 'right', render: (_, x) => <><Money value={x.extraHourPrice} />/giờ</> },
-                { title: 'Lưu đêm tài xế', align: 'right', render: (_, x) => <><Money value={x.driverOvernightFee} />/đêm</> },
-                { title: 'Đã dùng', align: 'right', render: (_, x) => `${x._count?.trips ?? 0} chuyến` },
-                ...(canEdit
-                  ? [
-                      {
-                        key: 'actions',
-                        width: 110,
-                        render: (_: unknown, r: RentalRate) => (
-                          <Space size={0} onClick={(e) => e.stopPropagation()}>
-                            <Button type="text" icon={<EditOutlined />} title="Sửa" onClick={() => open(type, r)} />
-                            <Button type="text" icon={<CopyOutlined />} title="Nhân bản thành gói mới" onClick={() => open(type, r, true)} />
-                            <Popconfirm
-                              title="Xóa gói giá này?"
-                              description={r._count?.trips ? `Đã dùng cho ${r._count.trips} chuyến: các chuyến giữ nguyên giá đã tính. Có thể chọn "Ngừng dùng" thay vì xóa.` : undefined}
-                              okText="Xóa"
-                              cancelText="Không"
-                              onConfirm={() => remove(r)}
-                            >
-                              <Button type="text" danger icon={<DeleteOutlined />} title="Xóa" />
-                            </Popconfirm>
-                          </Space>
-                        ),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          </div>
-        ))}
-      </Flex>
-
       <Modal
-        title={editing ? `${editing.rate && !editing.copy ? 'Sửa' : 'Thêm'} gói giá thuê · ${editing.type.name}` : ''}
+        title={`Giá thuê: ${editing?.name ?? ''}`}
         open={!!editing}
         onCancel={() => setEditing(null)}
         onOk={submit}
         okText="Lưu"
         cancelText="Hủy"
         confirmLoading={save.isPending}
-        width={680}
+        width={640}
         forceRender
       >
-        <Form form={form} layout="vertical" name="rental_rate_form">
+        <Form form={form} layout="vertical">
           <Row gutter={16}>
-            <Col xs={24} md={14}>
-              <Form.Item name="name" label="Tên gói giá" rules={[{ required: true, whitespace: true, message: 'Nhập tên gói' }]}>
-                <Input placeholder="Ví dụ: Nội thành Đà Nẵng, Đi Hội An – Bà Nà, Đi Huế" />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={5}>
-              <Form.Item name="sortOrder" label="Thứ tự" tooltip="Số nhỏ xếp trước; gói xếp đầu là gói mặc định">
-                <InputNumber min={0} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={5}>
-              <Form.Item name="isActive" label="Đang dùng" valuePropName="checked">
-                <Switch />
-              </Form.Item>
-            </Col>
             <Col span={12}>
               <Form.Item name="fullDayPrice" label="Giá 1 ngày" rules={[{ required: true, message: 'Nhập giá' }]}>
                 <MoneyInput />
@@ -286,6 +153,46 @@ export default function RentalRatesPage() {
               </Form.Item>
             </Col>
           </Row>
+
+          <Divider titlePlacement="start" style={{ margin: '4px 0 12px' }}>
+            Giá khác (thuê theo giờ, theo gói…)
+          </Divider>
+          <Form.List name="extraOptions">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name }) => (
+                  <Row gutter={8} key={key} align="top">
+                    <Col xs={24} md={8}>
+                      <Form.Item name={[name, 'name']} rules={[{ required: true, whitespace: true, message: 'Nhập tên' }]} style={{ marginBottom: 12 }}>
+                        <Input placeholder="Tên, ví dụ: Thuê 4 tiếng" />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={10} md={7}>
+                      <Form.Item name={[name, 'price']} rules={[{ required: true, message: 'Nhập giá' }]} style={{ marginBottom: 12 }}>
+                        <MoneyInput placeholder="Giá" />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={6} md={4}>
+                      <Form.Item name={[name, 'hours']} rules={[{ required: true, message: 'Số giờ' }]} style={{ marginBottom: 12 }}>
+                        <InputNumber min={1} suffix="giờ" placeholder="Giờ" style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={6} md={4}>
+                      <Form.Item name={[name, 'km']} style={{ marginBottom: 12 }}>
+                        <InputNumber min={0} suffix="km" placeholder="Km" style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={2} md={1}>
+                      <Button type="text" danger icon={<DeleteOutlined />} title="Xóa dòng" onClick={() => remove(name)} />
+                    </Col>
+                  </Row>
+                ))}
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add({ name: '', price: null, hours: 4, km: 0 })}>
+                  Thêm dòng giá (ví dụ: thuê 4 tiếng, 6 tiếng, 8 tiếng…)
+                </Button>
+              </>
+            )}
+          </Form.List>
         </Form>
       </Modal>
     </Card>

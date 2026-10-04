@@ -19,9 +19,6 @@ export interface TripDraft {
   vehicleTypeId: number;
   vehicleTypeName?: string;
   routePriceId: number | null;
-  /** Gói giá thuê theo ngày */
-  rentalRateId?: number | null;
-  rentalRateName?: string;
   days: number;
   extraKm: number;
   extraHours: number;
@@ -56,8 +53,6 @@ export function fromTrip(t: BookingTrip): TripDraft {
     vehicleTypeId: t.vehicleTypeId,
     vehicleTypeName: t.vehicleType.name,
     routePriceId: t.routePriceId,
-    rentalRateId: t.rentalRateId,
-    rentalRateName: t.rentalRate?.name,
     days: t.days,
     extraKm: t.extraKm,
     extraHours: t.extraHours,
@@ -75,7 +70,7 @@ export function fromTrip(t: BookingTrip): TripDraft {
 }
 
 /** Bỏ các trường chỉ dùng trên giao diện trước khi gửi API */
-export function toTripPayload({ key: _k, status: _s, vehicleTypeName: _v, assignment: _a, rentalRateName: _r, ...t }: TripDraft) {
+export function toTripPayload({ key: _k, status: _s, vehicleTypeName: _v, assignment: _a, ...t }: TripDraft) {
   return t;
 }
 
@@ -110,8 +105,7 @@ export function buildQuoteText(b: Booking, s: Settings) {
   b.trips
     .filter((t) => t.status !== 'HUY')
     .forEach((t, i) => {
-      const pkg = t.rentalRate && t.rentalRate.name !== 'Giá chuẩn' ? ` (gói ${t.rentalRate.name})` : '';
-      lines.push(`${i + 1}) ${t.service?.name ?? t.serviceType}${pkg} – ${fmtTime(t.pickupTime)}`);
+      lines.push(`${i + 1}) ${t.service?.name ?? t.serviceType} – ${fmtTime(t.pickupTime)}`);
       lines.push(`   ${routeText(t)}${t.flightNumber ? ` (chuyến bay ${t.flightNumber})` : ''}`);
       lines.push(`   ${t.vehicleType.name} – ${t.passengers} khách${t.days > 1 ? ` – ${t.days} ngày` : ''}`);
       if (t.itinerary) lines.push(`   Lịch trình: ${t.itinerary.replace(/\n/g, '; ')}`);

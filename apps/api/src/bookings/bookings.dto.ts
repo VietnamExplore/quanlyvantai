@@ -53,8 +53,6 @@ export class TripDto {
   @IsInt() @Min(1, { message: 'Số khách phải từ 1 trở lên' }) passengers: number;
   @IsInt() vehicleTypeId: number;
   @IsOptional() @IsInt() routePriceId?: number | null;
-  /** Gói giá thuê theo ngày đã chọn */
-  @IsOptional() @IsInt() rentalRateId?: number | null;
   @IsOptional() @IsInt() @Min(1) days?: number;
   @IsOptional() @IsInt() @Min(0) extraKm?: number;
   @IsOptional() @IsInt() @Min(0) extraHours?: number;

@@ -650,7 +650,6 @@ export default function BookingEditPage() {
                     <Typography.Text type="secondary">
                       {t.passengers} khách
                       {t.days > 1 ? ` · ${t.days} ngày` : ""}
-                      {t.rentalRateName && <> · gói {t.rentalRateName}</>}
                     </Typography.Text>
                   </>
                 ),

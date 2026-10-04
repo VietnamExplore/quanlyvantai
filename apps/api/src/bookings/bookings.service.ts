@@ -19,7 +19,6 @@ const bookingInclude = {
     include: {
       vehicleType: { select: { id: true, code: true, name: true, seats: true, maxPassengers: true } },
       routePrice: { select: { id: true, name: true } },
-      rentalRate: { select: { id: true, name: true } },
       service: { select: { code: true, name: true, color: true, pricingMode: true, hasFlight: true } },
       vehicle: { select: { plateNumber: true } },
       driver: { select: { fullName: true } },
@@ -215,7 +214,7 @@ export class BookingsService {
   /** Kiểm tra sức chứa, tính thành tiền và giờ kết thúc cho từng chuyến */
   private async buildTrips(trips: TripDto[]) {
     const typeIds = [...new Set(trips.map((t) => t.vehicleTypeId))];
-    const types = await this.prisma.vehicleType.findMany({ where: { id: { in: typeIds } }, include: { rentalRates: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] } } });
+    const types = await this.prisma.vehicleType.findMany({ where: { id: { in: typeIds } }, include: { rentalRate: true } });
     const routeIds = [...new Set(trips.map((t) => t.routePriceId).filter((x): x is number => !!x))];
     const routes = await this.prisma.routePrice.findMany({ where: { id: { in: routeIds } } });
     const services = await this.prisma.service.findMany({ where: { code: { in: [...new Set(trips.map((t) => t.serviceType))] } } });
@@ -230,11 +229,6 @@ export class BookingsService {
         throw new BadRequestException(`Chuyến ${i + 1}: ${t.passengers} khách vượt sức chứa ${type.name} (tối đa ${type.maxPassengers} khách)`);
       }
 
-      // Gói giá thuê theo ngày: chỉ áp dụng cho dịch vụ thuê theo ngày không chọn tuyến
-      const useRental = service.pricingMode === 'THEO_NGAY' && !t.routePriceId;
-      const rate = useRental ? (type.rentalRates.find((r) => r.id === t.rentalRateId) ?? (t.rentalRateId ? null : type.rentalRates.find((r) => r.isActive))) : null;
-      if (useRental && t.rentalRateId && !rate) throw new BadRequestException(`Chuyến ${i + 1}: gói giá thuê không thuộc ${type.name}`);
-
       const surcharges: PriceLine[] = (t.surcharges ?? []).map((s) => ({ name: s.name, amount: Number(s.amount), ...(s.auto && { auto: true }) }));
       const pickupTime = new Date(t.pickupTime);
       const days = t.days ?? 1;
@@ -245,7 +239,7 @@ export class BookingsService {
         const hours = route
           ? (route.durationHours === null ? 2 : Number(route.durationHours))
           : service.pricingMode === 'THEO_NGAY'
-            ? (days - 1) * 24 + (rate?.fullDayHours ?? 10)
+            ? (days - 1) * 24 + (type.rentalRate?.fullDayHours ?? 10)
             : 2;
         endTime = new Date(pickupTime.getTime() + (hours + (t.extraHours ?? 0)) * HOUR_MS);
       }
@@ -265,7 +259,6 @@ export class BookingsService {
         passengers: t.passengers,
         vehicleTypeId: t.vehicleTypeId,
         routePriceId: t.routePriceId ?? null,
-        rentalRateId: rate?.id ?? null,
         days,
         extraKm: t.extraKm ?? 0,
         extraHours: t.extraHours ?? 0,
