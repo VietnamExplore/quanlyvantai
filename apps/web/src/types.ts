@@ -337,7 +337,17 @@ export interface Booking extends Ref {
 
 export interface DispatchTrip extends Omit<BookingTrip, 'vehicleType' | 'routePrice'> {
   bookingId: number;
-  booking: { id: number; code: string; customerRef: string | null; status: BookingStatus; contactName: string; contactPhone: string; customer: { id: number; name: string } | null };
+  booking: {
+    id: number;
+    code: string;
+    customerRef: string | null;
+    status: BookingStatus;
+    contactName: string;
+    contactPhone: string;
+    customer: { id: number; name: string } | null;
+    /** Hành khách đầu tiên trong danh sách hành khách (nếu có) */
+    passengers?: { fullName: string; phone: string | null }[];
+  };
   vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number };
   vehicleId: number | null;
   vehicle: { id: number; plateNumber: string; vehicleType: { name: string } } | null;

@@ -41,7 +41,11 @@ export function buildDispatchText(t: DispatchTrip) {
   ];
   if (t.dropoffAddress) lines.push(`Điểm trả: ${t.dropoffAddress}`);
   if (t.flightNumber) lines.push(`Chuyến bay: ${t.flightNumber}`);
-  lines.push(`Khách: ${t.booking.contactName} – ${t.booking.contactPhone} (${t.passengers} khách)`);
+  // Khách: ưu tiên hành khách đầu tiên trong danh sách hành khách; không có thì lấy tên khách hàng / người liên hệ
+  const guest = t.booking.passengers?.[0];
+  const guestName = guest?.fullName || t.booking.customer?.name || t.booking.contactName;
+  const guestPhone = guest?.phone || t.booking.contactPhone;
+  lines.push(`Khách: ${guestName} – ${guestPhone} (${t.passengers} khách)`);
   if (t.vehicle) lines.push(`Xe: ${t.vehicle.plateNumber} (${t.vehicle.vehicleType.name})${t.driver ? ` – Lái xe: ${t.driver.fullName} ${t.driver.phone}` : ''}`);
   if (t.partner) {
     lines.push(`Xe: ${t.vehicleType.name}${t.partnerPlate ? ` – ${t.partnerPlate}` : ''}`);

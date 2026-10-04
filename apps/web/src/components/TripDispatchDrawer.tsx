@@ -369,6 +369,13 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
               {trip.booking.customer?.name ? `${trip.booking.customer.name} · ` : ''}
               {trip.booking.contactName} – {trip.booking.contactPhone}
             </Descriptions.Item>
+            {trip.booking.passengers?.[0] && (
+              <Descriptions.Item label="Khách đi xe">
+                {trip.booking.passengers[0].fullName}
+                {trip.booking.passengers[0].phone && ` – ${trip.booking.passengers[0].phone}`}
+                <Typography.Text type="secondary"> (hành khách đầu tiên, dùng trong lệnh điều xe)</Typography.Text>
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="Yêu cầu xe">
               <b>{trip.vehicleType.name}</b> · {trip.passengers} khách{trip.days > 1 ? ` · ${trip.days} ngày` : ''}
             </Descriptions.Item>

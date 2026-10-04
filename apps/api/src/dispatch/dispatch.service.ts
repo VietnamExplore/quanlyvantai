@@ -11,7 +11,17 @@ const CLOSED: TripStatus[] = [TripStatus.HOAN_THANH, TripStatus.HUY];
 
 export const dispatchTripInclude = {
   booking: {
-    select: { id: true, code: true, customerRef: true, status: true, contactName: true, contactPhone: true, customer: { select: { id: true, name: true } } },
+    select: {
+      id: true,
+      code: true,
+      customerRef: true,
+      status: true,
+      contactName: true,
+      contactPhone: true,
+      customer: { select: { id: true, name: true } },
+      // Hành khách đầu tiên: dùng làm tên / SĐT khách trong lệnh điều xe
+      passengers: { orderBy: { seq: 'asc' }, take: 1, select: { fullName: true, phone: true } },
+    },
   },
   vehicleType: { select: { id: true, code: true, name: true, seats: true, maxPassengers: true } },
   service: { select: { code: true, name: true, color: true, pricingMode: true, hasFlight: true } },
