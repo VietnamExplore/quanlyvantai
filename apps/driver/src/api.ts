@@ -64,13 +64,19 @@ export async function loadAuthImage(path: string): Promise<string> {
     const data = await res.json().catch(() => null);
     throw new ApiError(res.status, data?.message ?? `Không tải được ảnh (${res.status})`);
   }
-  const blob = await res.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => (typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Ảnh không hợp lệ')));
-    reader.onerror = () => reject(new Error('Không đọc được ảnh'));
-    reader.readAsDataURL(blob);
-  });
+  // Đọc dạng arrayBuffer rồi tự mã hóa base64 (tránh Blob của React Native: chậm và báo cảnh báo)
+  const type = res.headers.get('content-type')?.split(';')[0] || 'image/jpeg';
+  return `data:${type};base64,${toBase64(new Uint8Array(await res.arrayBuffer()))}`;
+}
+
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+function toBase64(bytes: Uint8Array) {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const n = (bytes[i] << 16) | ((bytes[i + 1] ?? 0) << 8) | (bytes[i + 2] ?? 0);
+    out += B64[(n >> 18) & 63] + B64[(n >> 12) & 63] + (i + 1 < bytes.length ? B64[(n >> 6) & 63] : '=') + (i + 2 < bytes.length ? B64[n & 63] : '=');
+  }
+  return out;
 }
 
 /** Hook: tải ảnh cần đăng nhập (null = đang tải / không có) */

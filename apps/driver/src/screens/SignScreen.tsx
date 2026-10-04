@@ -84,9 +84,10 @@ const s = StyleSheet.create({
   image: { flex: 1, margin: 8 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 16, color: '#555' },
-  textWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 24 },
-  title: { fontSize: 140, lineHeight: 150, fontWeight: '900', color: '#000', textAlign: 'center', width: '100%' },
-  subtitle: { fontSize: 40, color: '#222', textAlign: 'center', marginTop: 12, width: '100%' },
+  // Chừa chỗ trên cho nút Đóng; chữ tự co vừa khung (không cố định khoảng cách dòng để chữ co được)
+  textWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 48, paddingTop: 72, paddingBottom: 28 },
+  title: { flexShrink: 1, fontSize: 120, fontWeight: '900', color: '#000', textAlign: 'center', width: '100%' },
+  subtitle: { fontSize: 34, color: '#333', textAlign: 'center', marginTop: 14, width: '100%' },
   toolbar: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', gap: 8, opacity: 0.85 },
   toolBtn: { backgroundColor: '#f0f0f0', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
   closeBtn: { backgroundColor: '#333' },
