@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime, routeText } from '../booking-utils';
+import { BookingStatusMenu } from '../components/BookingStatusMenu';
 import { EnumTag, Money, ServiceTag, useSalesStaffOptions } from '../components/common';
 import { PaidTag } from '../components/finance';
 import { BOOKING_STATUS, toOptions } from '../labels';
@@ -15,6 +16,7 @@ import type { Booking } from '../types';
 export default function BookingsPage() {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
+  const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
   const salesOptions = useSalesStaffOptions();
   const [q, setQ] = useState<string>();
   // ?status=BAO_GIA: mở sẵn bộ lọc (từ trang Tổng quan)
@@ -173,16 +175,19 @@ export default function BookingsPage() {
             key: 'edit',
             fixed: 'right',
             render: (_, r) => (
-              <Button
-                size="small"
-                icon={<EditOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/bookings/${r.id}?edit=1`);
-                }}
-              >
-                {r.status === 'HUY' || !hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH') ? 'Xem' : 'Sửa'}
-              </Button>
+              <Flex gap={6}>
+                <Button
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/bookings/${r.id}?edit=1`);
+                  }}
+                >
+                  {r.status === 'HUY' || !canEdit ? 'Xem' : 'Sửa'}
+                </Button>
+                {canEdit && <BookingStatusMenu booking={r} />}
+              </Flex>
             ),
           },
         ]}
