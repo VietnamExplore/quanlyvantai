@@ -90,16 +90,28 @@ export const formatBookingCode = (datePart: string, seq: number) => `${BOOKING_C
 export class BookingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll({ q, status, salesUserId, from, to }: BookingQueryDto) {
+  async findAll({ q, status, salesUserId, from, to, customerId, source, serviceType, vehicleTypeId, createdFrom, createdTo, payment }: BookingQueryDto) {
     const pickupFilter: Prisma.DateTimeFilter = {};
     if (from) pickupFilter.gte = new Date(`${from}T00:00:00+07:00`);
     if (to) pickupFilter.lte = new Date(`${to}T23:59:59.999+07:00`);
+    const createdFilter: Prisma.DateTimeFilter = {};
+    if (createdFrom) createdFilter.gte = new Date(`${createdFrom}T00:00:00+07:00`);
+    if (createdTo) createdFilter.lte = new Date(`${createdTo}T23:59:59.999+07:00`);
+    // Điều kiện trên chuyến (ngày đi, dịch vụ, loại xe) phải cùng thỏa trên một chuyến
+    const tripWhere: Prisma.BookingTripWhereInput = {
+      ...((from || to) && { pickupTime: pickupFilter }),
+      ...(serviceType && { serviceType }),
+      ...(vehicleTypeId && { vehicleTypeId }),
+    };
 
     const rows = await this.prisma.booking.findMany({
       where: {
-        status,
+        ...(status?.length && { status: { in: status } }),
         salesUserId,
-        ...((from || to) && { trips: { some: { pickupTime: pickupFilter } } }),
+        customerId,
+        source,
+        ...((createdFrom || createdTo) && { createdAt: createdFilter }),
+        ...(Object.keys(tripWhere).length && { trips: { some: tripWhere } }),
         ...(q && {
           OR: [
             { code: { contains: q, mode: 'insensitive' } },
@@ -118,7 +130,24 @@ export class BookingsService {
       orderBy: { createdAt: 'desc' },
       take: 500,
     });
-    return rows.map(withTotals);
+    const list = rows.map(withTotals);
+    if (!payment) return list;
+    // Tình trạng thu tiền tính từ tổng tiền & đã thu (giống trang Công nợ); booking hủy không tính nợ
+    return list.filter((b) => {
+      const unpriced = b.total <= 0 && b.paid <= 0;
+      switch (payment) {
+        case 'CHUA_GIA':
+          return unpriced && b.status !== BookingStatus.HUY;
+        case 'CHUA_THU':
+          return b.status !== BookingStatus.HUY && b.total > 0 && b.paid <= 0;
+        case 'MOT_PHAN':
+          return b.paid > 0 && b.paid < b.total;
+        case 'DU':
+          return b.total > 0 && b.paid >= b.total;
+        case 'CON_NO':
+          return b.status !== BookingStatus.HUY && (b.balance > 0 || unpriced);
+      }
+    });
   }
 
   async findOne(id: number) {

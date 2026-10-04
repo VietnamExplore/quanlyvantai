@@ -1,16 +1,16 @@
-import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Card, DatePicker, Flex, Grid, Input, Select, Table, Tooltip, Typography } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
-import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Button, Card, Flex, Grid, Table, Tooltip, Typography } from 'antd';
+import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime, routeText } from '../booking-utils';
+import { BookingFilterBar, useBookingFilters } from '../components/BookingFilters';
 import { BookingStatusMenu } from '../components/BookingStatusMenu';
-import { EnumTag, Money, ServiceTag, useSalesStaffOptions } from '../components/common';
+import { EnumTag, Money, ServiceTag, formatVnd } from '../components/common';
 import { PaidTag } from '../components/finance';
-import { BOOKING_STATUS, toOptions } from '../labels';
+import { BOOKING_STATUS } from '../labels';
 import type { Booking } from '../types';
 
 export default function BookingsPage() {
@@ -19,25 +19,16 @@ export default function BookingsPage() {
   const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
   // Màn hình dưới 1600px: nút thao tác chỉ hiện biểu tượng cho gọn bảng
   const compact = !Grid.useBreakpoint().xxl;
-  const salesOptions = useSalesStaffOptions();
-  const [q, setQ] = useState<string>();
-  // ?status=BAO_GIA: mở sẵn bộ lọc (từ trang Tổng quan)
-  const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState<string | undefined>(searchParams.get('status') ?? undefined);
-  const [salesUserId, setSalesUserId] = useState<number>();
-  const [range, setRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
-
-  const filters = {
-    q,
-    status,
-    salesUserId,
-    from: range?.[0]?.format('YYYY-MM-DD'),
-    to: range?.[1]?.format('YYYY-MM-DD'),
-  };
+  // Bộ lọc lưu trên đường dẫn (vd. ?status=BAO_GIA từ trang Tổng quan)
+  const filterState = useBookingFilters();
+  const { filters, active } = filterState;
   const { data = [], isFetching } = useQuery({
     queryKey: ['/bookings', filters],
     queryFn: () => api<Booking[]>('/bookings', { query: filters }),
   });
+  // Tổng của kết quả đang lọc (không tính booking đã hủy)
+  const live = data.filter((b) => b.status !== 'HUY');
+  const sum = (f: (b: Booking) => number) => live.reduce((t, b) => t + f(b), 0);
 
   return (
     <Card>
@@ -45,18 +36,32 @@ export default function BookingsPage() {
         <Typography.Title level={4} style={{ margin: 0 }}>
           Booking <Typography.Text type="secondary">({data.length})</Typography.Text>
         </Typography.Title>
-        <Flex gap={8} wrap>
-          <Input allowClear prefix={<SearchOutlined />} placeholder="Mã, tên, SĐT, địa điểm, lịch trình" style={{ width: 250 }} onChange={(e) => setQ(e.target.value || undefined)} />
-          <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Đi từ ngày', 'đến ngày']} onChange={(v) => setRange(v)} />
-          <Select allowClear placeholder="Trạng thái" style={{ width: 150 }} options={toOptions(BOOKING_STATUS)} value={status} onChange={setStatus} />
-          <Select allowClear placeholder="NV kinh doanh" style={{ width: 170 }} options={salesOptions} onChange={setSalesUserId} />
-          {hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH') && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/bookings/new')}>
-              Tạo booking
-            </Button>
-          )}
-        </Flex>
+        {canEdit && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/bookings/new')}>
+            Tạo booking
+          </Button>
+        )}
       </Flex>
+
+      <BookingFilterBar {...filterState} />
+
+      {data.length > 0 && (
+        <Flex gap={20} wrap style={{ marginBottom: 12, fontSize: 13, color: '#64748b' }}>
+          <span>
+            {active > 0 ? 'Kết quả lọc' : 'Tất cả'}: <b style={{ color: '#1e293b' }}>{data.length}</b> booking
+            {data.length >= 500 && ' (hiện 500 booking mới nhất — hãy lọc thêm)'}
+          </span>
+          <span>
+            Tổng tiền: <b style={{ color: '#1e293b' }}>{formatVnd(sum((b) => b.total))} đ</b>
+          </span>
+          <span>
+            Đã thu: <b style={{ color: '#16a34a' }}>{formatVnd(sum((b) => b.paid))} đ</b>
+          </span>
+          <span>
+            Còn phải thu: <b style={{ color: '#dc2626' }}>{formatVnd(sum((b) => Math.max(0, b.balance)))} đ</b>
+          </span>
+        </Flex>
+      )}
 
       <Table<Booking>
         rowKey="id"
@@ -64,6 +69,7 @@ export default function BookingsPage() {
         loading={isFetching}
         dataSource={data}
         pagination={{ pageSize: 30, hideOnSinglePage: true }}
+        locale={{ emptyText: active ? 'Không có booking nào khớp bộ lọc' : 'Chưa có booking' }}
         onRow={(r) => ({ onClick: () => navigate(`/bookings/${r.id}`), style: { cursor: 'pointer' } })}
         columns={[
           {

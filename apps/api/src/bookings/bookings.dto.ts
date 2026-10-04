@@ -150,9 +150,24 @@ export class ChangeStatusDto {
   @IsOptional() @IsString() cancelReason?: string;
 }
 
+export const PAYMENT_FILTERS = ['CHUA_THU', 'MOT_PHAN', 'DU', 'CHUA_GIA', 'CON_NO'] as const;
+
 export class BookingQueryDto {
   @IsOptional() @IsString() q?: string;
-  @IsOptional() @IsEnum(BookingStatus) status?: BookingStatus;
+  /** Một hoặc nhiều trạng thái, cách nhau dấu phẩy: XAC_NHAN,HOAN_THANH */
+  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').filter(Boolean) : value))
+  @IsOptional()
+  @IsEnum(BookingStatus, { each: true })
+  status?: BookingStatus[];
+  @IsOptional() @IsInt() customerId?: number;
+  @IsOptional() @IsString() source?: string;
+  @IsOptional() @IsString() serviceType?: string;
+  @IsOptional() @IsInt() vehicleTypeId?: number;
+  /** Lọc theo ngày tạo booking: YYYY-MM-DD */
+  @IsOptional() @IsDateString() createdFrom?: string;
+  @IsOptional() @IsDateString() createdTo?: string;
+  /** Tình trạng thu tiền */
+  @IsOptional() @IsIn(PAYMENT_FILTERS) payment?: (typeof PAYMENT_FILTERS)[number];
   @IsOptional() @IsInt() salesUserId?: number;
   /** Lọc theo ngày đón của chuyến: YYYY-MM-DD */
   @IsOptional() @IsDateString() from?: string;
