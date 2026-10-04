@@ -27,7 +27,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { newKey, tripAmount, type TripDraft } from "../booking-utils";
-import type { PriceLine, PriceResult, RoutePrice, Surcharge } from "../types";
+import type { PriceLine, PriceResult, RentalRateRow, RoutePrice, Surcharge } from "../types";
 import {
   Money,
   MoneyInput,
@@ -41,6 +41,7 @@ const CALC_KEYS = [
   "serviceType",
   "vehicleTypeId",
   "routePriceId",
+  "rentalRateId",
   "pickupTime",
   "days",
   "halfDay",
@@ -63,6 +64,10 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
   const { data: routes = [] } = useQuery({
     queryKey: ["/route-prices", {}],
     queryFn: () => api<RoutePrice[]>("/route-prices"),
+  });
+  const { data: rentalTypes = [] } = useQuery({
+    queryKey: ["/rental-rates"],
+    queryFn: () => api<RentalRateRow[]>("/rental-rates"),
   });
   const { data: surchargeList = [] } = useQuery({
     queryKey: ["/surcharges", {}],
@@ -146,6 +151,16 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
       };
     });
 
+  // Gói giá thuê theo ngày của loại xe đang chọn
+  const rentalOptions =
+    rentalTypes
+      .find((t) => t.id === vehicleTypeId)
+      ?.rentalRates.filter((r) => r.isActive || r.id === form.getFieldValue("rentalRateId"))
+      .map((r) => ({
+        value: r.id,
+        label: `${r.name} — ${Number(r.fullDayPrice).toLocaleString("vi-VN")}đ/ngày (${r.fullDayHours}h/${r.fullDayKm}km)`,
+      })) ?? [];
+
   async function recalc() {
     const v = form.getFieldsValue();
     if (!v.serviceType || !v.vehicleTypeId || !v.pickupTime) {
@@ -178,6 +193,7 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
           serviceType: v.serviceType,
           vehicleTypeId: v.vehicleTypeId,
           routePriceId: v.routePriceId ?? null,
+          rentalRateId: v.rentalRateId ?? null,
           pickupTime: (v.pickupTime as Dayjs).toISOString(),
           days: v.days || 1,
           halfDay: !!v.halfDay,
@@ -192,6 +208,8 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
         unitPrice: res.unitPrice,
         endTime: dayjs(res.endTime),
         surcharges: [...res.surcharges, ...manual],
+        // Chưa chọn gói: hiện gói hệ thống đã dùng để tính
+        ...(res.rentalRateId && !v.rentalRateId && { rentalRateId: res.rentalRateId }),
       });
       // Tự điền chi phí = giá mua đối tác của tuyến, trừ khi nhân viên đã tự nhập con số khác
       const curCost = v.estimatedCost;
@@ -229,6 +247,8 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
         });
     }
     if ("vehicleTypeId" in changed) {
+      // Gói giá thuê thuộc loại xe cũ: bỏ chọn để tính theo gói của loại xe mới
+      form.setFieldsValue({ rentalRateId: null });
       // Tuyến đang chọn không có giá cho loại xe mới thì bỏ chọn
       const route = routes.find(
         (r) => r.id === form.getFieldValue("routePriceId"),
@@ -289,6 +309,12 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
       pickupTime: (v.pickupTime as Dayjs).toISOString(),
       endTime: v.endTime ? (v.endTime as Dayjs).toISOString() : null,
       routePriceId: v.routePriceId ?? null,
+      // Gói giá chỉ áp dụng khi thuê theo ngày không chọn tuyến
+      rentalRateId: isRental && !v.routePriceId ? (v.rentalRateId ?? null) : null,
+      rentalRateName:
+        isRental && !v.routePriceId
+          ? rentalTypes.find((t) => t.id === v.vehicleTypeId)?.rentalRates.find((r) => r.id === v.rentalRateId)?.name
+          : undefined,
       pickupLocationId: v.pickupLocationId ?? null,
       dropoffLocationId: v.dropoffLocationId ?? null,
       dropoffAddress: v.dropoffAddress || null,
@@ -425,6 +451,20 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
 
           {isRental && !routePriceId && (
             <>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="rentalRateId"
+                  label="Gói giá thuê"
+                  tooltip="Khai báo các gói ở Bảng giá → Giá thuê theo ngày"
+                >
+                  <Select
+                    placeholder={vehicleTypeId ? "Gói đầu tiên của loại xe" : "Chọn loại xe trước"}
+                    disabled={!vehicleTypeId}
+                    options={rentalOptions}
+                    notFoundContent="Loại xe này chưa có gói giá thuê"
+                  />
+                </Form.Item>
+              </Col>
               <Col xs={8} md={4}>
                 <Form.Item name="days" label="Số ngày">
                   <InputNumber min={1} style={{ width: "100%" }} />

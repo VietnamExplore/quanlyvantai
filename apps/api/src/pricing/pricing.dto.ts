@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { SurchargeRule } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -55,6 +55,13 @@ export class UpdateRoutePriceDto extends PartialType(CreateRoutePriceDto) {}
 // ───── Giá thuê theo ngày ─────
 
 export class RentalRateDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty({ message: 'Tên gói giá không được để trống' })
+  name: string;
+
+  @IsOptional() @IsInt() sortOrder?: number;
+  @IsOptional() @IsBoolean() isActive?: boolean;
   @IsNumber() @Min(0) fullDayPrice: number;
   @IsOptional() @IsInt() @Min(1) fullDayHours?: number;
   @IsOptional() @IsInt() @Min(0) fullDayKm?: number;
@@ -65,6 +72,12 @@ export class RentalRateDto {
   @IsOptional() @IsNumber() @Min(0) extraHourPrice?: number;
   @IsOptional() @IsNumber() @Min(0) driverOvernightFee?: number;
 }
+
+export class CreateRentalRateDto extends RentalRateDto {
+  @IsInt() vehicleTypeId: number;
+}
+
+export class UpdateRentalRateDto extends PartialType(RentalRateDto) {}
 
 // ───── Phụ thu & ngày lễ ─────
 
@@ -98,6 +111,8 @@ export class CalculatePriceDto {
   @IsString() serviceType: string;
   @IsInt() vehicleTypeId: number;
   @IsOptional() @IsInt() routePriceId?: number | null;
+  /** Gói giá thuê theo ngày; bỏ trống = gói đầu tiên của loại xe */
+  @IsOptional() @IsInt() rentalRateId?: number | null;
   @IsDateString() pickupTime: string;
   @IsOptional() @IsInt() @Min(1) days?: number;
   /** Thuê nửa ngày (chỉ áp dụng khi không chọn tuyến) */

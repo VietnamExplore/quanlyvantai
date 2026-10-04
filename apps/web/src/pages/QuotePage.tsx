@@ -114,6 +114,7 @@ export default function QuotePage() {
                 <td className="c">{i + 1}</td>
                 <td>
                   <b>{t.service?.name ?? t.serviceType}</b>
+                  {t.rentalRate && t.rentalRate.name !== 'Giá chuẩn' && <span className="muted small"> · Gói {t.rentalRate.name}</span>}
                   <div>{routeText(t)}</div>
                   {t.flightNumber && <div className="muted small">Chuyến bay: {t.flightNumber}</div>}
                   {t.itinerary && <pre className="muted small">{t.itinerary}</pre>}

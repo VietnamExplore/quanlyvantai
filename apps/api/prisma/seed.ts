@@ -45,11 +45,11 @@ async function main() {
     const type = await prisma.vehicleType.upsert({ where: { code: vt.code }, update: {}, create: vt });
     const r = sampleRentalRates[vt.code];
     if (r) {
-      await prisma.rentalRate.upsert({
-        where: { vehicleTypeId: type.id },
-        update: {},
-        create: {
+      const exists = await prisma.rentalRate.count({ where: { vehicleTypeId: type.id } });
+      if (!exists) await prisma.rentalRate.create({
+        data: {
           vehicleTypeId: type.id,
+          name: 'Giá chuẩn',
           fullDayPrice: r[0],
           halfDayPrice: r[1],
           extraKmPrice: r[2],

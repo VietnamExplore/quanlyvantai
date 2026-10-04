@@ -154,6 +154,12 @@ export interface RoutePrice extends Ref {
 }
 
 export interface RentalRate {
+  id: number;
+  vehicleTypeId: number;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+  _count?: { trips: number };
   fullDayPrice: string;
   fullDayHours: number;
   fullDayKm: number;
@@ -169,7 +175,7 @@ export interface RentalRateRow extends Ref {
   code: string;
   name: string;
   seats: number;
-  rentalRate: RentalRate | null;
+  rentalRates: RentalRate[];
 }
 
 export interface Surcharge extends Ref {
@@ -198,6 +204,7 @@ export interface PriceResult {
   surcharges: PriceLine[];
   amount: number;
   partnerCost: number | null;
+  rentalRateId: number | null;
   endTime: string;
 }
 
@@ -217,6 +224,8 @@ export interface BookingTrip extends Ref {
   vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number };
   routePriceId: number | null;
   routePrice: { id: number; name: string } | null;
+  rentalRateId: number | null;
+  rentalRate?: { id: number; name: string } | null;
   days: number;
   extraKm: number;
   extraHours: number;
