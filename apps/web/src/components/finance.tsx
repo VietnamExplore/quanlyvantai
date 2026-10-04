@@ -1,9 +1,9 @@
 import { DeleteOutlined, DollarOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Card, Col, DatePicker, Descriptions, Empty, Flex, Form, Input, Modal, Popconfirm, Radio, Row, Space, Table, Tag, Typography } from 'antd';
+import { Alert, App, Button, Card, Image, Col, DatePicker, Descriptions, Empty, Flex, Form, Input, Modal, Popconfirm, Radio, Row, Space, Table, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useState, type ReactNode } from 'react';
-import { api } from '../api';
+import { api, apiBlob } from '../api';
 import { useAuth } from '../auth';
 import { PAYMENT_METHOD, toOptions } from '../labels';
 import type { Booking, PaymentMethod, TripCostRow } from '../types';
@@ -306,6 +306,15 @@ export function TripCostsSection({ tripId, amount, partnerCost, estimatedCost }:
   const [adding, setAdding] = useState(false);
   const canAdd = hasRole('ADMIN', 'DIEU_HANH', 'KE_TOAN');
   const canDelete = hasRole('ADMIN', 'KE_TOAN');
+  // Xem ảnh hóa đơn lái xe chụp
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  async function showReceipt(id: number) {
+    try {
+      setReceiptUrl(URL.createObjectURL(await apiBlob(`/trip-costs/${id}/receipt`)));
+    } catch (e) {
+      message.error((e as Error).message);
+    }
+  }
 
   const { data: costs = [], refetch } = useQuery({ queryKey: ['/trips/costs', tripId], queryFn: () => api<TripCostRow[]>(`/trips/${tripId}/costs`) });
   const extra = costs.reduce((s, c) => s + Number(c.amount), 0);
@@ -352,6 +361,22 @@ export function TripCostsSection({ tripId, amount, partnerCost, estimatedCost }:
 
   return (
     <div>
+      {receiptUrl && (
+        <Image
+          style={{ display: 'none' }}
+          src={receiptUrl}
+          preview={{
+            open: true,
+            src: receiptUrl,
+            onOpenChange: (open) => {
+              if (!open) {
+                URL.revokeObjectURL(receiptUrl);
+                setReceiptUrl(null);
+              }
+            },
+          }}
+        />
+      )}
       <Table<TripCostRow>
         size="small"
         rowKey="id"
@@ -366,6 +391,11 @@ export function TripCostsSection({ tripId, amount, partnerCost, estimatedCost }:
               <>
                 {c.category.name}
                 {c.byDriver && <Tag style={{ marginLeft: 4 }}>App lái xe</Tag>}
+                {c.receiptFile && (
+                  <Button size="small" type="link" style={{ paddingInline: 4 }} onClick={() => showReceipt(c.id)}>
+                    📷 Ảnh hóa đơn
+                  </Button>
+                )}
                 {c.note && <div><Typography.Text type="secondary">{c.note}</Typography.Text></div>}
               </>
             ),

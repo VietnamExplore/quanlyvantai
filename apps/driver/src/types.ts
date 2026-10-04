@@ -27,7 +27,30 @@ export interface Trip {
   vehicleType: { name: string };
   service?: { name: string };
   vehicle: { plateNumber: string } | null;
-  booking: { code: string; contactName: string; contactPhone: string; customer: { name: string } | null };
+  booking: {
+    code: string;
+    contactName: string;
+    contactPhone: string;
+    customer: { name: string } | null;
+    /** Người liên hệ trong chuyến: HDV | TRUONG_DOAN */
+    leaderRole?: string | null;
+    leaderName?: string | null;
+    leaderPhone?: string | null;
+    passengers?: Passenger[];
+    signTitle?: string | null;
+    signSubtitle?: string | null;
+    /** Có file bảng đón khách gửi: image/png, image/jpeg, image/webp, application/pdf */
+    signFileType?: string | null;
+  };
+}
+
+export interface Passenger {
+  seq: number;
+  fullName: string;
+  gender: string | null;
+  nationality: string | null;
+  phone: string | null;
+  note: string | null;
 }
 
 export interface CostCategory {
@@ -44,6 +67,8 @@ export interface TripCost {
   spentAt: string;
   note: string | null;
   byDriver: boolean;
+  /** Có ảnh hóa đơn / vé */
+  receiptFile?: string | null;
 }
 
 export interface DriverProfile {

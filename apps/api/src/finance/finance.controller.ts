@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +14,7 @@ import {
   UpdateVoucherDto,
 } from './finance.dto';
 import { FinanceService } from './finance.service';
+import { removeReceipt, sendReceipt } from './receipts';
 
 const ACCOUNTING = [Role.ADMIN, Role.KE_TOAN];
 
@@ -65,7 +67,14 @@ export class FinanceController {
   @Roles(...ACCOUNTING)
   async removeTripCost(@Param('id', ParseIntPipe) id: number) {
     const cost = await this.prisma.tripCost.delete({ where: { id } });
+    removeReceipt(cost.receiptFile);
     return this.finance.tripCosts(cost.tripId);
+  }
+
+  /** Ảnh hóa đơn / vé lái xe chụp kèm khoản chi phí */
+  @Get('trip-costs/:id/receipt')
+  async receipt(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    sendReceipt(res, await this.prisma.tripCost.findUnique({ where: { id }, select: { receiptFile: true, receiptType: true } }));
   }
 
   // ───── Thu tiền khách ─────

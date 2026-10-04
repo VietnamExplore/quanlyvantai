@@ -1,10 +1,36 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
 import { colors, fmtTime, NEXT_STEP, SERVICE } from '../theme';
-import type { Trip } from '../types';
+import type { Passenger, Trip } from '../types';
 import { Button, Card, Row, StatusBadge, styles as ui } from '../ui';
+import { SignScreen } from './SignScreen';
 import { TripCosts } from './TripCosts';
+
+const LEADER_ROLE: Record<string, string> = { HDV: 'Hướng dẫn viên', TRUONG_DOAN: 'Trưởng đoàn' };
+const GENDER: Record<string, string> = { NAM: 'Nam', NU: 'Nữ' };
+/** Số khách hiện sẵn; nhiều hơn thì bấm "Xem tất cả" */
+const PAX_PREVIEW = 5;
+
+const call = (phone: string) => Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`);
+
+function PassengerRow({ p }: { p: Passenger }) {
+  const info = [p.gender && GENDER[p.gender], p.nationality].filter(Boolean).join(' · ');
+  return (
+    <View style={s.paxRow}>
+      <Text style={s.paxSeq}>{p.seq}.</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={s.paxName}>{p.fullName}</Text>
+        {(info || p.note) && <Text style={s.paxInfo}>{[info, p.note].filter(Boolean).join(' · ')}</Text>}
+      </View>
+      {p.phone && (
+        <Pressable onPress={() => call(p.phone!)} hitSlop={8} style={s.paxCall}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>📞 {p.phone}</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
 
 const openMap = (address: string) =>
   Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`);
@@ -15,6 +41,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   const [busy, setBusy] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState('');
+  const [signOpen, setSignOpen] = useState(false);
+  const [allPax, setAllPax] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -83,6 +111,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   }
 
   const phone = trip.booking.contactPhone;
+  const b = trip.booking;
+  const pax = b.passengers ?? [];
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 140 }}>
@@ -95,6 +125,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           <Text style={s.sub}>
             {trip.service?.name ?? SERVICE[trip.serviceType] ?? trip.serviceType} · dự kiến xong {fmtTime(trip.endTime)}
           </Text>
+          <Button title="🪧 Mở bảng đón khách" onPress={() => setSignOpen(true)} style={{ marginTop: 12 }} />
         </Card>
 
         <Card>
@@ -123,6 +154,32 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           </View>
         </Card>
 
+        {(b.leaderName || pax.length > 0) && (
+          <Card>
+            <Text style={s.section}>Đoàn khách{pax.length ? ` (${pax.length} người)` : ''}</Text>
+            {b.leaderName && (
+              <View style={s.leader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.leaderRole}>{LEADER_ROLE[b.leaderRole ?? ''] ?? 'Người liên hệ trong chuyến'}</Text>
+                  <Text style={s.leaderName}>{b.leaderName}</Text>
+                </View>
+                {b.leaderPhone && <Button title={`📞 ${b.leaderPhone}`} onPress={() => call(b.leaderPhone!)} />}
+              </View>
+            )}
+            {(allPax ? pax : pax.slice(0, PAX_PREVIEW)).map((p) => (
+              <PassengerRow key={p.seq} p={p} />
+            ))}
+            {pax.length > PAX_PREVIEW && (
+              <Button
+                title={allPax ? 'Thu gọn' : `Xem tất cả ${pax.length} khách`}
+                variant="ghost"
+                onPress={() => setAllPax(!allPax)}
+                style={{ marginTop: 4 }}
+              />
+            )}
+          </Card>
+        )}
+
         <Card>
           <Text style={s.section}>Xe & ghi chú</Text>
           <Row label="Xe">{trip.vehicle ? `${trip.vehicle.plateNumber} (${trip.vehicleType.name})` : trip.vehicleType.name}</Row>
@@ -145,6 +202,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           {trip.status === 'DA_GAN' && <Button title="Từ chối chuyến" variant="danger" onPress={() => setRejectOpen(true)} style={{ marginTop: 8 }} />}
         </View>
       )}
+
+      {signOpen && <SignScreen trip={trip} onClose={() => setSignOpen(false)} />}
 
       <Modal visible={rejectOpen} transparent animationType="fade" onRequestClose={() => setRejectOpen(false)}>
         <View style={s.modalBg}>
@@ -170,6 +229,14 @@ const s = StyleSheet.create({
   address: { fontSize: 17, color: colors.text, lineHeight: 23 },
   contactRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
   dispatchNote: { backgroundColor: '#fffbe6', borderRadius: 8, padding: 10, marginTop: 10 },
+  leader: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eef5ff', borderRadius: 10, padding: 10, marginTop: 6, marginBottom: 6 },
+  leaderRole: { fontSize: 12, color: colors.primary, fontWeight: '700', textTransform: 'uppercase' },
+  leaderName: { fontSize: 17, fontWeight: '700', color: colors.text, marginTop: 2 },
+  paxRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  paxSeq: { width: 26, color: colors.muted, fontSize: 14 },
+  paxName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  paxInfo: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  paxCall: { marginLeft: 8 },
   bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 20, backgroundColor: colors.card, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
   modal: { backgroundColor: '#fff', borderRadius: 14, padding: 20 },

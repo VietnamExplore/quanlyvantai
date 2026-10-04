@@ -32,7 +32,16 @@
         {
           "color": "#1668dc"
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Cho phép chụp ảnh hóa đơn, vé cầu đường để gửi văn phòng.",
+          "photosPermission": "Cho phép chọn ảnh hóa đơn có sẵn trong máy.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-screen-orientation"
     ],
     "extra": {
       "eas": {

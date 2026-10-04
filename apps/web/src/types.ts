@@ -300,6 +300,8 @@ export interface TripCostRow {
   spentAt: string;
   note: string | null;
   byDriver: boolean;
+  /** Ảnh hóa đơn / vé lái xe chụp trên app */
+  receiptFile?: string | null;
   createdById: number | null;
   createdBy: { fullName: string } | null;
 }

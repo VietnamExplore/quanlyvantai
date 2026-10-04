@@ -1,11 +1,41 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api } from '../api';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { api, apiUpload, authImage } from '../api';
 import { colors, fmtDate } from '../theme';
 import type { CostCategory, TripCost } from '../types';
 import { Button, Card, styles as ui } from '../ui';
 
 const vnd = (v: number | string) => `${Number(v).toLocaleString('vi-VN')}đ`;
+
+type Photo = { uri: string; name: string; type: string };
+
+/** Chụp ảnh hóa đơn (camera) hoặc chọn ảnh có sẵn trong máy; ảnh được nén nhẹ cho nhanh */
+async function pickPhoto(source: 'camera' | 'library'): Promise<Photo | null> {
+  const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.6 };
+  if (source === 'camera') {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Chưa cho phép dùng camera', 'Vào Cài đặt điện thoại → Ứng dụng để cho phép camera.');
+      return null;
+    }
+  }
+  const res = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+  if (res.canceled || !res.assets?.length) return null;
+  const a = res.assets[0];
+  const type = a.mimeType ?? 'image/jpeg';
+  return { uri: a.uri, type, name: a.fileName ?? `hoa-don-${Date.now()}.${type.split('/')[1] ?? 'jpg'}` };
+}
+
+/** Hỏi chụp mới hay chọn ảnh có sẵn */
+function askPhoto(onPicked: (p: Photo) => void) {
+  const go = (src: 'camera' | 'library') => pickPhoto(src).then((p) => p && onPicked(p)).catch((e) => Alert.alert('Không lấy được ảnh', (e as Error).message));
+  Alert.alert('Ảnh hóa đơn / vé', undefined, [
+    { text: '📷 Chụp ảnh', onPress: () => go('camera') },
+    { text: '🖼 Chọn ảnh có sẵn', onPress: () => go('library') },
+    { text: 'Thôi', style: 'cancel' },
+  ]);
+}
 
 /** Chi phí chuyến do lái xe nhập: xăng dầu, cầu đường, ăn ở… */
 export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean }) {
@@ -16,6 +46,9 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [photo, setPhoto] = useState<Photo | null>(null);
+  const [viewing, setViewing] = useState<TripCost | null>(null);
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -40,16 +73,43 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
     if (!value) return Alert.alert('Nhập số tiền');
     setBusy(true);
     try {
-      setCosts(await api<TripCost[]>(`/driver/trips/${tripId}/costs`, { method: 'POST', body: { categoryCode: category, amount: value, note: note.trim() || null } }));
+      const before = new Set(costs.map((c) => c.id));
+      let list = await api<TripCost[]>(`/driver/trips/${tripId}/costs`, { method: 'POST', body: { categoryCode: category, amount: value, note: note.trim() || null } });
+      setCosts(list);
+      // Khoản vừa tạo = khoản mới xuất hiện trong danh sách
+      const created = list.find((c) => !before.has(c.id) && c.byDriver);
+      if (photo && created) {
+        try {
+          list = await apiUpload<TripCost[]>(`/driver/trip-costs/${created.id}/receipt`, photo);
+          setCosts(list);
+        } catch (e) {
+          Alert.alert('Đã lưu chi phí nhưng chưa gửi được ảnh', `${(e as Error).message}\nBấm "+ Ảnh" ở khoản chi phí để gửi lại.`);
+        }
+      }
       setAdding(false);
       setCategory(null);
       setAmount('');
       setNote('');
+      setPhoto(null);
     } catch (e) {
       Alert.alert('Không lưu được', (e as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  /** Thêm / thay ảnh cho khoản chi phí đã lưu */
+  function attach(c: TripCost) {
+    askPhoto(async (p) => {
+      setUploadingId(c.id);
+      try {
+        setCosts(await apiUpload<TripCost[]>(`/driver/trip-costs/${c.id}/receipt`, p));
+      } catch (e) {
+        Alert.alert('Không gửi được ảnh', (e as Error).message);
+      } finally {
+        setUploadingId(null);
+      }
+    });
   }
 
   function remove(c: TripCost) {
@@ -87,6 +147,20 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
             </Text>
           </View>
           <Text style={s.amount}>{vnd(c.amount)}</Text>
+          {uploadingId === c.id ? (
+            <ActivityIndicator style={{ marginLeft: 10 }} color={colors.primary} />
+          ) : c.receiptFile ? (
+            <Pressable onPress={() => setViewing(c)} hitSlop={8} style={s.photoBtn}>
+              <Text style={s.photoBtnText}>📷 Xem</Text>
+            </Pressable>
+          ) : (
+            c.byDriver &&
+            canAdd && (
+              <Pressable onPress={() => attach(c)} hitSlop={8} style={[s.photoBtn, s.photoAdd]}>
+                <Text style={[s.photoBtnText, { color: colors.muted }]}>+ Ảnh</Text>
+              </Pressable>
+            )
+          )}
           {c.byDriver && (
             <Pressable onPress={() => remove(c)} hitSlop={10} style={{ marginLeft: 10 }}>
               <Text style={{ color: colors.danger, fontSize: 18 }}>✕</Text>
@@ -116,12 +190,44 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
             placeholder="500.000"
           />
           <TextInput placeholderTextColor={colors.muted} style={ui.input} value={note} onChangeText={setNote} placeholder="Ghi chú (không bắt buộc)" />
+          <Text style={ui.label}>Ảnh hóa đơn / vé (không bắt buộc)</Text>
+          {photo ? (
+            <View style={s.preview}>
+              <Image source={{ uri: photo.uri }} style={s.previewImg} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Button title="Đổi ảnh" variant="outline" onPress={() => askPhoto(setPhoto)} />
+                <Button title="Bỏ ảnh" variant="ghost" onPress={() => setPhoto(null)} />
+              </View>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <Button title="📷 Chụp hóa đơn" variant="outline" onPress={() => pickPhoto('camera').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
+              <Button title="🖼 Chọn ảnh" variant="outline" onPress={() => pickPhoto('library').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
+            </View>
+          )}
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button title="Hủy" variant="ghost" onPress={() => setAdding(false)} style={{ flex: 1 }} />
+            <Button
+              title="Hủy"
+              variant="ghost"
+              onPress={() => {
+                setAdding(false);
+                setPhoto(null);
+              }}
+              style={{ flex: 1 }}
+            />
             <Button title="Lưu chi phí" onPress={add} loading={busy} style={{ flex: 2 }} />
           </View>
         </View>
       )}
+
+      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
+        <Pressable style={s.viewer} onPress={() => setViewing(null)}>
+          {viewing && <Image source={authImage(`/driver/trip-costs/${viewing.id}/receipt`)} style={s.viewerImg} resizeMode="contain" />}
+          <Text style={s.viewerHint}>
+            {viewing ? `${viewing.category.name}: ${vnd(viewing.amount)}` : ''} · bấm để đóng
+          </Text>
+        </Pressable>
+      </Modal>
     </Card>
   );
 }
@@ -140,4 +246,12 @@ const s = StyleSheet.create({
   chipActive: { borderColor: colors.primary, backgroundColor: '#e6f0fb' },
   chipText: { fontSize: 14, color: colors.text2 },
   chipTextActive: { color: colors.primary, fontWeight: '600' },
+  photoBtn: { marginLeft: 10, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e6f0fb' },
+  photoAdd: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' },
+  photoBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  preview: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 12 },
+  previewImg: { width: 96, height: 96, borderRadius: 8, backgroundColor: '#eee' },
+  viewer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', padding: 12 },
+  viewerImg: { flex: 1 },
+  viewerHint: { color: '#fff', textAlign: 'center', paddingVertical: 12, fontSize: 14 },
 });

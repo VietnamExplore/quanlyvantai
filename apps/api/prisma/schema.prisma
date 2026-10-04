@@ -516,6 +516,8 @@ model TripCost {
   spentAt      DateTime     @default(now()) @db.Date
   note         String?
   byDriver     Boolean      @default(false) // Lái xe nhập trên app
+  receiptFile  String? // Ảnh hóa đơn / vé (lưu trong uploads/receipts)
+  receiptType  String? // image/jpeg, image/png, image/webp
   createdById  Int?
   createdBy    User?        @relation("CostCreator", fields: [createdById], references: [id])
   createdAt    DateTime     @default(now())

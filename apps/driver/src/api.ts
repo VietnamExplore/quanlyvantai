@@ -47,6 +47,26 @@ export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
 }
 
+/** Ảnh cần đăng nhập mới xem được: dùng làm source của <Image> */
+export const authImage = (path: string) => ({ uri: `${serverUrl}/api${path}`, headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+
+/** Gửi một file ảnh lên máy chủ (trường "file") */
+export async function apiUpload<T = unknown>(path: string, file: { uri: string; name: string; type: string }): Promise<T> {
+  if (!serverUrl) throw new ApiError(0, 'Chưa nhập địa chỉ máy chủ');
+  const body = new FormData();
+  // React Native gửi file theo dạng { uri, name, type }
+  body.append('file', file as unknown as Blob);
+  let res: Response;
+  try {
+    res = await fetch(`${serverUrl}/api${path}`, { method: 'POST', body, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new ApiError(0, 'Không gửi được ảnh. Kiểm tra mạng điện thoại.');
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, Array.isArray(data?.message) ? data.message.join('\n') : (data?.message ?? `Lỗi máy chủ (${res.status})`));
+  return data as T;
+}
+
 export async function api<T = unknown>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
   if (!serverUrl) throw new ApiError(0, 'Chưa nhập địa chỉ máy chủ');
   let res: Response;

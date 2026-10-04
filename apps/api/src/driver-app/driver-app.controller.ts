@@ -10,12 +10,20 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import { existsSync } from 'fs';
 import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
 import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { CreateTripCostDto } from '../finance/finance.dto';
 import { FinanceService } from '../finance/finance.service';
+import { receiptUpload, removeReceipt, sendReceipt } from '../finance/receipts';
+import { SIGN_DIR } from '../bookings/sign-file.controller';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Bước kế tiếp hợp lệ mà lái xe được bấm */
@@ -63,7 +71,23 @@ const driverTripSelect = {
   vehicleType: { select: { name: true } },
   service: { select: { name: true } },
   vehicle: { select: { plateNumber: true } },
-  booking: { select: { code: true, contactName: true, contactPhone: true, customer: { select: { name: true } } } },
+  booking: {
+    select: {
+      code: true,
+      contactName: true,
+      contactPhone: true,
+      customer: { select: { name: true } },
+      // Người liên hệ trong chuyến (HDV / trưởng đoàn) và danh sách khách (không gửi số giấy tờ tùy thân)
+      leaderRole: true,
+      leaderName: true,
+      leaderPhone: true,
+      passengers: { select: { seq: true, fullName: true, gender: true, nationality: true, phone: true, note: true }, orderBy: { seq: 'asc' } },
+      // Bảng đón khách
+      signTitle: true,
+      signSubtitle: true,
+      signFileType: true,
+    },
+  },
 } satisfies Prisma.BookingTripSelect;
 
 @Controller('driver')
@@ -141,6 +165,19 @@ export class DriverAppController {
     return { message: 'Đã từ chối chuyến, văn phòng sẽ điều xe khác' };
   }
 
+  /** File bảng đón khách gửi (ảnh / PDF) của booking có chuyến này */
+  @Get('trips/:id/sign-file')
+  async signFile(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const trip = await this.prisma.bookingTrip.findFirst({
+      where: { id, driverId: this.driverId(user) },
+      select: { booking: { select: { signFile: true, signFileType: true } } },
+    });
+    const b = trip?.booking;
+    if (!b?.signFile || !existsSync(`${SIGN_DIR}/${b.signFile}`)) throw new NotFoundException('Booking chưa có file bảng đón');
+    res.setHeader('Content-Type', b.signFileType ?? 'application/octet-stream');
+    res.sendFile(b.signFile, { root: SIGN_DIR });
+  }
+
   // ───── Chi phí chuyến do lái xe nhập ─────
 
   private async ownTrip(user: AuthUser, id: number) {
@@ -169,7 +206,31 @@ export class DriverAppController {
     const cost = await this.prisma.tripCost.findUnique({ where: { id }, include: { trip: true } });
     if (!cost || cost.trip.driverId !== this.driverId(user) || cost.createdById !== user.id) throw new NotFoundException('Không tìm thấy chi phí');
     await this.prisma.tripCost.delete({ where: { id } });
+    removeReceipt(cost.receiptFile);
     return this.finance.tripCosts(cost.tripId);
+  }
+
+  /** Ảnh hóa đơn / vé cho khoản chi phí lái xe vừa nhập (chụp hoặc chọn từ máy) */
+  @Post('trip-costs/:id/receipt')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', receiptUpload))
+  async uploadReceipt(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Chưa chọn ảnh');
+    const cost = await this.prisma.tripCost.findUnique({ where: { id }, include: { trip: true } });
+    if (!cost || cost.trip.driverId !== this.driverId(user) || cost.createdById !== user.id) {
+      removeReceipt(file.filename);
+      throw new NotFoundException('Không tìm thấy chi phí');
+    }
+    await this.prisma.tripCost.update({ where: { id }, data: { receiptFile: file.filename, receiptType: file.mimetype } });
+    removeReceipt(cost.receiptFile);
+    return this.finance.tripCosts(cost.tripId);
+  }
+
+  @Get('trip-costs/:id/receipt')
+  async receipt(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const cost = await this.prisma.tripCost.findUnique({ where: { id }, include: { trip: true } });
+    if (!cost || cost.trip.driverId !== this.driverId(user)) throw new NotFoundException('Không tìm thấy chi phí');
+    sendReceipt(res, cost);
   }
 
   @Post('push-token')
