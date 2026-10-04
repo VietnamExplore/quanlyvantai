@@ -1,4 +1,16 @@
-import { ArrowDownOutlined, ArrowUpOutlined, MinusOutlined } from '@ant-design/icons';
+import {
+  ArrowDownOutlined,
+  ArrowRightOutlined,
+  ArrowUpOutlined,
+  CalendarOutlined,
+  CarOutlined,
+  DollarOutlined,
+  FileTextOutlined,
+  MinusOutlined,
+  PercentageOutlined,
+  RiseOutlined,
+  WalletOutlined,
+} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Card, Col, DatePicker, Empty, Flex, Row, Segmented, Statistic, Table, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -90,12 +102,60 @@ function Delta({ cur, prev }: { cur: number; prev: number }) {
   );
 }
 
-function KpiTile({ title, value, suffix, footer }: { title: string; value: number | string; suffix?: string; footer?: ReactNode }) {
+/** Ô biểu tượng tròn góc, nền nhạt cùng tông màu */
+function IconBadge({ icon, color }: { icon: ReactNode; color: string }) {
+  return (
+    <span
+      style={{
+        width: 42,
+        height: 42,
+        flex: 'none',
+        borderRadius: 12,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 19,
+        color,
+        background: `${color}14`,
+        border: `1px solid ${color}26`,
+      }}
+    >
+      {icon}
+    </span>
+  );
+}
+
+function KpiTile({ title, value, suffix, footer, icon, color }: { title: string; value: number | string; suffix?: string; footer?: ReactNode; icon: ReactNode; color: string }) {
   return (
     <Card style={{ height: '100%' }}>
-      <Statistic title={title} value={value} suffix={suffix} formatter={(v) => (typeof v === 'number' ? formatVnd(v) : v)} />
-      <div style={{ marginTop: 4, fontSize: 13 }}>{footer}</div>
+      <Flex justify="space-between" align="flex-start" gap={12}>
+        <Statistic title={title} value={value} suffix={suffix} formatter={(v) => (typeof v === 'number' ? formatVnd(v) : v)} />
+        <IconBadge icon={icon} color={color} />
+      </Flex>
+      <div style={{ marginTop: 6, fontSize: 13 }}>{footer}</div>
     </Card>
+  );
+}
+
+/** Ô "việc cần xử lý" ở đầu trang: bấm để mở danh sách tương ứng */
+function ActionTile({ to, title, value, hint, icon, color, highlight, loading }: { to: string; title: string; value: number; hint: ReactNode; icon: ReactNode; color: string; highlight?: boolean; loading?: boolean }) {
+  return (
+    <Link to={to}>
+      <Card hoverable loading={loading} style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
+        <span style={{ position: 'absolute', insetInlineStart: 0, top: 0, bottom: 0, width: 4, background: color }} />
+        <Flex justify="space-between" align="center" gap={12}>
+          <Flex align="center" gap={14}>
+            <IconBadge icon={icon} color={color} />
+            <div>
+              <div style={{ fontSize: 13, color: '#64748b' }}>{title}</div>
+              <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.02em', color: highlight ? color : undefined }}>{value}</div>
+            </div>
+          </Flex>
+          <ArrowRightOutlined style={{ color: '#94a3b8' }} />
+        </Flex>
+        <div style={{ marginTop: 8, fontSize: 13, color: '#64748b' }}>{hint}</div>
+      </Card>
+    </Link>
   );
 }
 
@@ -165,36 +225,38 @@ export default function DashboardPage() {
       {/* Việc cần xử lý ngay: luôn ở đầu trang, không phụ thuộc khoảng thời gian bên dưới */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={8}>
-          <Link to="/bookings?status=BAO_GIA">
-            <Card hoverable loading={isLoading} style={{ height: '100%', borderTop: '3px solid #2a78d6' }}>
-              <Statistic title="Báo giá chờ khách xác nhận" value={r?.pipeline.quotes ?? 0} />
-              <Typography.Text type="secondary">Trị giá {formatVnd(r?.pipeline.quoteValue ?? 0)} đ</Typography.Text>
-            </Card>
-          </Link>
+          <ActionTile
+            to="/bookings?status=BAO_GIA"
+            loading={isLoading}
+            title="Báo giá chờ khách xác nhận"
+            value={r?.pipeline.quotes ?? 0}
+            hint={<>Trị giá {formatVnd(r?.pipeline.quoteValue ?? 0)} đ</>}
+            icon={<FileTextOutlined />}
+            color="#2563eb"
+          />
         </Col>
         <Col xs={24} sm={8}>
-          <Link to="/dispatch?view=timeline">
-            <Card
-              hoverable
-              loading={isLoading}
-              style={{ height: '100%', borderTop: `3px solid ${r?.pipeline.waitingDispatch ? '#eb6834' : '#d9d9d9'}` }}
-            >
-              <Statistic
-                title="Chuyến chờ điều xe"
-                value={r?.pipeline.waitingDispatch ?? 0}
-                styles={{ content: r?.pipeline.waitingDispatch ? { color: '#eb6834' } : undefined }}
-              />
-              <Typography.Text type="secondary">Đã xác nhận, chưa xếp xe</Typography.Text>
-            </Card>
-          </Link>
+          <ActionTile
+            to="/dispatch?view=timeline"
+            loading={isLoading}
+            title="Chuyến chờ điều xe"
+            value={r?.pipeline.waitingDispatch ?? 0}
+            hint="Đã xác nhận, chưa xếp xe"
+            icon={<CarOutlined />}
+            color={r?.pipeline.waitingDispatch ? '#ea580c' : '#94a3b8'}
+            highlight={!!r?.pipeline.waitingDispatch}
+          />
         </Col>
         <Col xs={24} sm={8}>
-          <Link to="/dispatch?view=list">
-            <Card hoverable loading={isLoading} style={{ height: '100%', borderTop: '3px solid #1f9e5a' }}>
-              <Statistic title="Chuyến 7 ngày tới" value={r?.pipeline.upcoming7Days ?? 0} />
-              <Typography.Text type="secondary">Đã xác nhận · bấm để xem danh sách</Typography.Text>
-            </Card>
-          </Link>
+          <ActionTile
+            to="/dispatch?view=list"
+            loading={isLoading}
+            title="Chuyến 7 ngày tới"
+            value={r?.pipeline.upcoming7Days ?? 0}
+            hint="Đã xác nhận · bấm để xem danh sách"
+            icon={<CalendarOutlined />}
+            color="#16a34a"
+          />
         </Col>
       </Row>
 
@@ -235,11 +297,13 @@ export default function DashboardPage() {
 
       {/* Hàng chỉ số chính */}
       <Row gutter={[16, 16]}>
-        <Col xs={12} lg={6}>
-          <KpiTile title="Doanh thu" value={k?.revenue ?? 0} suffix="đ" footer={r && <Delta cur={r.kpis.revenue} prev={r.previous.revenue} />} />
+        <Col xs={24} sm={12} xl={6}>
+          <KpiTile icon={<DollarOutlined />} color="#2563eb" title="Doanh thu" value={k?.revenue ?? 0} suffix="đ" footer={r && <Delta cur={r.kpis.revenue} prev={r.previous.revenue} />} />
         </Col>
-        <Col xs={12} lg={6}>
+        <Col xs={24} sm={12} xl={6}>
           <KpiTile
+            icon={<WalletOutlined />}
+            color="#ea580c"
             title="Chi phí"
             value={k?.cost ?? 0}
             suffix="đ"
@@ -259,11 +323,13 @@ export default function DashboardPage() {
             }
           />
         </Col>
-        <Col xs={12} lg={6}>
-          <KpiTile title="Lợi nhuận" value={k?.profit ?? 0} suffix="đ" footer={r && <Delta cur={r.kpis.profit} prev={r.previous.profit} />} />
+        <Col xs={24} sm={12} xl={6}>
+          <KpiTile icon={<RiseOutlined />} color="#16a34a" title="Lợi nhuận" value={k?.profit ?? 0} suffix="đ" footer={r && <Delta cur={r.kpis.profit} prev={r.previous.profit} />} />
         </Col>
-        <Col xs={12} lg={6}>
+        <Col xs={24} sm={12} xl={6}>
           <KpiTile
+            icon={<PercentageOutlined />}
+            color="#7c3aed"
             title="Biên lợi nhuận"
             value={`${margin}%`}
             footer={

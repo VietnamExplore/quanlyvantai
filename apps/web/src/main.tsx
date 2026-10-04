@@ -9,6 +9,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './auth';
 import './index.css';
+import { appTheme } from './theme';
 
 dayjs.locale('vi');
 
@@ -18,7 +19,7 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfigProvider locale={viVN} theme={{ token: { colorPrimary: '#1668dc', borderRadius: 6 } }}>
+    <ConfigProvider locale={viVN} theme={appTheme}>
       <AntApp>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
