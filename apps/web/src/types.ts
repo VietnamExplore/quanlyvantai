@@ -414,8 +414,25 @@ export interface DispatchOptions {
   drivers: { id: number; fullName: string; phone: string; status: DriverStatus; licenseClass: string | null; conflicts: Conflict[] }[];
 }
 
+type ForeignLang = 'en' | 'ko' | 'zh' | 'ja';
+/** Cài đặt công ty; các khóa *_en/_ko/_zh/_ja là bản ngoại ngữ trên giấy tờ gửi khách */
 export type Settings = Partial<
-  Record<'companyName' | 'companyAddress' | 'companyPhone' | 'companyEmail' | 'companyTaxCode' | 'bankInfo' | 'quoteFooter' | 'companyLogo' | 'quoteFooter_en' | 'quoteFooter_ko' | 'quoteFooter_zh' | 'quoteFooter_ja', string>
+  Record<
+    | 'companyName'
+    | 'companyAddress'
+    | 'companyPhone'
+    | 'companyEmail'
+    | 'companyTaxCode'
+    | 'bankInfo'
+    | 'quoteFooter'
+    | 'companyLogo'
+    | `${'companyName' | 'companyAddress' | 'bankInfo' | 'quoteFooter'}_${ForeignLang}`
+    // Dịch tự động: dịch vụ đang dùng; khóa API chỉ báo đã cài + 4 ký tự cuối
+    | 'translateProvider'
+    | 'translateKeySet'
+    | 'translateKeyHint',
+    string
+  >
 >;
 
 export interface ExpiryAlert {

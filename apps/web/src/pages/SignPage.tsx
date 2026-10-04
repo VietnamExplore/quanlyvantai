@@ -7,7 +7,7 @@ import { api } from '../api';
 import { useSignFile } from '../components/BookingExtras';
 import { useSettings } from '../components/common';
 import { DocLangSwitch, logoUrl, useDocLang } from '../components/PrintDoc';
-import { docT } from '../doc-i18n';
+import { docCompany, docT } from '../doc-i18n';
 import type { Booking } from '../types';
 
 const css = `
@@ -148,7 +148,7 @@ export default function SignPage() {
             {showCompany && (settings.companyName || logoUrl(settings)) && (
               <div className="sign-head">
                 {logoUrl(settings) && <img src={logoUrl(settings)!} alt="Logo" />}
-                {settings.companyName && <span>{settings.companyName}</span>}
+                {docCompany(settings, lang, 'companyName') && <span>{docCompany(settings, lang, 'companyName')}</span>}
               </div>
             )}
             <div className="sign-body" ref={bodyRef}>

@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { docDate, docFooter, docMoney, docServiceName, docT, docTime, docVehicleName, toDocLang, type DocLang } from './doc-i18n';
+import { docCompany, docDate, docFooter, docMoney, docServiceName, docT, docTime, docVehicleName, toDocLang, type DocLang } from './doc-i18n';
 import type { Booking, BookingTrip, PriceLine, ServiceType, Settings, TripStatus } from './types';
 
 /** Chuyến đang soạn trên form (chưa lưu hoặc đã lưu) */
@@ -98,7 +98,7 @@ export function buildQuoteText(b: Booking, s: Settings, lang: DocLang = toDocLan
   const t = docT(lang);
   const money = (v: number | string) => docMoney(v, lang);
   const lines: string[] = [];
-  lines.push(`${t('quoteTextTitle')}${s.companyName ? ` – ${s.companyName}` : ''}`);
+  lines.push(`${t('quoteTextTitle')}${docCompany(s, lang, 'companyName') ? ` – ${docCompany(s, lang, 'companyName')}` : ''}`);
   lines.push(
     `${t('no')}: ${b.code}${b.customerRef ? ` | ${t('yourRef')}: ${b.customerRef}` : ''} | ${t('date')}: ${docDate(dayjs(), lang)}`,
   );
@@ -125,7 +125,7 @@ export function buildQuoteText(b: Booking, s: Settings, lang: DocLang = toDocLan
   if (Number(b.depositAmount)) lines.push(`${t('deposit')}: ${money(b.depositAmount)} – ${t('balance')}: ${money(b.remaining)}`);
   if (b.quoteValidUntil) lines.push(`${t('validUntil')} ${docDate(b.quoteValidUntil, lang)}`);
 
-  for (const extra of [b.notes, docFooter(s, lang), s.bankInfo && `${t('bankText')}: ${s.bankInfo}`]) {
+  for (const extra of [b.notes, docFooter(s, lang), docCompany(s, lang, 'bankInfo') && `${t('bankText')}: ${docCompany(s, lang, 'bankInfo')}`]) {
     if (extra) lines.push('', extra);
   }
 

@@ -8,7 +8,7 @@ import { api } from '../api';
 import { quoteStaff, routeText } from '../booking-utils';
 import { useSettings } from '../components/common';
 import { DOC_CSS, DocLangSwitch, PrintHeader, useDocLang } from '../components/PrintDoc';
-import { docDate, docFooter, docMoney, docServiceName, docT, docTime, docVehicleName } from '../doc-i18n';
+import { docCompany, docDate, docFooter, docMoney, docServiceName, docT, docTime, docVehicleName } from '../doc-i18n';
 import type { Booking } from '../types';
 
 export default function QuotePage() {
@@ -218,10 +218,10 @@ export default function QuotePage() {
         ) : (
           validUntil && <div className="doc-box">{validUntil}</div>
         )}
-        {settings.bankInfo && (
+        {docCompany(settings, lang, 'bankInfo') && (
           <div className="doc-box">
             <b>{t('bank')}</b>
-            <pre>{settings.bankInfo}</pre>
+            <pre>{docCompany(settings, lang, 'bankInfo')}</pre>
           </div>
         )}
 

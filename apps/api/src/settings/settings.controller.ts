@@ -20,6 +20,7 @@ import { diskStorage } from 'multer';
 import { join, resolve } from 'path';
 import { OFFICE_ROLES, Public, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { API_KEY_KEY, PROVIDER_KEY } from '../translate/translate.service';
 
 /** Các khóa cài đặt được phép lưu */
 export const SETTING_KEYS = [
@@ -35,6 +36,10 @@ export const SETTING_KEYS = [
   'quoteFooter_ko',
   'quoteFooter_zh',
   'quoteFooter_ja',
+  // Thông tin công ty trên giấy tờ ngoại ngữ (bỏ trống = dùng bản tiếng Việt)
+  ...(['en', 'ko', 'zh', 'ja'] as const).flatMap((l) => [`companyName_${l}`, `companyAddress_${l}`, `bankInfo_${l}`] as const),
+  // Dịch vụ dịch tự động: claude | google | deepl
+  PROVIDER_KEY,
 ] as const;
 
 /** Logo công ty: apps/api/uploads/logo (đổi bằng biến môi trường UPLOAD_DIR); tên file lưu ở cài đặt "companyLogo" */
@@ -57,7 +62,24 @@ export class SettingsController {
   @Get()
   async get() {
     const rows = await this.prisma.setting.findMany();
-    return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    // Khóa API dịch là bí mật: không trả về, chỉ báo đã cài hay chưa
+    const key = rows.find((r) => r.key === API_KEY_KEY)?.value;
+    return {
+      ...Object.fromEntries(rows.filter((r) => r.key !== API_KEY_KEY).map((r) => [r.key, r.value])),
+      translateKeySet: key ? 'yes' : '',
+      translateKeyHint: key ? '…' + key.slice(-4) : '',
+    };
+  }
+
+  /** Lưu khóa API dịch tự động (bỏ trống = xóa khóa). Chỉ Admin. */
+  @Put('translate-key')
+  @Roles(Role.ADMIN)
+  async saveTranslateKey(@Body() body: { apiKey?: unknown }) {
+    const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
+    if (apiKey.length > 500) throw new BadRequestException('Khóa API quá dài');
+    if (apiKey) await this.prisma.setting.upsert({ where: { key: API_KEY_KEY }, update: { value: apiKey }, create: { key: API_KEY_KEY, value: apiKey } });
+    else await this.prisma.setting.deleteMany({ where: { key: API_KEY_KEY } });
+    return this.get();
   }
 
   @Put()

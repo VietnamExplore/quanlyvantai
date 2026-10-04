@@ -153,3 +153,7 @@ export function docVehicleName(vt: Named & { seats?: number }, lang: DocLang) {
 /** Ghi chú cuối báo giá theo ngôn ngữ (chưa nhập thì dùng bản tiếng Việt) */
 export const docFooter = (s: Settings, lang: DocLang) =>
   (lang === 'vi' ? s.quoteFooter : s[`quoteFooter_${lang}` as keyof Settings]?.trim() || s.quoteFooter) ?? '';
+
+/** Thông tin công ty theo ngôn ngữ giấy tờ (bản dịch ở Thông tin công ty; bỏ trống thì dùng tiếng Việt) */
+export const docCompany = (s: Settings, lang: DocLang, field: 'companyName' | 'companyAddress' | 'bankInfo') =>
+  (lang === 'vi' ? undefined : s[`${field}_${lang}`]?.trim()) || s[field] || '';

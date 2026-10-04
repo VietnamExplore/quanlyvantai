@@ -1,7 +1,7 @@
 import { Segmented } from 'antd';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { DOC_LANGS, docT, toDocLang, type DocLang } from '../doc-i18n';
+import { DOC_LANGS, docCompany, docT, toDocLang, type DocLang } from '../doc-i18n';
 import type { Settings } from '../types';
 
 /** Đường dẫn ảnh logo công ty (null = chưa tải logo). Thêm ?v=tên-file để đổi logo là trình duyệt tải ảnh mới. */
@@ -88,10 +88,10 @@ export function PrintHeader({ settings, meta, lang = 'vi' }: { settings: Setting
         </div>
       )}
       <div className="doc-company">
-        <div className="name">{settings.companyName}</div>
-        {settings.companyAddress && (
+        <div className="name">{docCompany(settings, lang, 'companyName')}</div>
+        {docCompany(settings, lang, 'companyAddress') && (
           <div>
-            {t('address')}: {settings.companyAddress}
+            {t('address')}: {docCompany(settings, lang, 'companyAddress')}
           </div>
         )}
         {contact && <div>{contact}</div>}
