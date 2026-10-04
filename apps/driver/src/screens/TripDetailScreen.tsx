@@ -131,6 +131,14 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           <Text style={s.section}>Điểm đón</Text>
           <Text style={s.address}>{trip.pickupAddress}</Text>
           <Button title="🧭 Chỉ đường đến điểm đón" variant="outline" onPress={() => openMap(trip.pickupAddress)} style={{ marginTop: 8 }} />
+          {trip.itinerary && (
+            <>
+              <Text style={[s.section, { marginTop: 16 }]}>Lịch trình</Text>
+              <View style={s.itinerary}>
+                <Text style={s.itineraryText}>{trip.itinerary}</Text>
+              </View>
+            </>
+          )}
           {trip.dropoffAddress && (
             <>
               <Text style={[s.section, { marginTop: 16 }]}>Điểm trả</Text>
@@ -177,7 +185,6 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           <Text style={s.section}>Xe & ghi chú</Text>
           <Row label="Xe">{trip.vehicle ? `${trip.vehicle.plateNumber} (${trip.vehicleType.name})` : trip.vehicleType.name}</Row>
           {trip.days > 1 && <Row label="Số ngày">{`${trip.days} ngày`}</Row>}
-          {trip.itinerary && <Row label="Lịch trình">{trip.itinerary}</Row>}
           {trip.notes && <Row label="Ghi chú">{trip.notes}</Row>}
           {trip.dispatchNote && (
             <View style={s.dispatchNote}>
@@ -220,6 +227,8 @@ const s = StyleSheet.create({
   sub: { fontSize: 14, color: colors.text2, marginTop: 2 },
   section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginBottom: 4 },
   address: { fontSize: 17, color: colors.text, lineHeight: 23 },
+  itinerary: { backgroundColor: '#f6f8fb', borderLeftWidth: 3, borderLeftColor: colors.primary, borderRadius: 8, padding: 10 },
+  itineraryText: { fontSize: 15, color: colors.text, lineHeight: 22 },
   dispatchNote: { backgroundColor: '#fffbe6', borderRadius: 8, padding: 10, marginTop: 10 },
   leader: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eef5ff', borderRadius: 10, padding: 10, marginTop: 6, marginBottom: 6 },
   leaderRole: { fontSize: 12, color: colors.primary, fontWeight: '700', textTransform: 'uppercase' },
