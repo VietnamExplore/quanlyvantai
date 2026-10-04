@@ -119,7 +119,13 @@ export class BookingsService {
     }
   }
 
-  async create(dto: CreateBookingDto, user: AuthUser) {
+  /** Lệnh điều xe tạo nhanh ở mục Điều xe: booking đã xác nhận, đúng 1 chuyến, sẵn sàng điều xe */
+  createQuickDispatch(dto: CreateBookingDto, user: AuthUser) {
+    if (dto.trips?.length !== 1) throw new BadRequestException('Lệnh điều xe phải có đúng 1 chuyến');
+    return this.create({ ...dto, internalNotes: dto.internalNotes ?? 'Lệnh điều xe tạo nhanh tại mục Điều xe' }, user, BookingStatus.XAC_NHAN);
+  }
+
+  async create(dto: CreateBookingDto, user: AuthUser, status: BookingStatus = BookingStatus.NHAP) {
     await this.checkSource(dto.source);
     const { trips, passengers, quoteValidUntil, ...data } = dto;
     const tripData = await this.buildTrips(trips);
@@ -133,6 +139,7 @@ export class BookingsService {
           data: {
             ...data,
             code: prefix + String(next).padStart(4, '0'),
+            status,
             quoteValidUntil: quoteValidUntil ? new Date(quoteValidUntil) : null,
             salesUserId: data.salesUserId ?? (user.roles.includes(Role.KINH_DOANH) ? user.id : null),
             createdById: user.id,

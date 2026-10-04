@@ -27,6 +27,13 @@ export class BookingsController {
     return this.bookings.create(dto, user);
   }
 
+  /** Tạo nhanh lệnh điều xe khi chưa có booking: hệ thống tạo booking đã xác nhận chứa chuyến đó */
+  @Post('quick-dispatch')
+  @Roles(...BOOKING_EDITORS)
+  quickDispatch(@Body() dto: CreateBookingDto, @CurrentUser() user: AuthUser) {
+    return this.bookings.createQuickDispatch(dto, user);
+  }
+
   @Patch(':id')
   @Roles(...BOOKING_EDITORS)
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBookingDto) {

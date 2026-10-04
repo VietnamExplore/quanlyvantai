@@ -1,11 +1,13 @@
 import {
   LeftOutlined,
+  PlusOutlined,
   RightOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
+  App,
   Badge,
   Button,
   Card,
@@ -26,13 +28,15 @@ import {
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { fmtTime, routeText } from "../booking-utils";
+import { fmtTime, routeText, toTripPayload, type TripDraft } from "../booking-utils";
+import { useAuth } from "../auth";
+import { TripModal, type QuickContact } from "../components/TripModal";
 import { EnumTag } from "../components/common";
 import { MonthGrid, WeekGrid, YearGrid } from "../components/ScheduleViews";
 import { TripDispatchDrawer } from "../components/TripDispatchDrawer";
 import { assignmentText, BLOCK_COLOR } from "../dispatch-utils";
 import { TRIP_STATUS, toOptions } from "../labels";
-import type { DispatchTrip, Schedule, TripStatus } from "../types";
+import type { Booking, DispatchTrip, Schedule, TripStatus } from "../types";
 
 const DAY_MS = 86_400_000;
 const LABEL_W = 190;
@@ -444,6 +448,33 @@ export default function DispatchPage() {
   });
   const [day, setDay] = useState<Dayjs>(dayjs());
   const [openTrip, setOpenTrip] = useState<number | null>(null);
+  // Tạo lệnh điều xe khi chưa có booking
+  const { hasRole } = useAuth();
+  const canCreate = hasRole("ADMIN", "DIEU_HANH", "KINH_DOANH");
+  const { message } = App.useApp();
+  const queryClient = useQueryClient();
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickSaving, setQuickSaving] = useState(false);
+  async function createQuickOrder(trip: TripDraft, contact?: QuickContact) {
+    if (!contact) return;
+    setQuickSaving(true);
+    try {
+      const b = await api<Booking>("/bookings/quick-dispatch", {
+        method: "POST",
+        body: { ...contact, trips: [toTripPayload(trip)] },
+      });
+      message.success(`Đã tạo lệnh điều xe (booking ${b.code}). Chọn xe và lái xe để điều.`);
+      setQuickOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/dispatch"] });
+      queryClient.invalidateQueries({ queryKey: ["/bookings"] });
+      // Mở ngay khung điều xe của chuyến vừa tạo
+      if (b.trips[0]) setOpenTrip(b.trips[0].id);
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setQuickSaving(false);
+    }
+  }
   // Mở Danh sách chuyến với bộ lọc sẵn (vd. chuyến chờ điều xa hơn 7 ngày)
   const [listPreset, setListPreset] = useState<{ key: number; status?: TripStatus; range?: [Dayjs, Dayjs] }>({ key: 0 });
 
@@ -532,9 +563,16 @@ export default function DispatchPage() {
   return (
     <Flex vertical gap={16}>
       <Flex justify="space-between" align="center" wrap gap={12}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Điều xe
-        </Typography.Title>
+        <Space wrap>
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            Điều xe
+          </Typography.Title>
+          {canCreate && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setQuickOpen(true)}>
+              Tạo lệnh điều xe
+            </Button>
+          )}
+        </Space>
         <Space wrap>
           <Segmented
             value={view}
@@ -706,6 +744,16 @@ export default function DispatchPage() {
       )}
 
       <TripDispatchDrawer tripId={openTrip} onClose={() => setOpenTrip(null)} />
+      <TripModal
+        open={quickOpen}
+        trip={null}
+        withContact
+        title="Tạo lệnh điều xe (chưa có booking)"
+        okText="Tạo lệnh & điều xe"
+        saving={quickSaving}
+        onCancel={() => setQuickOpen(false)}
+        onSave={createQuickOrder}
+      />
     </Flex>
   );
 }

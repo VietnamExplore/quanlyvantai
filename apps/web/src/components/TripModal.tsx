@@ -31,6 +31,7 @@ import type { PriceLine, PriceResult, RentalRateRow, RoutePrice, Surcharge } fro
 import {
   Money,
   MoneyInput,
+  useCustomers,
   useLocations,
   useServices,
   useVehicleTypeOptions,
@@ -49,14 +50,28 @@ const CALC_KEYS = [
 ];
 const DATETIME_FORMAT = "HH:mm DD/MM/YYYY";
 
+/** Thông tin khách khi tạo lệnh điều xe không có booking sẵn */
+export interface QuickContact {
+  customerId: number | null;
+  contactName: string;
+  contactPhone: string;
+  source: string;
+}
+
 interface Props {
   open: boolean;
   trip: TripDraft | null;
   onCancel: () => void;
-  onSave: (trip: TripDraft) => void;
+  onSave: (trip: TripDraft, contact?: QuickContact) => void;
+  /** Tạo lệnh điều xe nhanh: thêm phần khách hàng ở đầu form */
+  withContact?: boolean;
+  title?: string;
+  okText?: string;
+  saving?: boolean;
 }
 
-export function TripModal({ open, trip, onCancel, onSave }: Props) {
+export function TripModal({ open, trip, onCancel, onSave, withContact, title, okText, saving }: Props) {
+  const customers = useCustomers();
   const [form] = Form.useForm();
   const { vehicleTypes } = useVehicleTypeOptions();
   const locations = useLocations();
@@ -129,9 +144,10 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
             extraHours: 0,
             unitPrice: 0,
             surcharges: [],
+            ...(withContact && { source: "HOTLINE", pickupTime: dayjs().add(1, "hour").startOf("hour") }),
           },
     );
-  }, [open, trip, form]);
+  }, [open, trip, form, withContact]);
 
   const routeOptions = routes
     .filter(
@@ -300,7 +316,10 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
     } catch {
       return;
     }
-    const { rentalOption, ...rest } = v;
+    const { rentalOption, customerId, contactName, contactPhone, source, ...rest } = v;
+    const contact: QuickContact | undefined = withContact
+      ? { customerId: customerId ?? null, contactName: contactName.trim(), contactPhone: contactPhone.trim(), source: source || "HOTLINE" }
+      : undefined;
     onSave({
       ...trip,
       ...rest,
@@ -322,7 +341,7 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
       surcharges: ((v.surcharges ?? []) as PriceLine[])
         .filter((s) => s.name?.trim())
         .map((s) => ({ ...s, amount: Number(s.amount || 0) })),
-    });
+    }, contact);
   };
 
   const locationOptions = locations.map((l) => ({
@@ -335,11 +354,12 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
 
   return (
     <Modal
-      title={trip?.id ? "Sửa chuyến" : "Thêm chuyến"}
+      title={title ?? (trip?.id ? "Sửa chuyến" : "Thêm chuyến")}
       open={open}
       onCancel={onCancel}
       onOk={submit}
-      okText="Xong"
+      okText={okText ?? "Xong"}
+      confirmLoading={saving}
       cancelText="Hủy"
       width={900}
       forceRender
@@ -348,6 +368,54 @@ export function TripModal({ open, trip, onCancel, onSave }: Props) {
       }}
     >
       <Form form={form} layout="vertical" onValuesChange={onValuesChange}>
+        {withContact && (
+          <>
+            <Divider titlePlacement="start" style={{ margin: "0 0 12px" }}>
+              Khách hàng
+            </Divider>
+            <Row gutter={16}>
+              <Col xs={24} md={8}>
+                <Form.Item name="customerId" label="Khách hàng (không bắt buộc)">
+                  <QuickSelect
+                    entity="customer"
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    options={customers.map((c) => ({ value: c.id, label: c.name }))}
+                    onChange={(id) => {
+                      const c = customers.find((x) => x.id === id);
+                      if (!c) return;
+                      const cur = form.getFieldsValue();
+                      form.setFieldsValue({
+                        contactName: cur.contactName || c.name,
+                        contactPhone: cur.contactPhone || c.phone || undefined,
+                        ...(c.type === "DAI_LY" && { source: "DAI_LY" }),
+                      });
+                    }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={12} md={6}>
+                <Form.Item name="contactName" label="Người liên hệ / khách" rules={[{ required: true, whitespace: true, message: "Nhập tên" }]}>
+                  <Input placeholder="Tên khách" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} md={5}>
+                <Form.Item name="contactPhone" label="SĐT" rules={[{ required: true, whitespace: true, message: "Nhập SĐT" }]}>
+                  <Input placeholder="09…" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={5}>
+                <Form.Item name="source" label="Nguồn khách">
+                  <QuickSelect entity="customerSource" showSearch optionFilterProp="label" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Divider titlePlacement="start" style={{ margin: "0 0 12px" }}>
+              Chuyến xe
+            </Divider>
+          </>
+        )}
         <Row gutter={16}>
           <Col xs={24} md={8}>
             <Form.Item
