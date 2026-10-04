@@ -14,6 +14,8 @@ const LANGS: { value: Lang; label: string }[] = [
   { value: 'ja', label: 'Tiếng Nhật' },
 ];
 
+const NO_ROWS: Row[] = [];
+
 interface Row {
   key: string;
   label: string;
@@ -39,11 +41,13 @@ export function DocTranslationsModal({ bookingId, open, onClose, docLanguage }: 
   }, [open, initial]);
 
   const queryKey = ['/bookings/translations', bookingId, lang];
-  const { data: rows = [], isFetching } = useQuery({
+  const { data, isFetching } = useQuery({
     queryKey,
     queryFn: () => api<Row[]>(`/bookings/${bookingId}/translations`, { query: { lang } }),
     enabled: open,
   });
+  // Mảng rỗng cố định: tránh tạo mảng mới mỗi lần vẽ (làm hiệu ứng bên dưới chạy lặp vô hạn)
+  const rows = data ?? NO_ROWS;
   useEffect(() => setTexts(Object.fromEntries(rows.map((r) => [r.key, r.text]))), [rows]);
 
   const dirty = rows.some((r) => (texts[r.key] ?? '') !== r.text);
