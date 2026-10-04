@@ -27,6 +27,7 @@ import {
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { fmtTime, routeText, toTripPayload, type TripDraft } from "../booking-utils";
 import { useAuth } from "../auth";
@@ -454,6 +455,19 @@ export default function DispatchPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [quickOpen, setQuickOpen] = useState(false);
+  // Mở form tạo lệnh từ menu Tạo nhanh: /dispatch?create=1
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("create") !== "1" || !canCreate) return;
+    setQuickOpen(true);
+    setSearchParams(
+      (p) => {
+        p.delete("create");
+        return p;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams, canCreate]);
   const [quickSaving, setQuickSaving] = useState(false);
   async function createQuickOrder(trip: TripDraft, contact?: QuickContact) {
     if (!contact) return;

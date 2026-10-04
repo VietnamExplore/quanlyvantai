@@ -160,7 +160,11 @@ export function AppLayout() {
   // Menu "Tạo nhanh": chỉ hiện mục người dùng có quyền tạo
   const quickItems = [
     ...(hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH')
-      ? [{ key: 'booking', icon: <FileTextOutlined />, label: 'Booking mới', onClick: () => navigate('/bookings/new') }, { type: 'divider' as const }]
+      ? [
+          { key: 'booking', icon: <FileTextOutlined />, label: 'Booking mới', onClick: () => navigate('/bookings/new') },
+          { key: 'dispatch', icon: <ScheduleOutlined />, label: 'Lệnh điều xe', onClick: () => navigate('/dispatch?create=1') },
+          { type: 'divider' as const },
+        ]
       : []),
     ...(
       [
