@@ -52,6 +52,7 @@ export default function DriversPage() {
                     <Button
                       size="small"
                       type={salaries?.[r.id] ? 'text' : 'dashed'}
+                      className="btn-wrap"
                       icon={<DollarOutlined />}
                       onClick={(e) => {
                         e.stopPropagation();

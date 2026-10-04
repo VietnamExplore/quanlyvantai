@@ -116,7 +116,6 @@ export default function PayablesPage() {
           rowKey="id"
           loading={isLoading}
           dataSource={data?.partners ?? []}
-          scroll={{ x: 'max-content' }}
           pagination={false}
           locale={{ emptyText: 'Chưa có chuyến nào giao cho nhà xe đối tác' }}
           expandable={{

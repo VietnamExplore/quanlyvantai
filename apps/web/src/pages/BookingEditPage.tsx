@@ -635,7 +635,6 @@ export default function BookingEditPage() {
             size="middle"
             dataSource={trips}
             pagination={false}
-            scroll={{ x: "max-content" }}
             locale={{
               emptyText: (
                 <Empty description="Chưa có chuyến nào. Bấm “Thêm chuyến” để bắt đầu." />

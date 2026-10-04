@@ -128,7 +128,6 @@ export function PassengersCard({ form, readOnly, tripPassengers, canPrint, booki
               pagination={false}
               rowKey="key"
               dataSource={fields}
-              scroll={{ x: 'max-content' }}
               locale={{ emptyText: 'Chưa có hành khách. Thêm từng người hoặc dán danh sách từ Excel.' }}
               columns={[
                 { title: '#', width: 40, render: (_, __, i) => i + 1 },

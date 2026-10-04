@@ -1,6 +1,6 @@
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Card, DatePicker, Flex, Input, Select, Table, Tooltip, Typography } from 'antd';
+import { Button, Card, DatePicker, Flex, Grid, Input, Select, Table, Tooltip, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -17,6 +17,8 @@ export default function BookingsPage() {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
+  // Màn hình dưới 1600px: nút thao tác chỉ hiện biểu tượng cho gọn bảng
+  const compact = !Grid.useBreakpoint().xxl;
   const salesOptions = useSalesStaffOptions();
   const [q, setQ] = useState<string>();
   // ?status=BAO_GIA: mở sẵn bộ lọc (từ trang Tổng quan)
@@ -61,7 +63,6 @@ export default function BookingsPage() {
         size="middle"
         loading={isFetching}
         dataSource={data}
-        scroll={{ x: 'max-content' }}
         pagination={{ pageSize: 30, hideOnSinglePage: true }}
         onRow={(r) => ({ onClick: () => navigate(`/bookings/${r.id}`), style: { cursor: 'pointer' } })}
         columns={[
@@ -70,7 +71,7 @@ export default function BookingsPage() {
             dataIndex: 'code',
             render: (v, r) => (
               <>
-                <b>{v}</b>
+                <b className="nowrap">{v}</b>
                 {r.customerRef && (
                   <div>
                     <Typography.Text type="secondary">Mã khách: {r.customerRef}</Typography.Text>
@@ -87,7 +88,7 @@ export default function BookingsPage() {
                 <br />
                 <Typography.Text type="secondary">
                   {r.customer ? `${r.contactName} · ` : ''}
-                  {r.contactPhone}
+                  <span className="nowrap">{r.contactPhone}</span>
                 </Typography.Text>
               </>
             ),
@@ -99,7 +100,7 @@ export default function BookingsPage() {
               if (!first) return <Typography.Text type="secondary">Chưa có chuyến</Typography.Text>;
               return (
                 <>
-                  {fmtTime(first.pickupTime)}
+                  <span className="nowrap">{fmtTime(first.pickupTime)}</span>
                   <br />
                   <ServiceTag code={first.serviceType} />
                 </>
@@ -113,7 +114,7 @@ export default function BookingsPage() {
               const list = trips.length ? trips : r.trips;
               if (!list.length) return null;
               return (
-                <div style={{ width: 230, whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 13, lineHeight: '18px' }}>
+                <div style={{ minWidth: 130, maxWidth: 260, whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 13, lineHeight: '18px' }}>
                   {list.slice(0, 2).map((t) => (
                     <div key={t.id} style={{ marginBottom: 2 }}>
                       {list.length > 1 && <Typography.Text type="secondary">{dayjs(t.pickupTime).format('HH:mm DD/MM')} · </Typography.Text>}
@@ -127,6 +128,7 @@ export default function BookingsPage() {
           },
           {
             title: 'Lịch trình',
+            responsive: ['xl'],
             render: (_, r) => {
               const list = r.trips.filter((t) => t.status !== 'HUY' && t.itinerary?.trim());
               if (!list.length) return null;
@@ -135,7 +137,8 @@ export default function BookingsPage() {
                 <Tooltip title={<div style={{ whiteSpace: 'pre-line' }}>{full}</div>}>
                   <div
                     style={{
-                      width: 190,
+                      minWidth: 115,
+                      maxWidth: 220,
                       whiteSpace: 'pre-line',
                       wordBreak: 'break-word',
                       fontSize: 13,
@@ -152,7 +155,7 @@ export default function BookingsPage() {
               );
             },
           },
-          { title: 'Số chuyến', align: 'center', render: (_, r) => r.trips.filter((t) => t.status !== 'HUY').length || r.trips.length },
+          { title: 'Số chuyến', align: 'center', responsive: ['xxl'], render: (_, r) => r.trips.filter((t) => t.status !== 'HUY').length || r.trips.length },
           { title: 'Tổng tiền', align: 'right', dataIndex: 'total', render: (v) => <Money value={v} strong /> },
           {
             title: 'Thanh toán',
@@ -169,8 +172,8 @@ export default function BookingsPage() {
               ),
           },
           { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={BOOKING_STATUS} value={v} /> },
-          { title: 'NV kinh doanh', render: (_, r) => r.salesUser?.fullName },
-          { title: 'Ngày tạo', dataIndex: 'createdAt', render: (v) => new Date(v).toLocaleDateString('vi-VN') },
+          { title: 'NV kinh doanh', responsive: ['xxl'], render: (_, r) => r.salesUser?.fullName },
+          { title: 'Ngày tạo', responsive: ['xxl'], dataIndex: 'createdAt', render: (v) => new Date(v).toLocaleDateString('vi-VN') },
           {
             key: 'edit',
             fixed: 'right',
@@ -179,14 +182,15 @@ export default function BookingsPage() {
                 <Button
                   size="small"
                   icon={<EditOutlined />}
+                  title={r.status === 'HUY' || !canEdit ? 'Xem' : 'Sửa'}
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/bookings/${r.id}?edit=1`);
                   }}
                 >
-                  {r.status === 'HUY' || !canEdit ? 'Xem' : 'Sửa'}
+                  {!compact && (r.status === 'HUY' || !canEdit ? 'Xem' : 'Sửa')}
                 </Button>
-                {canEdit && <BookingStatusMenu booking={r} />}
+                {canEdit && <BookingStatusMenu booking={r} compact={compact} />}
               </Flex>
             ),
           },

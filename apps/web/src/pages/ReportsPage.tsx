@@ -618,7 +618,6 @@ function TripDetail({ trips, loading }: { trips: ReportTrip[]; loading: boolean 
         size="small"
         loading={loading}
         dataSource={rows}
-        scroll={{ x: 'max-content' }}
         pagination={{ pageSize: 50, hideOnSinglePage: true, showTotal: (n) => `${n} chuyến` }}
         locale={{ emptyText: 'Không có chuyến trong kỳ' }}
         columns={[
@@ -739,7 +738,6 @@ function GroupTable({
         loading={loading}
         dataSource={rows}
         columns={cols}
-        scroll={{ x: 'max-content' }}
         pagination={{ pageSize: 50, hideOnSinglePage: true }}
         locale={{ emptyText: 'Không có dữ liệu trong kỳ' }}
         summary={() =>
@@ -837,7 +835,6 @@ function DriverPayTable({ pay, loading, trips }: { pay?: DriverPayReport; loadin
         size="small"
         loading={loading}
         dataSource={rows}
-        scroll={{ x: 'max-content' }}
         pagination={false}
         locale={{ emptyText: 'Chưa có lái xe công ty' }}
         expandable={{

@@ -65,6 +65,37 @@ body {
   transition: background 0.15s;
 }
 
+/* Bảng co theo bề ngang màn hình: chữ dài tự xuống dòng, chỉ cuộn ngang (trong bảng) khi thật sự không đủ chỗ */
+.ant-table-wrapper .ant-table-content {
+  overflow-x: auto;
+}
+.ant-table-wrapper .ant-table-cell {
+  overflow-wrap: break-word;
+}
+/* Số tiền, ngày giờ, nút, nhãn: giữ trên một dòng */
+.ant-table-wrapper .ant-table-cell[style*='text-align: right'],
+.ant-table-wrapper .ant-table-cell[style*='text-align: center'],
+.ant-table-wrapper .ant-table-cell .ant-tag,
+.ant-table-wrapper .ant-table-cell .ant-btn,
+.ant-table-wrapper .ant-table-thead > tr > th {
+  white-space: nowrap;
+}
+.ant-table-wrapper .ant-table-cell .nowrap {
+  white-space: nowrap;
+}
+
+/* Màn hình vừa (laptop): bảng gọn hơn để đỡ tràn ngang */
+@media (max-width: 1440px) {
+  .ant-table-wrapper .ant-table:not(.ant-table-small) .ant-table-thead > tr > th,
+  .ant-table-wrapper .ant-table:not(.ant-table-small) .ant-table-tbody > tr > td {
+    padding: 10px 10px;
+  }
+  .ant-table-wrapper .ant-table-small .ant-table-thead > tr > th,
+  .ant-table-wrapper .ant-table-small .ant-table-tbody > tr > td {
+    padding: 6px 6px;
+  }
+}
+
 /* Số liệu thống kê */
 .ant-statistic-content {
   font-weight: 700;
@@ -130,5 +161,20 @@ body {
   .app-content .ant-card-hoverable {
     animation: none;
     transition: none;
+  }
+}
+
+/* Nút có nội dung dài trong bảng (ví dụ mức lương): cho xuống dòng */
+.ant-table-wrapper .ant-table-cell .ant-btn.btn-wrap {
+  white-space: normal;
+  height: auto;
+  min-height: 24px;
+  text-align: left;
+}
+
+@media (max-width: 1366px) {
+  .ant-table-wrapper .ant-table:not(.ant-table-small) .ant-table-thead > tr > th,
+  .ant-table-wrapper .ant-table:not(.ant-table-small) .ant-table-tbody > tr > td {
+    padding: 10px 8px;
   }
 }

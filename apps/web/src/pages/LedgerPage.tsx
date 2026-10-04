@@ -214,7 +214,6 @@ export default function LedgerPage() {
           size="middle"
           loading={isLoading}
           dataSource={entries}
-          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 50, hideOnSinglePage: true }}
           locale={{ emptyText: 'Không có khoản thu chi trong khoảng thời gian này' }}
           columns={[
@@ -273,7 +272,6 @@ export default function LedgerPage() {
           loading={isLoading}
           dataSource={byVehicle}
           pagination={false}
-          scroll={{ x: 'max-content' }}
           locale={{ emptyText: 'Chưa có khoản nào gắn với xe trong khoảng thời gian này' }}
           onRow={(r) => ({ onClick: () => setTarget(r.key === target ? null : r.key), style: { cursor: 'pointer' } })}
           rowClassName={(r) => (r.key === target ? 'ant-table-row-selected' : '')}

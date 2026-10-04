@@ -66,7 +66,6 @@ export default function RentalRatesPage() {
         loading={isLoading}
         dataSource={data}
         pagination={false}
-        scroll={{ x: 'max-content' }}
         columns={[
           { title: 'Loại xe', dataIndex: 'name', render: (v) => <b>{v}</b> },
           { title: 'Giá 1 ngày', render: r((x) => (<><Money value={x.fullDayPrice} strong /><br /><small>{x.fullDayHours}h / {x.fullDayKm}km</small></>)) },

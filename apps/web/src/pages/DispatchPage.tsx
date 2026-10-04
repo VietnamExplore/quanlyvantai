@@ -378,7 +378,6 @@ function TripList({
         size="middle"
         loading={isFetching}
         dataSource={data}
-        scroll={{ x: "max-content" }}
         pagination={{ pageSize: 50, hideOnSinglePage: true }}
         onRow={(t) => ({
           onClick: () => onOpen(t.id),
@@ -537,7 +536,6 @@ export default function DispatchPage() {
                   onClick: () => setOpenTrip(t.id),
                   style: { cursor: "pointer" },
                 })}
-                scroll={{ x: "max-content" }}
                 columns={[
                   {
                     title: "Giờ",

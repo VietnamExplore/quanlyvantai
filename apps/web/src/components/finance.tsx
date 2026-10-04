@@ -184,7 +184,6 @@ export function PaymentsCard({ bookingId }: { bookingId: number }) {
         rowKey="id"
         pagination={false}
         dataSource={booking.payments}
-        scroll={{ x: 'max-content' }}
         locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có phiếu thu" /> }}
         columns={[
           { title: 'Ngày', dataIndex: 'paidAt', render: (v) => dayjs(v).format(DATE_FORMAT) },

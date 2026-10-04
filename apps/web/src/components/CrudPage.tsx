@@ -153,7 +153,6 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
         loading={isFetching}
         columns={[...columns, ...actionColumn]}
         dataSource={data}
-        scroll={{ x: 'max-content' }}
         pagination={{ pageSize: 20, hideOnSinglePage: true }}
       />
 

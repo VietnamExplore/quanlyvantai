@@ -26,7 +26,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Avatar, Button, Drawer, Dropdown, Flex, Grid, Layout, Menu, Space } from 'antd';
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { ROLE } from '../labels';
@@ -96,12 +96,19 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
 const NAV = NAV_GROUPS.flatMap((g) => g.items.map((n) => ({ ...n, group: g.label })));
 
 const COLLAPSE_KEY = 'app_sider_collapsed';
-const readCollapsed = () => {
+/** Màn hình rộng dưới mức này: menu trái mặc định thu gọn để nhường chỗ cho bảng */
+const AUTO_COLLAPSE_WIDTH = 1440;
+const savedCollapsed = () => {
   try {
-    return localStorage.getItem(COLLAPSE_KEY) === '1';
+    return localStorage.getItem(COLLAPSE_KEY);
   } catch {
-    return false;
+    return null;
   }
+};
+// Người dùng đã tự chọn thì giữ theo lựa chọn; chưa chọn thì tùy độ rộng cửa sổ
+const readCollapsed = () => {
+  const saved = savedCollapsed();
+  return saved === null ? window.innerWidth < AUTO_COLLAPSE_WIDTH : saved === '1';
 };
 
 /** Chữ viết tắt cho ảnh đại diện: "Nguyễn Tiến Vũ" → "NV" */
@@ -144,6 +151,12 @@ export function AppLayout() {
   const isMobile = !screens.lg;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  // Đổi kích thước cửa sổ: menu tự thu gọn / mở rộng theo (nếu người dùng chưa tự chọn)
+  useEffect(() => {
+    const onResize = () => savedCollapsed() === null && setCollapsed(window.innerWidth < AUTO_COLLAPSE_WIDTH);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const [pwdOpen, setPwdOpen] = useState(false);
   const [quickEntity, setQuickEntity] = useState<QuickEntity | null>(null);
 
@@ -236,7 +249,7 @@ export function AppLayout() {
       {!isMobile && (
         <Layout.Sider
           className="app-sider"
-          width={252}
+          width={236}
           collapsedWidth={80}
           collapsed={collapsed}
           trigger={null}
@@ -269,7 +282,7 @@ export function AppLayout() {
         {menu}
       </Drawer>
 
-      <Layout>
+      <Layout style={{ minWidth: 0 }}>
         <Layout.Header className="app-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: isMobile ? '0 12px' : '0 24px' }}>
           <Flex align="center" gap={12} style={{ minWidth: 0 }}>
             {isMobile && <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} />}
@@ -310,8 +323,8 @@ export function AppLayout() {
             </Dropdown>
           </Space>
         </Layout.Header>
-        <Layout.Content className="app-content" style={{ padding: isMobile ? 12 : 24 }}>
-          <div key={pathname} className="app-page-enter" style={{ maxWidth: 1680, margin: '0 auto' }}>
+        <Layout.Content className="app-content" style={{ padding: isMobile ? 12 : screens.xxl ? 24 : 16 }}>
+          <div key={pathname} className="app-page-enter" style={{ maxWidth: 2000, margin: '0 auto' }}>
             <Outlet />
           </div>
         </Layout.Content>

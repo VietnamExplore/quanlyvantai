@@ -23,7 +23,7 @@ const ACTION_LABEL: Partial<Record<BookingStatus, string>> = {
 };
 
 /** Nút chọn nhanh trạng thái booking ngay trên danh sách */
-export function BookingStatusMenu({ booking }: { booking: Pick<Booking, 'id' | 'code' | 'status' | 'trips'> }) {
+export function BookingStatusMenu({ booking, compact }: { booking: Pick<Booking, 'id' | 'code' | 'status' | 'trips'>; compact?: boolean }) {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const next = TRANSITIONS[booking.status];
@@ -93,7 +93,8 @@ export function BookingStatusMenu({ booking }: { booking: Pick<Booking, 'id' | '
       }}
     >
       <Button size="small" icon={<SwapOutlined />} onClick={(e) => e.stopPropagation()} title="Đổi trạng thái">
-        Trạng thái <DownOutlined style={{ fontSize: 10 }} />
+        {!compact && 'Trạng thái '}
+        <DownOutlined style={{ fontSize: 10 }} />
       </Button>
     </Dropdown>
   );

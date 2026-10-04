@@ -152,7 +152,6 @@ export default function ReceivablesPage() {
           rowKey="key"
           loading={isLoading}
           dataSource={customers}
-          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 30, hideOnSinglePage: true }}
           locale={{ emptyText: 'Không có công nợ' }}
           expandable={{
