@@ -28,6 +28,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { fmtTime, routeText } from "../booking-utils";
 import { EnumTag } from "../components/common";
+import { MonthGrid, WeekGrid, YearGrid } from "../components/ScheduleViews";
 import { TripDispatchDrawer } from "../components/TripDispatchDrawer";
 import { assignmentText, BLOCK_COLOR } from "../dispatch-utils";
 import { TRIP_STATUS, toOptions } from "../labels";
@@ -319,12 +320,19 @@ function WaitingCard({
   );
 }
 
-function TripList({ onOpen }: { onOpen: (id: number) => void }) {
-  const [range, setRange] = useState<[Dayjs, Dayjs]>([
-    dayjs(),
-    dayjs().add(6, "day"),
-  ]);
-  const [status, setStatus] = useState<TripStatus>();
+function TripList({
+  onOpen,
+  initialStatus,
+  initialRange,
+}: {
+  onOpen: (id: number) => void;
+  initialStatus?: TripStatus;
+  initialRange?: [Dayjs, Dayjs];
+}) {
+  const [range, setRange] = useState<[Dayjs, Dayjs]>(
+    initialRange ?? [dayjs(), dayjs().add(6, "day")],
+  );
+  const [status, setStatus] = useState<TripStatus | undefined>(initialStatus);
   const [q, setQ] = useState<string>();
   const query = {
     from: range[0].format("YYYY-MM-DD"),
@@ -350,6 +358,7 @@ function TripList({ onOpen }: { onOpen: (id: number) => void }) {
           placeholder="Trạng thái"
           style={{ width: 170 }}
           options={toOptions(TRIP_STATUS)}
+          value={status}
           onChange={setStatus}
         />
         <Input.Search
@@ -410,22 +419,33 @@ function TripList({ onOpen }: { onOpen: (id: number) => void }) {
   );
 }
 
+type View = "day" | "week" | "month" | "year" | "list";
+const VIEWS: View[] = ["day", "week", "month", "year", "list"];
+/** Đọc chế độ xem: ?view=… (từ trang Tổng quan) hoặc lần xem trước; "timeline" cũ = theo ngày */
+const toView = (v: string | null): View | null =>
+  v === "timeline" ? "day" : VIEWS.includes(v as View) ? (v as View) : null;
+
+const PERIOD: Record<Exclude<View, "list">, { unit: "day" | "week" | "month" | "year"; picker?: "week" | "month" | "year"; format: string; now: string }> = {
+  day: { unit: "day", format: "dd DD/MM/YYYY", now: "Hôm nay" },
+  week: { unit: "week", picker: "week", format: "[Tuần] w, YYYY", now: "Tuần này" },
+  month: { unit: "month", picker: "month", format: "[Tháng] MM/YYYY", now: "Tháng này" },
+  year: { unit: "year", picker: "year", format: "[Năm] YYYY", now: "Năm nay" },
+};
+
 export default function DispatchPage() {
-  const [view, setView] = useState<"timeline" | "list">(() => {
-    // ?view=list | timeline: mở đúng chế độ xem (từ trang Tổng quan)
-    const fromUrl = new URLSearchParams(window.location.search).get("view");
-    if (fromUrl === "list" || fromUrl === "timeline") return fromUrl;
+  const [view, setView] = useState<View>(() => {
+    const fromUrl = toView(new URLSearchParams(window.location.search).get("view"));
+    if (fromUrl) return fromUrl;
     try {
-      return (
-        (localStorage.getItem("dispatch_view") as "timeline" | "list") ||
-        "timeline"
-      );
+      return toView(localStorage.getItem("dispatch_view")) ?? "day";
     } catch {
-      return "timeline";
+      return "day";
     }
   });
   const [day, setDay] = useState<Dayjs>(dayjs());
   const [openTrip, setOpenTrip] = useState<number | null>(null);
+  // Mở Danh sách chuyến với bộ lọc sẵn (vd. chuyến chờ điều xa hơn 7 ngày)
+  const [listPreset, setListPreset] = useState<{ key: number; status?: TripStatus; range?: [Dayjs, Dayjs] }>({ key: 0 });
 
   useEffect(() => {
     try {
@@ -435,135 +455,38 @@ export default function DispatchPage() {
     }
   }, [view]);
 
-  const ymd = day.format("YYYY-MM-DD");
+  const period = view === "list" ? PERIOD.day : PERIOD[view];
+  const rangeStart = day.startOf(period.unit);
+  const rangeEnd = day.endOf(period.unit);
+  const from = rangeStart.format("YYYY-MM-DD");
+  const to = rangeEnd.format("YYYY-MM-DD");
   const { data, isLoading } = useQuery({
-    queryKey: ["/dispatch", "schedule", ymd],
-    queryFn: () =>
-      api<Schedule>("/dispatch/schedule", { query: { from: ymd } }),
+    queryKey: ["/dispatch", "schedule", from, to],
+    queryFn: () => api<Schedule>("/dispatch/schedule", { query: { from, to } }),
     refetchInterval: 60_000,
   });
-
-  return (
-    <Flex vertical gap={16}>
-      <Flex justify="space-between" align="center" wrap gap={12}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Điều xe
-        </Typography.Title>
-        <Space wrap>
-          <Segmented
-            value={view}
-            onChange={(v) => setView(v as "timeline" | "list")}
-            options={[
-              { value: "timeline", label: "Lịch xe theo ngày" },
-              { value: "list", label: "Danh sách chuyến" },
-            ]}
-          />
-          {view === "timeline" && (
-            <Space.Compact>
-              <Button
-                icon={<LeftOutlined />}
-                onClick={() => setDay(day.subtract(1, "day"))}
-              />
-              <DatePicker
-                value={day}
-                allowClear={false}
-                format="dd DD/MM/YYYY"
-                onChange={(v) => v && setDay(v)}
-              />
-              <Button
-                icon={<RightOutlined />}
-                onClick={() => setDay(day.add(1, "day"))}
-              />
-              <Button onClick={() => setDay(dayjs())}>Hôm nay</Button>
-            </Space.Compact>
-          )}
-        </Space>
-      </Flex>
-
-      {!!data?.overdueCount && (
-        <Alert
-          type="error"
-          showIcon
-          title={`Có ${data.overdueCount} chuyến đã qua giờ đón nhưng chưa được điều xe.`}
-          description='Các chuyến này nằm đầu cột "Chờ điều xe" (mục Quá giờ đón).'
-        />
-      )}
-
-      {view === "list" ? (
-        <Card>
-          <TripList onOpen={setOpenTrip} />
-        </Card>
-      ) : (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} xl={6}>
-            <Card
-              title={
-                <Space>
-                  Chờ điều xe{" "}
-                  <Badge
-                    count={data?.waiting.length ?? 0}
-                    showZero
-                    color={data?.waiting.length ? "#eb6834" : "#bfbfbf"}
-                  />
-                </Space>
-              }
-              loading={isLoading}
-              styles={{ body: { maxHeight: 640, overflowY: "auto" } }}
-            >
-              <WaitingList trips={data?.waiting ?? []} onOpen={setOpenTrip} />
-            </Card>
-          </Col>
-          <Col xs={24} xl={18}>
-            <Card
-              title={`Lịch xe công ty · ${day.format("dddd, DD/MM/YYYY")}`}
-              loading={isLoading}
-            >
-              {data && <Timeline data={data} day={day} onOpen={setOpenTrip} />}
-              <Flex gap={12} wrap style={{ marginTop: 12, fontSize: 12 }}>
-                {(
-                  [
-                    "DA_GAN",
-                    "TAI_XE_NHAN",
-                    "DANG_DEN_DON",
-                    "HOAN_THANH",
-                  ] as TripStatus[]
-                ).map((s) => (
-                  <Flex key={s} align="center" gap={4}>
-                    <span
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: 2,
-                        background: BLOCK_COLOR[s].bg,
-                        borderLeft: `3px solid ${BLOCK_COLOR[s].border}`,
-                      }}
-                    />
-                    {s === "DANG_DEN_DON" ? "Đang chạy" : TRIP_STATUS[s].label}
-                  </Flex>
-                ))}
-                {day.isSame(dayjs(), "day") && (
-                  <Flex align="center" gap={4}>
-                    <span
-                      style={{ width: 2, height: 12, background: "#e34948" }}
-                    />{" "}
-                    Bây giờ
-                  </Flex>
-                )}
-              </Flex>
-            </Card>
-
+  const periodTitle =
+    view === "day"
+      ? day.format("dddd, DD/MM/YYYY")
+      : view === "week"
+        ? `tuần ${rangeStart.format("DD/MM")} – ${rangeEnd.format("DD/MM/YYYY")}`
+        : view === "month"
+          ? `tháng ${day.format("MM/YYYY")}`
+          : `năm ${day.format("YYYY")}`;
+  const wide = view !== "day" && view !== "list";
+  const partnerCard = (
             <Card
               title={`Chuyến giao nhà xe đối tác (${data?.partnerTrips.length ?? 0})`}
-              style={{ marginTop: 16 }}
+              style={{ marginTop: wide ? 0 : 16 }}
               loading={isLoading}
             >
               <Table<DispatchTrip>
                 rowKey="id"
                 size="small"
-                pagination={false}
+                pagination={{ pageSize: 20, hideOnSinglePage: true }}
                 dataSource={data?.partnerTrips ?? []}
                 locale={{
-                  emptyText: "Không có chuyến giao đối tác trong ngày",
+                  emptyText: `Không có chuyến giao đối tác trong ${view === "day" ? "ngày" : view === "week" ? "tuần" : view === "month" ? "tháng" : "năm"}`,
                 }}
                 onRow={(t) => ({
                   onClick: () => setOpenTrip(t.id),
@@ -574,7 +497,7 @@ export default function DispatchPage() {
                   {
                     title: "Giờ",
                     render: (_, t) => (
-                      <b>{dayjs(t.pickupTime).format("HH:mm")}</b>
+                      <b>{dayjs(t.pickupTime).format(view === "day" ? "HH:mm" : "HH:mm DD/MM")}</b>
                     ),
                   },
                   { title: "Booking", render: (_, t) => t.booking.code },
@@ -599,7 +522,186 @@ export default function DispatchPage() {
                 ]}
               />
             </Card>
+  );
+
+  const goDay = (d: Dayjs) => {
+    setDay(d);
+    setView("day");
+  };
+
+  return (
+    <Flex vertical gap={16}>
+      <Flex justify="space-between" align="center" wrap gap={12}>
+        <Typography.Title level={4} style={{ margin: 0 }}>
+          Điều xe
+        </Typography.Title>
+        <Space wrap>
+          <Segmented
+            value={view}
+            onChange={(v) => setView(v as View)}
+            options={[
+              { value: "day", label: "Ngày" },
+              { value: "week", label: "Tuần" },
+              { value: "month", label: "Tháng" },
+              { value: "year", label: "Năm" },
+              { value: "list", label: "Danh sách chuyến" },
+            ]}
+          />
+          {view !== "list" && (
+            <Space.Compact>
+              <Button
+                icon={<LeftOutlined />}
+                onClick={() => setDay(day.subtract(1, period.unit))}
+              />
+              <DatePicker
+                value={day}
+                picker={period.picker}
+                allowClear={false}
+                format={period.format}
+                onChange={(v) => v && setDay(v)}
+                style={{ width: view === "day" ? 150 : view === "year" ? 120 : 160 }}
+              />
+              <Button
+                icon={<RightOutlined />}
+                onClick={() => setDay(day.add(1, period.unit))}
+              />
+              <Button onClick={() => setDay(dayjs())}>{period.now}</Button>
+            </Space.Compact>
+          )}
+        </Space>
+      </Flex>
+
+      {!!data?.overdueCount && (
+        <Alert
+          type="error"
+          showIcon
+          title={`Có ${data.overdueCount} chuyến đã qua giờ đón nhưng chưa được điều xe.`}
+          description='Chuyến quá giờ trong 7 ngày qua nằm đầu cột "Chờ điều xe" (mục Quá giờ đón); chuyến cũ hơn xem ở "Danh sách chuyến", lọc "Chờ điều xe".'
+        />
+      )}
+
+      {view === "list" ? (
+        <Card>
+          <TripList
+            key={listPreset.key}
+            onOpen={setOpenTrip}
+            initialStatus={listPreset.status}
+            initialRange={listPreset.range}
+          />
+        </Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {/* Theo ngày: cột chờ điều bên trái lịch; tuần / tháng / năm: lịch trải rộng, cột chờ điều xuống dưới */}
+          <Col xs={24} xl={wide ? 8 : 6} style={{ order: wide ? 2 : 1 }}>
+            <Card
+              title={
+                <Space>
+                  Chờ điều xe
+                  <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+                    7 ngày tới
+                  </Typography.Text>
+                  <Badge
+                    count={data?.waiting.length ?? 0}
+                    showZero
+                    color={data?.waiting.length ? "#eb6834" : "#bfbfbf"}
+                  />
+                </Space>
+              }
+              loading={isLoading}
+              styles={{ body: { maxHeight: 640, overflowY: "auto" } }}
+            >
+              <WaitingList trips={data?.waiting ?? []} onOpen={setOpenTrip} />
+              {!!data?.waitingLater && (
+                <Flex
+                  justify="space-between"
+                  align="center"
+                  style={{ marginTop: 12, paddingTop: 8, borderTop: "1px dashed #e0e0e0", fontSize: 12 }}
+                >
+                  <Typography.Text type="secondary">
+                    Còn {data.waitingLater} chuyến chờ điều sau {dayjs(data.waitingUntil).format("DD/MM")}
+                  </Typography.Text>
+                  <Button
+                    size="small"
+                    type="link"
+                    onClick={() => {
+                      setListPreset({
+                        key: Date.now(),
+                        status: "CHO_DIEU",
+                        range: [dayjs(data.waitingUntil).add(1, "day"), dayjs(data.waitingUntil).add(1, "year")],
+                      });
+                      setView("list");
+                    }}
+                  >
+                    Xem
+                  </Button>
+                </Flex>
+              )}
+            </Card>
           </Col>
+          <Col xs={24} xl={wide ? 24 : 18} style={{ order: wide ? 1 : 2 }}>
+            <Card
+              title={`Lịch xe công ty · ${periodTitle}`}
+              loading={isLoading}
+            >
+              {data && view === "day" && (
+                <Timeline data={data} day={day} onOpen={setOpenTrip} />
+              )}
+              {data && view === "week" && (
+                <WeekGrid data={data} start={rangeStart} onOpen={setOpenTrip} onPickDay={goDay} />
+              )}
+              {data && view === "month" && (
+                <MonthGrid data={data} month={day} onPickDay={goDay} />
+              )}
+              {data && view === "year" && (
+                <YearGrid
+                  data={data}
+                  year={day}
+                  onPickMonth={(m) => {
+                    setDay(m);
+                    setView("month");
+                  }}
+                />
+              )}
+              {(view === "day" || view === "week") && <Flex gap={12} wrap style={{ marginTop: 12, fontSize: 12 }}>
+                {(
+                  [
+                    "DA_GAN",
+                    "TAI_XE_NHAN",
+                    "DANG_DEN_DON",
+                    "HOAN_THANH",
+                  ] as TripStatus[]
+                ).map((s) => (
+                  <Flex key={s} align="center" gap={4}>
+                    <span
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: 2,
+                        background: BLOCK_COLOR[s].bg,
+                        borderLeft: `3px solid ${BLOCK_COLOR[s].border}`,
+                      }}
+                    />
+                    {s === "DANG_DEN_DON" ? "Đang chạy" : TRIP_STATUS[s].label}
+                  </Flex>
+                ))}
+                {view === "day" && day.isSame(dayjs(), "day") && (
+                  <Flex align="center" gap={4}>
+                    <span
+                      style={{ width: 2, height: 12, background: "#e34948" }}
+                    />{" "}
+                    Bây giờ
+                  </Flex>
+                )}
+              </Flex>}
+            </Card>
+
+            {!wide && partnerCard}
+          </Col>
+          {wide && (
+            <Col xs={24} xl={16} style={{ order: 3 }}>
+              {partnerCard}
+            </Col>
+          )}
         </Row>
       )}
 

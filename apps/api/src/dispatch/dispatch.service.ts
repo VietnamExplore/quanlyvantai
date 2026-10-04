@@ -95,13 +95,19 @@ export class DispatchService {
   /** Lịch xe công ty + chuyến giao đối tác + chuyến chờ điều trong khoảng ngày */
   async schedule(from?: string, to?: string) {
     const { start, end } = dayRange(from, to);
+    if (end.getTime() - start.getTime() > 400 * 86_400_000) throw new BadRequestException('Chỉ xem lịch xe tối đa 1 năm mỗi lần');
+    // Cột chờ điều xe: chuyến quá giờ trong 7 ngày qua + chuyến 7 ngày tới (tính từ đầu hôm nay)
+    const today = dayRange().start;
+    const waitFrom = new Date(today.getTime() - 7 * 86_400_000);
+    const waitTo = new Date(today.getTime() + 7 * 86_400_000);
+    const waitBase: Prisma.BookingTripWhereInput = { status: TripStatus.CHO_DIEU, booking: { status: BookingStatus.XAC_NHAN } };
     const activeInRange: Prisma.BookingTripWhereInput = {
       ...overlapping(start, end),
       status: { not: TripStatus.HUY },
       booking: { status: { in: DISPATCHABLE } },
     };
 
-    const [vehicles, partnerTrips, waiting, overdue] = await Promise.all([
+    const [vehicles, partnerTrips, waiting, overdue, waitingLater] = await Promise.all([
       this.prisma.vehicle.findMany({
         where: { ownership: Ownership.CONG_TY },
         include: {
@@ -116,9 +122,9 @@ export class DispatchService {
         include: dispatchTripInclude,
         orderBy: { pickupTime: 'asc' },
       }),
-      // Tất cả chuyến chờ điều xe (không giới hạn theo ngày đang xem), sắp theo giờ đón
+      // Chuyến chờ điều xe trong 7 ngày gần nhất (không phụ thuộc ngày đang xem), sắp theo giờ đón
       this.prisma.bookingTrip.findMany({
-        where: { status: TripStatus.CHO_DIEU, booking: { status: BookingStatus.XAC_NHAN } },
+        where: { ...waitBase, pickupTime: { gte: waitFrom, lt: waitTo } },
         include: dispatchTripInclude,
         orderBy: { pickupTime: 'asc' },
       }),
@@ -126,8 +132,10 @@ export class DispatchService {
       this.prisma.bookingTrip.count({
         where: { status: TripStatus.CHO_DIEU, pickupTime: { lt: new Date() }, booking: { status: BookingStatus.XAC_NHAN } },
       }),
+      // Chuyến chờ điều xa hơn 7 ngày: chỉ đếm, xem ở Danh sách chuyến
+      this.prisma.bookingTrip.count({ where: { ...waitBase, pickupTime: { gte: waitTo } } }),
     ]);
-    return { from: vnYmd(start), to: vnYmd(end), vehicles, partnerTrips, waiting, overdueCount: overdue };
+    return { from: vnYmd(start), to: vnYmd(end), vehicles, partnerTrips, waiting, overdueCount: overdue, waitingLater, waitingUntil: vnYmd(new Date(waitTo.getTime() - 1)) };
   }
 
   async getTrip(id: number) {

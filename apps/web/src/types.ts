@@ -353,6 +353,10 @@ export interface Schedule {
   partnerTrips: DispatchTrip[];
   waiting: DispatchTrip[];
   overdueCount: number;
+  /** Số chuyến chờ điều xa hơn 7 ngày tới (không có trong waiting) */
+  waitingLater: number;
+  /** Ngày cuối của cửa sổ 7 ngày (YYYY-MM-DD) */
+  waitingUntil: string;
 }
 
 interface Conflict {
