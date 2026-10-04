@@ -129,8 +129,28 @@ export class BookingsService {
     return this.create({ ...dto, internalNotes: dto.internalNotes ?? 'Lệnh điều xe tạo nhanh tại mục Điều xe' }, user, BookingStatus.XAC_NHAN);
   }
 
+  /** Booking khác (chưa hủy) đang dùng mã booking của khách này; không phân biệt hoa thường / khoảng trắng */
+  async findCustomerRef(ref: string | null | undefined, excludeId?: number) {
+    const value = ref?.trim();
+    if (!value) return null;
+    return this.prisma.booking.findFirst({
+      where: { customerRef: { equals: value, mode: 'insensitive' }, status: { not: BookingStatus.HUY }, ...(excludeId && { id: { not: excludeId } }) },
+      select: { id: true, code: true, status: true, contactName: true, customer: { select: { name: true } } },
+    });
+  }
+
+  private async checkCustomerRef(ref: string | null | undefined, excludeId?: number) {
+    const dup = await this.findCustomerRef(ref, excludeId);
+    if (dup) {
+      throw new BadRequestException(
+        `Mã booking của khách "${ref!.trim()}" đã có ở booking ${dup.code} (${dup.customer?.name ?? dup.contactName}). Không lưu booking trùng mã.`,
+      );
+    }
+  }
+
   async create(dto: CreateBookingDto, user: AuthUser, status: BookingStatus = BookingStatus.NHAP) {
     await this.checkSource(dto.source);
+    await this.checkCustomerRef(dto.customerRef);
     const { trips, passengers, quoteValidUntil, ...data } = dto;
     const tripData = await this.buildTrips(trips);
 
@@ -163,6 +183,7 @@ export class BookingsService {
 
   async update(id: number, dto: UpdateBookingDto) {
     await this.checkSource(dto.source);
+    if (dto.customerRef) await this.checkCustomerRef(dto.customerRef, id);
     const current = await this.prisma.booking.findUniqueOrThrow({ where: { id }, include: { trips: true } });
     // Booking đã hoàn thành vẫn sửa được (điều chỉnh giá, thông tin sau chuyến); chỉ khóa booking đã hủy
     if (current.status === BookingStatus.HUY) {

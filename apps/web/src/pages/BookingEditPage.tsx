@@ -528,7 +528,24 @@ export default function BookingEditPage() {
               <Form.Item
                 name="customerRef"
                 label="Mã booking của khách"
-                tooltip="Mã do khách / đại lý đặt cho đơn này (nếu có), dùng để đối chiếu. In trên báo giá, lệnh điều xe, danh sách hành khách."
+                tooltip="Mã do khách / đại lý đặt cho đơn này (nếu có), dùng để đối chiếu. In trên báo giá, lệnh điều xe, danh sách hành khách. Không trùng với booking khác (trừ booking đã hủy)."
+                validateTrigger={["onChange", "onBlur"]}
+                validateDebounce={500}
+                rules={[
+                  {
+                    // Cảnh báo ngay khi nhập: mã đã có ở booking khác (chưa hủy) thì không cho lưu
+                    validator: async (_, value?: string) => {
+                      if (!value?.trim()) return;
+                      const { duplicate } = await api<{ duplicate: { id: number; code: string; contactName: string; customer: { name: string } | null } | null }>(
+                        "/bookings/check-ref",
+                        { query: { ref: value.trim(), ...(booking ? { excludeId: booking.id } : {}) } },
+                      );
+                      if (duplicate) {
+                        throw new Error(`Mã này đã có ở booking ${duplicate.code} (${duplicate.customer?.name ?? duplicate.contactName})`);
+                      }
+                    },
+                  },
+                ]}
               >
                 <Input placeholder="Ví dụ: HN-2611-045" allowClear />
               </Form.Item>

@@ -16,6 +16,12 @@ export class BookingsController {
     return this.bookings.findAll(query);
   }
 
+  /** Kiểm tra mã booking của khách đã được dùng ở booking khác chưa (cảnh báo ngay khi nhập) */
+  @Get('check-ref')
+  async checkRef(@Query('ref') ref?: string, @Query('excludeId') excludeId?: string) {
+    return { duplicate: await this.bookings.findCustomerRef(ref, excludeId ? Number(excludeId) || undefined : undefined) };
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.bookings.findOne(id);
