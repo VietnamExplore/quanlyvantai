@@ -143,8 +143,8 @@ export class FinanceService implements OnModuleInit {
     const groups = new Map<string, Group>();
 
     for (const b of bookings) {
+      // Hiện cả booking đã thanh toán đủ để xem được lịch sử công nợ của mọi khách có booking
       const t = bookingTotals(b);
-      if (Math.round(t.balance) === 0) continue;
       const activeTrips = b.trips.filter((x) => x.status !== TripStatus.HUY);
       const lastEnd = activeTrips.reduce((m, x) => Math.max(m, x.endTime.getTime()), 0) || b.createdAt.getTime();
       const term = b.customer?.paymentTermDays ?? 0;
@@ -193,7 +193,8 @@ export class FinanceService implements OnModuleInit {
 
     const list = [...groups.values()]
       .map((g) => ({ ...g, overLimit: g.creditLimit !== null && g.creditLimit > 0 && g.balance > g.creditLimit }))
-      .sort((a, b) => b.balance - a.balance);
+      // Khách còn nợ lên trước (nợ nhiều trước), sau đó khách đã thanh toán đủ theo tên
+      .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name, 'vi'));
     return {
       totalBalance: list.reduce((s, g) => s + g.balance, 0),
       totalOverdue: list.reduce((s, g) => s + g.overdue, 0),

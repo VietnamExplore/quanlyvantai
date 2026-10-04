@@ -55,12 +55,14 @@ export default function ReceivablesPage() {
   const canCollect = hasRole('ADMIN', 'KE_TOAN', 'KINH_DOANH');
   const [q, setQ] = useState('');
   const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [onlyDebt, setOnlyDebt] = useState(false);
   const [collect, setCollect] = useState<RecBooking | null>(null);
 
   const { data, isLoading } = useQuery({ queryKey: ['/finance', 'receivables'], queryFn: () => api<Receivables>('/finance/receivables') });
 
   const customers = (data?.customers ?? []).filter(
-    (c) => (!q || `${c.name} ${c.phone ?? ''}`.toLowerCase().includes(q.toLowerCase())) && (!onlyOverdue || c.overdue > 0),
+    (c) =>
+      (!q || `${c.name} ${c.phone ?? ''}`.toLowerCase().includes(q.toLowerCase())) && (!onlyOverdue || c.overdue > 0) && (!onlyDebt || Math.round(c.balance) > 0),
   );
 
   function exportCsv() {
@@ -113,10 +115,16 @@ export default function ReceivablesPage() {
       <Card>
         <Flex justify="space-between" align="center" wrap gap={12} style={{ marginBottom: 16 }}>
           <Typography.Title level={4} style={{ margin: 0 }}>
-            Công nợ khách hàng
+            Công nợ khách hàng{' '}
+            <Typography.Text type="secondary" style={{ fontSize: 14, fontWeight: 400 }}>
+              ({customers.length} khách)
+            </Typography.Text>
           </Typography.Title>
           <Flex gap={8} wrap align="center">
             <Input allowClear prefix={<SearchOutlined />} placeholder="Tên, SĐT khách" style={{ width: 220 }} onChange={(e) => setQ(e.target.value)} />
+            <Checkbox checked={onlyDebt} onChange={(e) => setOnlyDebt(e.target.checked)}>
+              Chỉ khách còn nợ
+            </Checkbox>
             <Checkbox checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)}>
               Chỉ khách quá hạn
             </Checkbox>
@@ -149,10 +157,11 @@ export default function ReceivablesPage() {
                   { title: 'NV kinh doanh', dataIndex: 'salesUser' },
                   { title: 'Tổng tiền', dataIndex: 'total', align: 'right', render: (v) => formatVnd(v) },
                   { title: 'Đã thu', dataIndex: 'paid', align: 'right', render: (v) => formatVnd(v) },
-                  { title: 'Còn nợ', dataIndex: 'balance', align: 'right', render: (v) => <b>{formatVnd(v)}</b> },
+                  { title: 'Còn nợ', dataIndex: 'balance', align: 'right', render: (v) => (Math.round(v) > 0 ? <b>{formatVnd(v)}</b> : <Tag color="green">Đã thu đủ</Tag>) },
                   {
                     title: 'Hạn thanh toán',
-                    render: (_, b) => (
+                    render: (_, b) =>
+                      Math.round(b.balance) <= 0 ? null : (
                       <>
                         {dayjs(b.dueDate).format(DATE_FORMAT)}
                         {b.overdueDays > 0 && b.balance > 0 && (
@@ -197,7 +206,14 @@ export default function ReceivablesPage() {
             { title: 'Số booking', align: 'center', render: (_, c) => c.bookings.length },
             { title: 'Tổng tiền', dataIndex: 'totalBilled', align: 'right', render: (v) => formatVnd(v) },
             { title: 'Đã thu', dataIndex: 'totalPaid', align: 'right', render: (v) => formatVnd(v) },
-            { title: 'Còn nợ', dataIndex: 'balance', align: 'right', render: (v) => <Money value={v} strong />, sorter: (a, b) => a.balance - b.balance, defaultSortOrder: 'descend' },
+            {
+              title: 'Còn nợ',
+              dataIndex: 'balance',
+              align: 'right',
+              render: (v) => (Math.round(v) > 0 ? <Money value={v} strong /> : <Tag color="green">Đã thanh toán đủ</Tag>),
+              sorter: (a, b) => a.balance - b.balance,
+              defaultSortOrder: 'descend',
+            },
             {
               title: 'Quá hạn',
               align: 'right',
