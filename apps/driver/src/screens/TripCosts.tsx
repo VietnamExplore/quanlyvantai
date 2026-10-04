@@ -71,7 +71,7 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
 
   useEffect(() => {
     load();
-    api<CostCategory[]>('/cost-categories')
+    api<CostCategory[]>('/driver/cost-categories')
       .then((list) => setCategories(list.filter((c) => c.isActive)))
       .catch(() => undefined);
   }, [load]);

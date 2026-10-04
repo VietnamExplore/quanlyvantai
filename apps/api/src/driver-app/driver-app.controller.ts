@@ -185,6 +185,16 @@ export class DriverAppController {
 
   // ───── Chi phí chuyến do lái xe nhập ─────
 
+  /** Loại chi phí lái xe được chọn trên app (không có lương, tạm ứng…), kể cả khi tài khoản có thêm vai trò văn phòng */
+  @Get('cost-categories')
+  costCategories() {
+    return this.prisma.costCategory.findMany({
+      where: { isActive: true, driverVisible: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { code: true, name: true, isActive: true },
+    });
+  }
+
   private async ownTrip(user: AuthUser, id: number) {
     const trip = await this.prisma.bookingTrip.findFirst({ where: { id, driverId: this.driverId(user) } });
     if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
