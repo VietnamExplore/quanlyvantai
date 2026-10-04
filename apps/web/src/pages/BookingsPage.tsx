@@ -1,6 +1,6 @@
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Card, DatePicker, Flex, Input, Select, Table, Typography } from 'antd';
+import { Button, Card, DatePicker, Flex, Input, Select, Table, Tooltip, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -42,7 +42,7 @@ export default function BookingsPage() {
           Booking <Typography.Text type="secondary">({data.length})</Typography.Text>
         </Typography.Title>
         <Flex gap={8} wrap>
-          <Input allowClear prefix={<SearchOutlined />} placeholder="Mã, tên, SĐT, địa điểm đón/trả" style={{ width: 250 }} onChange={(e) => setQ(e.target.value || undefined)} />
+          <Input allowClear prefix={<SearchOutlined />} placeholder="Mã, tên, SĐT, địa điểm, lịch trình" style={{ width: 250 }} onChange={(e) => setQ(e.target.value || undefined)} />
           <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Đi từ ngày', 'đến ngày']} onChange={(v) => setRange(v)} />
           <Select allowClear placeholder="Trạng thái" style={{ width: 150 }} options={toOptions(BOOKING_STATUS)} value={status} onChange={setStatus} />
           <Select allowClear placeholder="NV kinh doanh" style={{ width: 170 }} options={salesOptions} onChange={setSalesUserId} />
@@ -111,7 +111,7 @@ export default function BookingsPage() {
               const list = trips.length ? trips : r.trips;
               if (!list.length) return null;
               return (
-                <div style={{ maxWidth: 320, minWidth: 200, whiteSpace: 'normal', fontSize: 13, lineHeight: '18px' }}>
+                <div style={{ width: 230, whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 13, lineHeight: '18px' }}>
                   {list.slice(0, 2).map((t) => (
                     <div key={t.id} style={{ marginBottom: 2 }}>
                       {list.length > 1 && <Typography.Text type="secondary">{dayjs(t.pickupTime).format('HH:mm DD/MM')} · </Typography.Text>}
@@ -120,6 +120,33 @@ export default function BookingsPage() {
                   ))}
                   {list.length > 2 && <Typography.Text type="secondary">+{list.length - 2} chuyến khác</Typography.Text>}
                 </div>
+              );
+            },
+          },
+          {
+            title: 'Lịch trình',
+            render: (_, r) => {
+              const list = r.trips.filter((t) => t.status !== 'HUY' && t.itinerary?.trim());
+              if (!list.length) return null;
+              const full = list.map((t) => (list.length > 1 ? `${dayjs(t.pickupTime).format('DD/MM')}: ${t.itinerary}` : t.itinerary)).join('\n');
+              return (
+                <Tooltip title={<div style={{ whiteSpace: 'pre-line' }}>{full}</div>}>
+                  <div
+                    style={{
+                      width: 190,
+                      whiteSpace: 'pre-line',
+                      wordBreak: 'break-word',
+                      fontSize: 13,
+                      lineHeight: '18px',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {full}
+                  </div>
+                </Tooltip>
               );
             },
           },

@@ -101,6 +101,7 @@ export class BookingsService {
             // Tìm theo hành trình: điểm đón / điểm trả của chuyến
             { trips: { some: { pickupAddress: { contains: q, mode: 'insensitive' } } } },
             { trips: { some: { dropoffAddress: { contains: q, mode: 'insensitive' } } } },
+            { trips: { some: { itinerary: { contains: q, mode: 'insensitive' } } } },
           ],
         }),
       },
