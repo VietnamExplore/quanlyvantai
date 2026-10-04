@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
-import { fmtTime, routeText } from '../booking-utils';
+import { fmtTime, quoteStaff, routeText } from '../booking-utils';
 import { formatVnd, useSettings } from '../components/common';
 import { DOC_CSS, PrintHeader } from '../components/PrintDoc';
 import type { Booking } from '../types';
@@ -55,6 +55,10 @@ export default function QuotePage() {
                 </div>
               )}
               <div>Ngày: {dayjs().format('DD/MM/YYYY')}</div>
+              <div>
+                NV báo giá: <b>{quoteStaff(b).fullName}</b>
+              </div>
+              {quoteStaff(b).phone && <div>ĐT: {quoteStaff(b).phone}</div>}
             </>
           }
         />
@@ -203,7 +207,10 @@ export default function QuotePage() {
             <div className="role">Đại diện công ty</div>
             <div className="hint">(Ký, ghi rõ họ tên)</div>
             <div className="space" />
-            <div>{b.salesUser?.fullName ?? b.createdBy.fullName}</div>
+            <div>
+              <b>{quoteStaff(b).fullName}</b>
+            </div>
+            {quoteStaff(b).phone && <div className="small">ĐT: {quoteStaff(b).phone}</div>}
           </div>
         </div>
       </div>

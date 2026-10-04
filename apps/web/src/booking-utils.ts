@@ -90,6 +90,9 @@ export const fmtTime = (iso: string) => dayjs(iso).format('HH:mm dd DD/MM/YYYY')
 export const routeText = (t: Pick<TripDraft, 'pickupAddress' | 'dropoffAddress'>) =>
   t.dropoffAddress ? `${t.pickupAddress} → ${t.dropoffAddress}` : t.pickupAddress;
 
+/** Nhân viên báo giá: NV kinh doanh phụ trách, chưa gán thì người tạo booking */
+export const quoteStaff = (b: Pick<Booking, 'salesUser' | 'createdBy'>) => b.salesUser ?? b.createdBy;
+
 /** Nội dung báo giá dạng chữ để dán vào Zalo / email */
 export function buildQuoteText(b: Booking, s: Settings) {
   const vnd = (v: number | string) => `${formatVnd(v)}đ`;
@@ -119,8 +122,13 @@ export function buildQuoteText(b: Booking, s: Settings) {
   if (Number(b.depositAmount)) lines.push(`Đặt cọc: ${vnd(b.depositAmount)} – Còn lại: ${vnd(b.remaining)}`);
   if (b.quoteValidUntil) lines.push(`Báo giá có hiệu lực đến ${dayjs(b.quoteValidUntil).format('DD/MM/YYYY')}`);
 
-  for (const extra of [b.notes, s.quoteFooter, s.bankInfo && `Chuyển khoản: ${s.bankInfo}`, s.companyPhone && `Hotline: ${s.companyPhone}`]) {
+  for (const extra of [b.notes, s.quoteFooter, s.bankInfo && `Chuyển khoản: ${s.bankInfo}`]) {
     if (extra) lines.push('', extra);
   }
+
+  // Liên hệ: nhân viên báo giá + SĐT, kèm hotline công ty
+  const staff = quoteStaff(b);
+  lines.push('', `Nhân viên báo giá: ${staff.fullName}${staff.phone ? ` – ${staff.phone}` : ''}`);
+  if (s.companyPhone && s.companyPhone !== staff.phone) lines.push(`Hotline: ${s.companyPhone}`);
   return lines.join('\n');
 }

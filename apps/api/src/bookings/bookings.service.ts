@@ -10,8 +10,8 @@ const TZ = 'Asia/Ho_Chi_Minh';
 
 const bookingInclude = {
   customer: { select: { id: true, name: true, type: true, phone: true, email: true, taxCode: true, address: true } },
-  salesUser: { select: { id: true, fullName: true } },
-  createdBy: { select: { id: true, fullName: true } },
+  salesUser: { select: { id: true, fullName: true, phone: true } },
+  createdBy: { select: { id: true, fullName: true, phone: true } },
   passengers: { orderBy: { seq: 'asc' } },
   payments: { orderBy: [{ paidAt: 'asc' }, { id: 'asc' }], include: { createdBy: { select: { id: true, fullName: true } } } },
   trips: {

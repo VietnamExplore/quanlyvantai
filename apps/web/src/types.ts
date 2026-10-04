@@ -298,8 +298,8 @@ export interface Booking extends Ref {
   source: BookingSource;
   status: BookingStatus;
   salesUserId: number | null;
-  salesUser: { id: number; fullName: string } | null;
-  createdBy: { id: number; fullName: string };
+  salesUser: { id: number; fullName: string; phone?: string | null } | null;
+  createdBy: { id: number; fullName: string; phone?: string | null };
   discountAmount: string;
   vatPercent: string;
   depositAmount: string;
