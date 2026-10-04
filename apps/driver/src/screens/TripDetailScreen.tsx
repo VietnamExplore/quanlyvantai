@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
-import { colors, fmtDate, fmtHour, fmtTime, NEXT_STEP, SERVICE } from '../theme';
+import { BRAND, colors, dayLabel, fmtDate, fmtHour, fmtTime, NEXT_STEP, SERVICE } from '../theme';
 import type { Passenger, Trip } from '../types';
-import { Button, Card, Row, StatusBadge, styles as ui } from '../ui';
+import { Button, Card, Chip, QuickAction, Row, Section, StatusBadge, styles as ui } from '../ui';
 import { contactGuest, APP_LABEL, guessApp, pickupMessage } from '../contact';
 import { ContactCard, ContactChooser, type GuestContact } from './ContactCard';
 import { SignScreen } from './SignScreen';
@@ -18,15 +19,16 @@ function PassengerRow({ p, onContact }: { p: Passenger; onContact: (c: GuestCont
   const info = [p.gender && GENDER[p.gender], p.nationality].filter(Boolean).join(' · ');
   return (
     <View style={s.paxRow}>
-      <Text style={s.paxSeq}>{p.seq}.</Text>
+      <View style={s.paxSeqBox}>
+        <Text style={s.paxSeq}>{p.seq}</Text>
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={s.paxName}>{p.fullName}</Text>
         {(info || p.note) && <Text style={s.paxInfo}>{[info, p.note].filter(Boolean).join(' · ')}</Text>}
       </View>
       {p.phone && (
-        <Pressable onPress={() => onContact({ role: 'Khách', name: p.fullName, phone: p.phone })} hitSlop={8} style={s.paxCall}>
-          <Text style={{ color: colors.primary, fontWeight: '600' }}>💬 {p.phone}</Text>
-          <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'right' }}>{APP_LABEL[guessApp(p.phone)]}</Text>
+        <Pressable onPress={() => onContact({ role: 'Khách', name: p.fullName, phone: p.phone })} hitSlop={8} style={({ pressed }) => [s.paxCall, pressed && { opacity: 0.7 }]}>
+          <Text style={s.paxCallText}>💬 {APP_LABEL[guessApp(p.phone)]}</Text>
         </Pressable>
       )}
     </View>
@@ -44,6 +46,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   const [reason, setReason] = useState('');
   const [signOpen, setSignOpen] = useState(false);
   const [allPax, setAllPax] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const [contactY, setContactY] = useState(0);
   // Không mở được ứng dụng của khách: cho chọn cách khác
   const [choosing, setChoosing] = useState<GuestContact | null>(null);
   const contactPax = async (c: GuestContact) => {
@@ -129,87 +133,130 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   const msgFor = (c: GuestContact) =>
     pickupMessage({ phone: c.phone, name: c.name, time: `${fmtHour(trip.pickupTime)} ${fmtDate(trip.pickupTime).slice(0, 5)}`, place: trip.pickupAddress, plate: trip.vehicle?.plateNumber ?? null });
   const guestContact = baseContact && { ...baseContact, message: msgFor(baseContact) };
+  const service = trip.service?.name ?? SERVICE[trip.serviceType] ?? trip.serviceType;
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 140 }}>
-        <Card>
-          <View style={s.headRow}>
-            <Text style={s.code}>{trip.booking.code}</Text>
-            <StatusBadge status={trip.status} />
+      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 12, paddingBottom: next ? 170 : 40 }}>
+        {/* Khối đầu: giờ đón, trạng thái */}
+        <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
+          <View style={s.heroTop}>
+            <Text style={s.heroCode}>{b.code}</Text>
+            <StatusBadge status={trip.status} onDark />
           </View>
-          <Text style={s.time}>{fmtTime(trip.pickupTime)}</Text>
-          <Text style={s.sub}>
-            {trip.service?.name ?? SERVICE[trip.serviceType] ?? trip.serviceType} · dự kiến xong {fmtTime(trip.endTime)}
+          <Text style={s.heroTime}>{fmtHour(trip.pickupTime)}</Text>
+          <Text style={s.heroDay}>
+            {dayLabel(trip.pickupTime)} · {fmtDate(trip.pickupTime)}
           </Text>
-          <Button title="🪧 Mở bảng đón khách" onPress={() => setSignOpen(true)} style={{ marginTop: 12 }} />
+          <Text style={s.heroSub}>
+            {service} · dự kiến xong {fmtTime(trip.endTime)}
+          </Text>
+        </LinearGradient>
+
+        {/* Thao tác nhanh */}
+        <Card style={s.quickRow}>
+          <QuickAction icon="🪧" label="Bảng đón" onPress={() => setSignOpen(true)} />
+          <QuickAction icon="🧭" label="Chỉ đường" tone="green" onPress={() => openMap(trip.pickupAddress)} />
+          {guestContact && <QuickAction icon="💬" label="Liên hệ" tone="purple" onPress={() => scrollRef.current?.scrollTo({ y: contactY - 12, animated: true })} />}
+          {trip.dropoffAddress && <QuickAction icon="🏁" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
         </Card>
 
-        {guestContact && <ContactCard contact={guestContact} />}
-
+        {/* Tuyến đường: đón → lịch trình → trả */}
         <Card>
-          <Text style={s.section}>Điểm đón</Text>
-          <Text style={s.address}>{trip.pickupAddress}</Text>
-          <Button title="🧭 Chỉ đường đến điểm đón" variant="outline" onPress={() => openMap(trip.pickupAddress)} style={{ marginTop: 8 }} />
+          <Section icon="🗺️" title="Hành trình" />
+          <View style={s.stop}>
+            <View style={s.stopRail}>
+              <View style={[s.stopDot, { backgroundColor: colors.primary }]} />
+              {(trip.itinerary || trip.dropoffAddress) && <View style={s.stopLine} />}
+            </View>
+            <View style={s.stopBody}>
+              <Text style={s.stopLabel}>ĐIỂM ĐÓN</Text>
+              <Text style={s.address}>{trip.pickupAddress}</Text>
+              <Button title="Chỉ đường" icon="🧭" size="sm" variant="soft" onPress={() => openMap(trip.pickupAddress)} style={s.stopBtn} />
+            </View>
+          </View>
           {trip.itinerary && (
-            <>
-              <Text style={[s.section, { marginTop: 16 }]}>Lịch trình</Text>
-              <View style={s.itinerary}>
-                <Text style={s.itineraryText}>{trip.itinerary}</Text>
+            <View style={s.stop}>
+              <View style={s.stopRail}>
+                <View style={[s.stopDot, s.stopDotSmall]} />
+                {trip.dropoffAddress && <View style={s.stopLine} />}
               </View>
-            </>
+              <View style={s.stopBody}>
+                <Text style={s.stopLabel}>LỊCH TRÌNH</Text>
+                <View style={s.itinerary}>
+                  <Text style={s.itineraryText}>{trip.itinerary}</Text>
+                </View>
+              </View>
+            </View>
           )}
           {trip.dropoffAddress && (
-            <>
-              <Text style={[s.section, { marginTop: 16 }]}>Điểm trả</Text>
-              <Text style={s.address}>{trip.dropoffAddress}</Text>
-              <Button title="🧭 Chỉ đường đến điểm trả" variant="outline" onPress={() => openMap(trip.dropoffAddress!)} style={{ marginTop: 8 }} />
-            </>
+            <View style={s.stop}>
+              <View style={s.stopRail}>
+                <View style={[s.stopDot, { backgroundColor: colors.accent }]} />
+              </View>
+              <View style={[s.stopBody, { paddingBottom: 0 }]}>
+                <Text style={s.stopLabel}>ĐIỂM TRẢ</Text>
+                <Text style={s.address}>{trip.dropoffAddress}</Text>
+                <Button title="Chỉ đường" icon="🧭" size="sm" variant="soft" onPress={() => openMap(trip.dropoffAddress!)} style={s.stopBtn} />
+              </View>
+            </View>
           )}
         </Card>
 
+        {guestContact && (
+          <View onLayout={(e) => setContactY(e.nativeEvent.layout.y)}>
+            <ContactCard contact={guestContact} />
+          </View>
+        )}
+
+        {/* Thông tin chuyến */}
         <Card>
-          <Text style={s.section}>Thông tin chuyến</Text>
-          <Row label="Số khách">{`${trip.passengers} khách`}</Row>
-          {trip.flightNumber && <Row label="Chuyến bay đón">{trip.flightNumber}</Row>}
-          {trip.departureFlight && <Row label="Chuyến bay tiễn">{trip.departureFlight}</Row>}
+          <Section icon="ℹ️" title="Thông tin chuyến" />
+          <View style={s.chips}>
+            <Chip text={`👥 ${trip.passengers} khách`} />
+            <Chip text={`🚐 ${trip.vehicle ? trip.vehicle.plateNumber : trip.vehicleType.name}`} />
+            {trip.vehicle && <Chip text={trip.vehicleType.name} />}
+            {trip.days > 1 && <Chip text={`📅 ${trip.days} ngày`} />}
+            {trip.flightNumber && <Chip tone="blue" text={`✈ Đón ${trip.flightNumber}`} />}
+            {trip.departureFlight && <Chip tone="blue" text={`✈ Tiễn ${trip.departureFlight}`} />}
+          </View>
+          {trip.notes && (
+            <View style={{ marginTop: 10 }}>
+              <Row label="Ghi chú">{trip.notes}</Row>
+            </View>
+          )}
+          {trip.dispatchNote && (
+            <View style={s.dispatchNote}>
+              <Text style={s.dispatchTitle}>⚠️ Lưu ý từ điều hành</Text>
+              <Text style={s.dispatchText}>{trip.dispatchNote}</Text>
+            </View>
+          )}
         </Card>
 
         {pax.length > 0 && (
           <Card>
-            <Text style={s.section}>Đoàn khách ({pax.length} người)</Text>
+            <Section icon="👥" title={`Đoàn khách · ${pax.length} người`} />
             {(allPax ? pax : pax.slice(0, PAX_PREVIEW)).map((p) => (
               <PassengerRow key={p.seq} p={p} onContact={contactPax} />
             ))}
             {pax.length > PAX_PREVIEW && (
-              <Button
-                title={allPax ? 'Thu gọn' : `Xem tất cả ${pax.length} khách`}
-                variant="ghost"
-                onPress={() => setAllPax(!allPax)}
-                style={{ marginTop: 4 }}
-              />
+              <Button title={allPax ? 'Thu gọn' : `Xem tất cả ${pax.length} khách`} variant="ghost" size="sm" onPress={() => setAllPax(!allPax)} style={{ marginTop: 6 }} />
             )}
           </Card>
         )}
 
-        <Card>
-          <Text style={s.section}>Xe & ghi chú</Text>
-          <Row label="Xe">{trip.vehicle ? `${trip.vehicle.plateNumber} (${trip.vehicleType.name})` : trip.vehicleType.name}</Row>
-          {trip.days > 1 && <Row label="Số ngày">{`${trip.days} ngày`}</Row>}
-          {trip.notes && <Row label="Ghi chú">{trip.notes}</Row>}
-          {trip.dispatchNote && (
-            <View style={s.dispatchNote}>
-              <Text style={{ fontWeight: '700', color: colors.warning, marginBottom: 2 }}>Lưu ý từ điều hành</Text>
-              <Text style={{ fontSize: 15, color: colors.text }}>{trip.dispatchNote}</Text>
-            </View>
-          )}
-        </Card>
         {trip.status !== 'DA_GAN' && <TripCosts tripId={trip.id} canAdd={trip.status !== 'HUY'} />}
       </ScrollView>
 
       {next && (
         <View style={s.bottomBar}>
-          <Button title={next.label} onPress={advance} loading={busy} big />
-          {trip.status === 'DA_GAN' && <Button title="Từ chối chuyến" variant="danger" onPress={() => setRejectOpen(true)} style={{ marginTop: 8 }} />}
+          {trip.status === 'DA_GAN' ? (
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Button title="Từ chối" variant="danger" size="lg" onPress={() => setRejectOpen(true)} style={{ flex: 1 }} />
+              <Button title={next.label} size="lg" onPress={advance} loading={busy} style={{ flex: 2 }} />
+            </View>
+          ) : (
+            <Button title={next.label} size="lg" onPress={advance} loading={busy} />
+          )}
         </View>
       )}
 
@@ -219,10 +266,13 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
       <Modal visible={rejectOpen} transparent animationType="fade" onRequestClose={() => setRejectOpen(false)}>
         <View style={s.modalBg}>
           <View style={s.modal}>
-            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 12 }}>Từ chối chuyến</Text>
+            <Text style={{ fontSize: 19, fontWeight: '800', marginBottom: 4, color: colors.text }}>Từ chối chuyến</Text>
+            <Text style={{ fontSize: 14, color: colors.text2, marginBottom: 12 }}>Văn phòng sẽ điều xe khác cho chuyến này.</Text>
             <TextInput placeholderTextColor={colors.muted} style={[ui.input, { minHeight: 80, textAlignVertical: 'top' }]} multiline value={reason} onChangeText={setReason} placeholder="Lý do (ví dụ: xe hỏng, bận việc gia đình…)" />
-            <Button title="Gửi từ chối" variant="danger" onPress={reject} loading={busy} />
-            <Button title="Thôi" variant="ghost" onPress={() => setRejectOpen(false)} style={{ marginTop: 4 }} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Button title="Thôi" variant="soft" onPress={() => setRejectOpen(false)} style={{ flex: 1 }} />
+              <Button title="Gửi từ chối" variant="danger" onPress={reject} loading={busy} style={{ flex: 1 }} />
+            </View>
           </View>
         </View>
       </Modal>
@@ -232,21 +282,36 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
 
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  code: { fontSize: 14, color: colors.muted, fontWeight: '600' },
-  time: { fontSize: 26, fontWeight: '700', color: colors.text, marginTop: 6 },
-  sub: { fontSize: 14, color: colors.text2, marginTop: 2 },
-  section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginBottom: 4 },
-  address: { fontSize: 17, color: colors.text, lineHeight: 23 },
-  itinerary: { backgroundColor: '#f6f8fb', borderLeftWidth: 3, borderLeftColor: colors.primary, borderRadius: 8, padding: 10 },
+  hero: { borderRadius: 22, padding: 18, marginBottom: 12 },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heroCode: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  heroTime: { color: '#fff', fontSize: 44, fontWeight: '800', letterSpacing: -1, marginTop: 6 },
+  heroDay: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: -2 },
+  heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13.5, marginTop: 6 },
+  quickRow: { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 8 },
+  stop: { flexDirection: 'row', gap: 12 },
+  stopRail: { width: 14, alignItems: 'center', paddingTop: 4 },
+  stopDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 3, borderColor: '#fff', elevation: 2 },
+  stopDotSmall: { width: 10, height: 10, borderRadius: 5, borderWidth: 0, backgroundColor: '#c3cfdf', marginTop: 2 },
+  stopLine: { width: 2, flex: 1, backgroundColor: '#dbe3ee', marginVertical: 2 },
+  stopBody: { flex: 1, paddingBottom: 16 },
+  stopLabel: { fontSize: 11.5, fontWeight: '800', color: colors.muted, letterSpacing: 0.8, marginBottom: 2 },
+  stopBtn: { alignSelf: 'flex-start', marginTop: 8 },
+  address: { fontSize: 16.5, color: colors.text, lineHeight: 23, fontWeight: '500' },
+  itinerary: { backgroundColor: '#f4f7fc', borderRadius: 12, padding: 10, marginTop: 2 },
   itineraryText: { fontSize: 15, color: colors.text, lineHeight: 22 },
-  dispatchNote: { backgroundColor: '#fffbe6', borderRadius: 8, padding: 10, marginTop: 10 },
-  paxRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  paxSeq: { width: 26, color: colors.muted, fontSize: 14 },
-  paxName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  dispatchNote: { backgroundColor: '#fff7e6', borderRadius: 12, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#ffe2b0' },
+  dispatchTitle: { fontWeight: '800', color: colors.warning, marginBottom: 2 },
+  dispatchText: { fontSize: 15, color: colors.text, lineHeight: 21 },
+  paxRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  paxSeqBox: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  paxSeq: { color: colors.primary, fontSize: 13, fontWeight: '800' },
+  paxName: { fontSize: 15, fontWeight: '700', color: colors.text },
   paxInfo: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  paxCall: { marginLeft: 8 },
-  bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 20, backgroundColor: colors.card, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
-  modal: { backgroundColor: '#fff', borderRadius: 14, padding: 20 },
+  paxCall: { backgroundColor: colors.primarySoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
+  paxCallText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
+  bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 18, backgroundColor: 'rgba(255,255,255,0.97)', borderTopLeftRadius: 22, borderTopRightRadius: 22, elevation: 16, shadowColor: '#0b2a5c', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: -4 } },
+  modalBg: { flex: 1, backgroundColor: 'rgba(8,24,56,0.45)', justifyContent: 'center', padding: 24 },
+  modal: { backgroundColor: '#fff', borderRadius: 22, padding: 20 },
 });

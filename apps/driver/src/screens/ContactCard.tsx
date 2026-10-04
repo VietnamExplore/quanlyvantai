@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ALL_APPS, APP_LABEL, contactGuest, guessApp, messageApp, messageGuest, openApp, type ContactApp } from '../contact';
 import { colors } from '../theme';
-import { Button, Card } from '../ui';
+import { Button, Card, Section } from '../ui';
 
 export interface GuestContact {
   role: string;
@@ -33,11 +33,11 @@ export function ContactChooser({ contact, mode = 'call', onClose }: { contact: G
             {mode === 'message' ? 'Nhắn tin' : 'Gọi'} cho {contact.name} qua…
           </Text>
           <Text style={s.sheetSub}>{[phone, appId && `ID: ${appId}`].filter(Boolean).join(' · ')}</Text>
-          <ScrollView style={{ maxHeight: 420 }}>
+          <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={s.grid}>
             {ALL_APPS.map((a) => (
-              <Pressable key={a} onPress={() => pick(a)} style={({ pressed }) => [s.sheetItem, pressed && { backgroundColor: '#f0f5ff' }]}>
-                <Text style={s.sheetItemText}>
-                  {mode === 'message' ? '💬' : '📞'} {APP_LABEL[a]}
+              <Pressable key={a} onPress={() => pick(a)} style={({ pressed }) => [s.gridItem, pressed && { backgroundColor: colors.primarySoft }]}>
+                <Text style={s.gridItemText}>
+                  {mode === 'message' ? '💬' : '📞'}  {APP_LABEL[a]}
                 </Text>
               </Pressable>
             ))}
@@ -48,15 +48,15 @@ export function ContactChooser({ contact, mode = 'call', onClose }: { contact: G
                   if (mode === 'message') Linking.openURL(`sms:${phone.replace(/[^\d+]/g, '')}?body=${encodeURIComponent(contact.message ?? '')}`);
                   else Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`);
                 }}
-                style={({ pressed }) => [s.sheetItem, pressed && { backgroundColor: '#fff1f0' }]}
+                style={({ pressed }) => [s.gridItem, s.gridWide, pressed && { backgroundColor: '#fff1f0' }]}
               >
-                <Text style={[s.sheetItemText, { color: colors.muted }]}>
+                <Text style={[s.gridItemText, { color: colors.muted, fontWeight: '600' }]}>
                   {mode === 'message' ? '✉️ Tin nhắn SMS thường (tính cước)' : '📞 Gọi điện thường (tính cước)'}
                 </Text>
               </Pressable>
             )}
           </ScrollView>
-          <Button title="Đóng" variant="ghost" onPress={onClose} style={{ marginTop: 6 }} />
+          <Button title="Đóng" variant="soft" onPress={onClose} style={{ marginTop: 10 }} />
         </Pressable>
       </Pressable>
     </Modal>
@@ -79,20 +79,37 @@ export function ContactCard({ contact }: { contact: GuestContact }) {
   const label = app ? APP_LABEL[app] : 'ứng dụng';
 
   return (
-    <Card style={s.card}>
-      <Text style={s.role}>📍 Liên hệ đón khách · {contact.role}</Text>
-      <Text style={s.name}>{contact.name}</Text>
+    <Card>
+      <Section icon="📍" title="Liên hệ đón khách" />
+      <View style={s.person}>
+        <View style={s.avatar}>
+          <Text style={s.avatarText}>{contact.name.trim().charAt(0).toUpperCase()}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={s.roleChip}>
+            <Text style={s.roleText}>{contact.role}</Text>
+          </View>
+          <Text style={s.name} numberOfLines={2}>
+            {contact.name}
+          </Text>
+          {reachable && (
+            <Text style={s.phone}>
+              {contact.phone ?? ''}
+              {contact.appId ? `${contact.phone ? ' · ' : ''}ID ${contact.appId}` : ''}
+              {app ? `  ·  ${label}` : ''}
+            </Text>
+          )}
+        </View>
+      </View>
       {reachable ? (
         <>
-          <Text style={s.phone}>
-            {contact.phone ?? ''}
-            {contact.appId ? `${contact.phone ? ' · ' : ''}ID ${contact.appId}` : ''}
-          </Text>
           <View style={s.row}>
-            <Button title={`📞 Gọi qua ${label}`} onPress={call} style={{ flex: 1 }} />
-            <Button title={`💬 Nhắn tin`} variant="outline" onPress={message} style={{ flex: 1 }} />
+            <Button title={`Gọi ${label}`} icon="📞" size="sm" onPress={call} style={{ flex: 1 }} />
+            <Button title="Nhắn tin" icon="💬" size="sm" variant="soft" onPress={message} style={{ flex: 1 }} />
           </View>
-          <Button title="Dùng ứng dụng khác…" variant="ghost" onPress={() => setChoosing('call')} style={{ marginTop: 4 }} />
+          <Pressable onPress={() => setChoosing('call')} hitSlop={8} style={{ alignSelf: 'center', marginTop: 10 }}>
+            <Text style={s.other}>Dùng ứng dụng khác…</Text>
+          </Pressable>
         </>
       ) : (
         <Text style={s.noPhone}>Chưa có số điện thoại — hỏi văn phòng</Text>
@@ -103,16 +120,22 @@ export function ContactCard({ contact }: { contact: GuestContact }) {
 }
 
 const s = StyleSheet.create({
-  card: { borderLeftWidth: 5, borderLeftColor: colors.primary },
-  role: { fontSize: 13, fontWeight: '700', color: colors.primary, textTransform: 'uppercase' },
-  name: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 4 },
-  phone: { fontSize: 15, color: colors.text2, marginTop: 2 },
-  row: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  noPhone: { fontSize: 14, color: colors.warning, marginTop: 6 },
-  sheetBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, paddingBottom: 24 },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  sheetSub: { fontSize: 14, color: colors.muted, marginTop: 2, marginBottom: 8 },
-  sheetItem: { paddingVertical: 14, paddingHorizontal: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, borderRadius: 8 },
-  sheetItemText: { fontSize: 17, color: colors.text },
+  person: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  roleChip: { alignSelf: 'flex-start', backgroundColor: colors.primarySoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  roleText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  name: { fontSize: 18, fontWeight: '800', color: colors.text, marginTop: 3 },
+  phone: { fontSize: 14, color: colors.text2, marginTop: 1 },
+  row: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  other: { color: colors.primary, fontSize: 13.5, fontWeight: '700' },
+  noPhone: { fontSize: 14, color: colors.warning, marginTop: 10 },
+  sheetBg: { flex: 1, backgroundColor: 'rgba(8,24,56,0.45)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 18, paddingBottom: 26 },
+  sheetTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  sheetSub: { fontSize: 14, color: colors.muted, marginTop: 2, marginBottom: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  gridItem: { width: '48.5%', paddingVertical: 14, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#f4f7fc', borderWidth: 1, borderColor: colors.border },
+  gridWide: { width: '100%' },
+  gridItemText: { fontSize: 15.5, color: colors.text, fontWeight: '700' },
 });

@@ -1,17 +1,36 @@
 import type { ServiceType, TripStatus } from './types';
 
+/** Thương hiệu: màu lấy từ logo Vietnam Explore (#1278FA) */
+export const BRAND = {
+  company: 'VIETNAM EXPLORE',
+  /** Nền màn hình đăng nhập: xanh đậm → xanh logo → xanh sáng */
+  gradient: ['#083AA0', '#1278FA', '#5CB2FF'] as const,
+  button: ['#0F6BE0', '#3A93FF'] as const,
+};
+
 export const colors = {
-  primary: '#1668dc',
-  primaryDark: '#0e4fae',
-  bg: '#f2f3f5',
+  primary: '#0F6BE0', // xanh logo công ty (đậm hơn chút cho chữ trắng dễ đọc)
+  primaryDark: '#0A4FB0',
+  primarySoft: '#e8f1fe', // nền nhạt của nút / nhãn màu xanh
+  accent: '#e3262b', // đỏ điểm nhấn trong logo
+  bg: '#eef3fa',
   card: '#ffffff',
-  text: '#1f1f1f',
-  text2: '#5c5c5c',
-  muted: '#8c8c8c',
-  border: '#e5e5e5',
+  text: '#0f1b2d',
+  text2: '#475569',
+  muted: '#8a97a8',
+  border: '#e3e9f2',
   danger: '#d9363e',
-  success: '#1f9d55',
-  warning: '#d48806',
+  success: '#16a34a',
+  warning: '#d97706',
+};
+
+/** Bóng đổ mềm dùng chung cho thẻ */
+export const shadow = {
+  shadowColor: '#0b2a5c',
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3,
 };
 
 export const STATUS: Record<TripStatus, { label: string; color: string; bg: string }> = {

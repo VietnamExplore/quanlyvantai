@@ -143,7 +143,7 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
   return (
     <Card>
       <View style={s.head}>
-        <Text style={s.section}>Chi phí chuyến</Text>
+        <Text style={s.section}>💰  Chi phí chuyến</Text>
         {costs.length > 0 && <Text style={s.total}>{vnd(total)}</Text>}
       </View>
       {costs.length === 0 && !adding && <Text style={s.empty}>Chưa có chi phí. Nhập xăng dầu, cầu đường, gửi xe… nếu bạn đã chi.</Text>}
@@ -180,7 +180,7 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
         </View>
       ))}
 
-      {canAdd && !adding && <Button title="+ Thêm chi phí" variant="outline" onPress={() => setAdding(true)} style={{ marginTop: 10 }} />}
+      {canAdd && !adding && <Button title="Thêm chi phí" icon="➕" size="sm" variant="soft" onPress={() => setAdding(true)} style={{ marginTop: 10 }} />}
       {adding && (
         <View style={{ marginTop: 10 }}>
           <Text style={ui.label}>Loại chi phí</Text>
@@ -206,14 +206,14 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
             <View style={s.preview}>
               <Image source={{ uri: photo.uri }} style={s.previewImg} />
               <View style={{ flex: 1, gap: 6 }}>
-                <Button title="Đổi ảnh" variant="outline" onPress={() => askPhoto(setPhoto)} />
-                <Button title="Bỏ ảnh" variant="ghost" onPress={() => setPhoto(null)} />
+                <Button title="Đổi ảnh" size="sm" variant="soft" onPress={() => askPhoto(setPhoto)} />
+                <Button title="Bỏ ảnh" size="sm" variant="ghost" onPress={() => setPhoto(null)} />
               </View>
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-              <Button title="📷 Chụp hóa đơn" variant="outline" onPress={() => pickPhoto('camera').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
-              <Button title="🖼 Chọn ảnh" variant="outline" onPress={() => pickPhoto('library').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
+              <Button title="Chụp hóa đơn" icon="📷" size="sm" variant="soft" onPress={() => pickPhoto('camera').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
+              <Button title="Chọn ảnh" icon="🖼" size="sm" variant="soft" onPress={() => pickPhoto('library').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
             </View>
           )}
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -244,17 +244,17 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
 }
 
 const s = StyleSheet.create({
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
-  total: { fontSize: 16, fontWeight: '700', color: colors.text },
+  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  section: { fontSize: 12.5, fontWeight: '800', color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase' },
+  total: { fontSize: 17, fontWeight: '800', color: colors.primary },
   empty: { color: colors.muted, fontSize: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  name: { fontSize: 15, color: colors.text },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  name: { fontSize: 15, color: colors.text, fontWeight: '600' },
   meta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   amount: { fontSize: 15, fontWeight: '600', color: colors.text },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#fff' },
-  chipActive: { borderColor: colors.primary, backgroundColor: '#e6f0fb' },
+  chip: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 8, backgroundColor: '#f4f7fc' },
+  chipActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   chipText: { fontSize: 14, color: colors.text2 },
   chipTextActive: { color: colors.primary, fontWeight: '600' },
   photoBtn: { marginLeft: 10, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e6f0fb' },
