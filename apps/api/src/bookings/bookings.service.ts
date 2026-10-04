@@ -34,7 +34,8 @@ const TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   NHAP: ['BAO_GIA', 'XAC_NHAN', 'HUY'],
   BAO_GIA: ['NHAP', 'XAC_NHAN', 'HUY'],
   XAC_NHAN: ['HOAN_THANH', 'HUY'],
-  HOAN_THANH: [],
+  // Mở lại booking đã hoàn thành (cần thêm chuyến / điều xe lại)
+  HOAN_THANH: ['XAC_NHAN'],
   HUY: [],
 };
 
@@ -143,8 +144,9 @@ export class BookingsService {
 
   async update(id: number, dto: UpdateBookingDto) {
     const current = await this.prisma.booking.findUniqueOrThrow({ where: { id }, include: { trips: true } });
-    if (current.status === BookingStatus.HOAN_THANH || current.status === BookingStatus.HUY) {
-      throw new BadRequestException('Booking đã hoàn thành hoặc đã hủy, không sửa được');
+    // Booking đã hoàn thành vẫn sửa được (điều chỉnh giá, thông tin sau chuyến); chỉ khóa booking đã hủy
+    if (current.status === BookingStatus.HUY) {
+      throw new BadRequestException('Booking đã hủy, không sửa được');
     }
 
     const { trips, passengers, quoteValidUntil, ...data } = dto;

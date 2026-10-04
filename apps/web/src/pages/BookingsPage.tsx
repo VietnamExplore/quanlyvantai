@@ -1,4 +1,4 @@
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, DatePicker, Flex, Input, Select, Table, Typography } from 'antd';
 import type { Dayjs } from 'dayjs';
@@ -123,6 +123,22 @@ export default function BookingsPage() {
           { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={BOOKING_STATUS} value={v} /> },
           { title: 'NV kinh doanh', render: (_, r) => r.salesUser?.fullName },
           { title: 'Ngày tạo', dataIndex: 'createdAt', render: (v) => new Date(v).toLocaleDateString('vi-VN') },
+          {
+            key: 'edit',
+            fixed: 'right',
+            render: (_, r) => (
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/bookings/${r.id}?edit=1`);
+                }}
+              >
+                {r.status === 'HUY' || !hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH') ? 'Xem' : 'Sửa'}
+              </Button>
+            ),
+          },
         ]}
       />
     </Card>

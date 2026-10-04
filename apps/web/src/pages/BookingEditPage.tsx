@@ -73,7 +73,8 @@ import { PaymentsCard } from "../components/finance";
 import { QuickSelect } from "../components/QuickCreate";
 import type { Booking, BookingStatus, Customer, Passenger } from "../types";
 
-const LOCKED: BookingStatus[] = ["HOAN_THANH", "HUY"];
+// Booking đã hoàn thành vẫn sửa được; chỉ khóa booking đã hủy
+const LOCKED: BookingStatus[] = ["HUY"];
 
 export default function BookingEditPage() {
   const { id } = useParams();
@@ -92,6 +93,10 @@ export default function BookingEditPage() {
   const [tripModalOpen, setTripModalOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Booking đã hoàn thành: mở ở chế độ xem, bấm "Sửa booking" mới cho sửa
+  const [editCompleted, setEditCompleted] = useState(() => new URLSearchParams(window.location.search).get("edit") === "1");
+  // Tăng để nạp lại form từ dữ liệu đã lưu (bỏ thay đổi)
+  const [reloadKey, setReloadKey] = useState(0);
   // Booking mới: file bảng đón khách gửi, tải lên ngay sau khi tạo booking
   const [pendingSignFile, setPendingSignFile] = useState<File | null>(null);
 
@@ -125,11 +130,11 @@ export default function BookingEditPage() {
       setTrips(booking.trips.map(fromTrip));
     }
     setDirty(false);
-  }, [isNew, booking, form, user]);
+  }, [isNew, booking, form, user, reloadKey]);
 
   const status: BookingStatus = booking?.status ?? "NHAP";
   const canEdit = hasRole("ADMIN", "DIEU_HANH", "KINH_DOANH");
-  const readOnly = !canEdit || LOCKED.includes(status);
+  const readOnly = !canEdit || LOCKED.includes(status) || (status === "HOAN_THANH" && !editCompleted);
 
   const discount = Form.useWatch("discountAmount", form) ?? 0;
   const vatPercent = Form.useWatch("vatPercent", form) ?? 0;
@@ -207,6 +212,7 @@ export default function BookingEditPage() {
         navigate(`/bookings/${saved.id}`, { replace: true });
       } else {
         message.success("Đã lưu");
+        setEditCompleted(false);
       }
       return saved;
     } catch (e) {
@@ -359,7 +365,18 @@ export default function BookingEditPage() {
           </Button>
         </Popconfirm>
       )}
-      {!isNew && (
+      {status === "HOAN_THANH" && (
+        <Popconfirm
+          title="Mở lại booking?"
+          description="Booking chuyển về Đã xác nhận để thêm chuyến / điều xe lại."
+          okText="Mở lại"
+          cancelText="Không"
+          onConfirm={() => changeStatus("XAC_NHAN")}
+        >
+          <Button>Mở lại</Button>
+        </Popconfirm>
+      )}
+      {!isNew && status !== "HOAN_THANH" && (
         <Button danger icon={<CloseCircleOutlined />} onClick={askCancel}>
           Hủy booking
         </Button>
@@ -401,6 +418,21 @@ export default function BookingEditPage() {
               </>
             )}
             {statusActions}
+            {status === "HOAN_THANH" && canEdit && !editCompleted && (
+              <Button type="primary" icon={<EditOutlined />} onClick={() => setEditCompleted(true)}>
+                Sửa booking
+              </Button>
+            )}
+            {status === "HOAN_THANH" && editCompleted && (
+              <Button
+                onClick={() => {
+                  setEditCompleted(false);
+                  setReloadKey((k) => k + 1);
+                }}
+              >
+                Thôi sửa
+              </Button>
+            )}
             {!readOnly && (
               <Button
                 type="primary"
@@ -413,6 +445,14 @@ export default function BookingEditPage() {
             )}
           </Space>
         </Flex>
+        {booking?.status === "HOAN_THANH" && editCompleted && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginTop: 12 }}
+            title="Đang sửa booking đã hoàn thành. Thay đổi giá / chuyến sẽ cập nhật lại doanh thu, công nợ khách và lương lái xe. Bấm Lưu để ghi lại, hoặc Thôi sửa để bỏ thay đổi."
+          />
+        )}
         {booking?.status === "HUY" && (
           <Alert
             type="error"
