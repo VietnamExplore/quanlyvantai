@@ -112,7 +112,15 @@ export class BookingsService {
     return withTotals(await this.prisma.booking.findUniqueOrThrow({ where: { id }, include: bookingInclude }));
   }
 
+  /** Nguồn khách phải có trong danh mục Nguồn khách */
+  private async checkSource(code?: string) {
+    if (code && !(await this.prisma.customerSource.findUnique({ where: { code } }))) {
+      throw new BadRequestException('Nguồn khách không có trong danh mục, hãy chọn lại');
+    }
+  }
+
   async create(dto: CreateBookingDto, user: AuthUser) {
+    await this.checkSource(dto.source);
     const { trips, passengers, quoteValidUntil, ...data } = dto;
     const tripData = await this.buildTrips(trips);
 
@@ -143,6 +151,7 @@ export class BookingsService {
   }
 
   async update(id: number, dto: UpdateBookingDto) {
+    await this.checkSource(dto.source);
     const current = await this.prisma.booking.findUniqueOrThrow({ where: { id }, include: { trips: true } });
     // Booking đã hoàn thành vẫn sửa được (điều chỉnh giá, thông tin sau chuyến); chỉ khóa booking đã hủy
     if (current.status === BookingStatus.HUY) {

@@ -21,6 +21,7 @@ import QuotePage from './pages/QuotePage';
 import RentalRatesPage from './pages/RentalRatesPage';
 import RoutePricesPage from './pages/RoutePricesPage';
 import ServicesPage from './pages/ServicesPage';
+import CustomerSourcesPage from './pages/CustomerSourcesPage';
 import SettingsPage from './pages/SettingsPage';
 import SignPage from './pages/SignPage';
 import SurchargesPage from './pages/SurchargesPage';
@@ -75,6 +76,7 @@ export default function App() {
         <Route path="vehicle-types" element={<VehicleTypesPage />} />
         <Route path="services" element={<ServicesPage />} />
         <Route path="cost-categories" element={<CostCategoriesPage />} />
+        <Route path="customer-sources" element={<CustomerSourcesPage />} />
         <Route path="finance/receivables" element={<ReceivablesPage />} />
         {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/payables" element={<PayablesPage />} />}
         {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/ledger" element={<LedgerPage />} />}

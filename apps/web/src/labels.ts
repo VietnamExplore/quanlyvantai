@@ -1,5 +1,4 @@
 import type {
-  BookingSource,
   BookingStatus,
   CustomerType,
   DriverStatus,
@@ -58,15 +57,6 @@ export const SURCHARGE_RULE: Labels<SurchargeRule> = {
   BAN_DEM: { label: 'Tự động: ban đêm 22h–5h', color: 'geekblue' },
   LE_TET: { label: 'Tự động: ngày lễ, Tết', color: 'red' },
   THU_CONG: { label: 'Chọn tay khi báo giá' },
-};
-
-export const BOOKING_SOURCE: Labels<BookingSource> = {
-  HOTLINE: { label: 'Hotline' },
-  ZALO: { label: 'Zalo' },
-  WEBSITE: { label: 'Website' },
-  EMAIL: { label: 'Email' },
-  DAI_LY: { label: 'Đại lý' },
-  KHAC: { label: 'Khác' },
 };
 
 export const BOOKING_STATUS: Labels<BookingStatus> = {

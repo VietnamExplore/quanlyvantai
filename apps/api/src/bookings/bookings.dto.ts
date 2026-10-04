@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { BookingSource, BookingStatus } from '@prisma/client';
+import { BookingStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
@@ -102,7 +102,8 @@ export class CreateBookingDto {
   @IsNotEmpty({ message: 'Chưa nhập SĐT người liên hệ' })
   contactPhone: string;
 
-  @IsOptional() @IsEnum(BookingSource) source?: BookingSource;
+  /** Mã nguồn khách trong danh mục Nguồn khách (HOTLINE, ZALO, OTA…) */
+  @IsOptional() @IsString() @IsNotEmpty({ message: 'Chưa chọn nguồn khách' }) source?: string;
   @IsOptional() @IsInt() salesUserId?: number | null;
   @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) vatPercent?: number;

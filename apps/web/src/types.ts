@@ -134,7 +134,16 @@ export interface Service {
 
 type ServiceRef = Pick<Service, 'code' | 'name' | 'color' | 'pricingMode' | 'hasFlight'>;
 export type SurchargeRule = 'BAN_DEM' | 'LE_TET' | 'THU_CONG';
-export type BookingSource = 'HOTLINE' | 'ZALO' | 'WEBSITE' | 'EMAIL' | 'DAI_LY' | 'KHAC';
+/** Mã nguồn khách trong danh mục Nguồn khách */
+export type BookingSource = string;
+
+export interface CustomerSource {
+  code: string;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+  _count?: { bookings: number };
+}
 export type BookingStatus = 'NHAP' | 'BAO_GIA' | 'XAC_NHAN' | 'HOAN_THANH' | 'HUY';
 export type TripStatus = 'CHO_DIEU' | 'DA_GAN' | 'TAI_XE_NHAN' | 'DANG_DEN_DON' | 'DA_DON_KHACH' | 'HOAN_THANH' | 'HUY';
 

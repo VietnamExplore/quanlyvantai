@@ -63,7 +63,6 @@ import {
 } from "../components/common";
 import { TripModal } from "../components/TripModal";
 import {
-  BOOKING_SOURCE,
   BOOKING_STATUS,
   TRIP_STATUS,
   toOptions,
@@ -525,8 +524,8 @@ export default function BookingEditPage() {
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>
-              <Form.Item name="source" label="Nguồn">
-                <Select options={toOptions(BOOKING_SOURCE)} />
+              <Form.Item name="source" label="Nguồn khách">
+                <QuickSelect entity="customerSource" showSearch optionFilterProp="label" />
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>

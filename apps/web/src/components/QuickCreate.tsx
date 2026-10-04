@@ -5,10 +5,10 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { CUSTOMER_TYPE, LOCATION_TYPE, OWNERSHIP, toOptions } from '../labels';
-import type { CostCategory, Role } from '../types';
+import type { CostCategory, CustomerSource, Role } from '../types';
 import { MoneyInput, useCompanyDriverOptions, useLocations, usePartnerOptions, useServices, useVehicleTypeOptions } from './common';
 
-export type QuickEntity = 'customer' | 'location' | 'partner' | 'driver' | 'vehicle' | 'vehicleType' | 'route' | 'salesUser' | 'service' | 'costCategory';
+export type QuickEntity = 'customer' | 'location' | 'partner' | 'driver' | 'vehicle' | 'vehicleType' | 'route' | 'salesUser' | 'service' | 'costCategory' | 'customerSource';
 
 type Rec = { id: number } & Record<string, unknown>;
 
@@ -376,6 +376,18 @@ export const QUICK_ENTITIES: Record<QuickEntity, EntityConfig> = {
       </Form.Item>
     ),
   },
+  customerSource: {
+    title: 'nguồn khách',
+    endpoint: '/customer-sources',
+    roles: ['ADMIN', 'DIEU_HANH', 'KINH_DOANH'],
+    nameField: 'name',
+    valueKey: 'code',
+    Fields: () => (
+      <Form.Item name="name" label="Tên nguồn khách" rules={[{ required: true, whitespace: true, message: 'Nhập tên' }]}>
+        <Input autoFocus placeholder="Ví dụ: OTA, Facebook, Khách quen giới thiệu…" />
+      </Form.Item>
+    ),
+  },
   salesUser: {
     title: 'nhân viên kinh doanh',
     endpoint: '/users',
@@ -485,6 +497,11 @@ function useDefaultOptions(entity: QuickEntity, enabled: boolean, valueKey: stri
     queryFn: () => api<CostCategory[]>('/cost-categories'),
     enabled: enabled && entity === 'costCategory',
   });
+  const { data: customerSources = [] } = useQuery({
+    queryKey: ['/customer-sources'],
+    queryFn: () => api<CustomerSource[]>('/customer-sources'),
+    enabled: enabled && entity === 'customerSource',
+  });
   if (!enabled) return undefined;
   switch (entity) {
     case 'partner':
@@ -501,6 +518,8 @@ function useDefaultOptions(entity: QuickEntity, enabled: boolean, valueKey: stri
       return serviceOptions;
     case 'costCategory':
       return costCategories.filter((c) => c.isActive).map((c) => ({ value: c.code, label: c.name }));
+    case 'customerSource':
+      return customerSources.filter((c) => c.isActive).map((c) => ({ value: c.code, label: c.name }));
     default:
       return undefined;
   }
