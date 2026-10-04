@@ -46,6 +46,12 @@ export function buildDispatchText(t: DispatchTrip) {
   const guestName = guest?.fullName || t.booking.customer?.name || t.booking.contactName;
   const guestPhone = guest?.phone || t.booking.contactPhone;
   lines.push(`Khách: ${guestName} – ${guestPhone} (${t.passengers} khách)`);
+  // Người liên hệ trong chuyến: tài xế gọi người này khi đón
+  const b = t.booking;
+  if (b.leaderName || b.leaderPhone) {
+    const role = b.leaderRole === 'HDV' ? 'HDV' : 'Trưởng đoàn';
+    lines.push(`${role}: ${[b.leaderName, b.leaderPhone].filter(Boolean).join(' – ')}`);
+  }
   if (t.vehicle) lines.push(`Xe: ${t.vehicle.plateNumber} (${t.vehicle.vehicleType.name})${t.driver ? ` – Lái xe: ${t.driver.fullName} ${t.driver.phone}` : ''}`);
   if (t.partner) {
     lines.push(`Xe: ${t.vehicleType.name}${t.partnerPlate ? ` – ${t.partnerPlate}` : ''}`);

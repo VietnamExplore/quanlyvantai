@@ -18,6 +18,9 @@ export const dispatchTripInclude = {
       status: true,
       contactName: true,
       contactPhone: true,
+      leaderRole: true,
+      leaderName: true,
+      leaderPhone: true,
       customer: { select: { id: true, name: true } },
       // Hành khách đầu tiên: dùng làm tên / SĐT khách trong lệnh điều xe
       passengers: { orderBy: { seq: 'asc' }, take: 1, select: { fullName: true, phone: true } },

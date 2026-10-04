@@ -109,6 +109,8 @@ const DICT = {
   nationality: { vi: 'Quốc tịch', en: 'Nationality', ko: '국적', zh: '国籍', ja: '国籍' },
   paxPhone: { vi: 'SĐT', en: 'Phone', ko: '전화', zh: '电话', ja: '電話' },
   driver: { vi: 'Lái xe', en: 'Driver', ko: '기사', zh: '司机', ja: '運転手' },
+  tourLeader: { vi: 'Trưởng đoàn', en: 'Tour leader', ko: '인솔자', zh: '领队', ja: '添乗員・代表者' },
+  tourGuide: { vi: 'Hướng dẫn viên', en: 'Tour guide', ko: '가이드', zh: '导游', ja: 'ガイド' },
   carrierRep: { vi: 'Đại diện đơn vị vận tải', en: 'Transport operator', ko: '운송사 대표', zh: '运输公司代表', ja: '運送会社代表' },
 } satisfies Record<string, Record<DocLang, string>>;
 

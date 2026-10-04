@@ -528,3 +528,65 @@ function SignFileBox({
     </Upload.Dragger>
   );
 }
+
+export const LEADER_ROLE: Record<'HDV' | 'TRUONG_DOAN', string> = { HDV: 'Hướng dẫn viên', TRUONG_DOAN: 'Trưởng đoàn' };
+
+/** Người liên hệ trong chuyến (HDV hoặc trưởng đoàn) – tài xế gọi người này khi đón khách */
+export function LeaderCard({ form, readOnly, onChanged }: { form: FormInstance; readOnly: boolean; onChanged: () => void }) {
+  const passengers: Passenger[] = (Form.useWatch('passengers', form) ?? []).filter((p: Passenger) => p?.fullName?.trim());
+  const leaderName: string | undefined = Form.useWatch('leaderName', form);
+  const picked = passengers.findIndex((p) => p.fullName.trim() === leaderName?.trim());
+
+  /** Chọn 1 khách trong danh sách làm trưởng đoàn: điền tên + SĐT của khách đó */
+  const pickPassenger = (i: number | undefined) => {
+    if (i === undefined) return;
+    const p = passengers[i];
+    form.setFieldsValue({ leaderRole: 'TRUONG_DOAN', leaderName: p.fullName.trim(), leaderPhone: p.phone?.trim() || form.getFieldValue('leaderPhone') });
+    onChanged();
+  };
+
+  return (
+    <Card
+      title="Liên hệ trong chuyến (hướng dẫn viên / trưởng đoàn)"
+      style={{ marginTop: 16 }}
+      extra={<Typography.Text type="secondary">In trên lệnh điều xe và danh sách hành khách – tài xế gọi người này khi đón khách</Typography.Text>}
+    >
+      <Row gutter={16}>
+        <Col xs={24} md={5}>
+          <Form.Item name="leaderRole" label="Vai trò">
+            <Select
+              allowClear
+              placeholder="Chọn vai trò"
+              options={Object.entries(LEADER_ROLE).map(([value, label]) => ({ value, label }))}
+              onChange={onChanged}
+            />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={7}>
+          <Form.Item label="Chọn từ danh sách hành khách" tooltip="Lấy 1 khách trong đoàn làm trưởng đoàn: tự điền tên và SĐT">
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              disabled={readOnly || !passengers.length}
+              placeholder={passengers.length ? 'Chọn khách làm trưởng đoàn' : 'Chưa có danh sách hành khách'}
+              value={picked >= 0 ? picked : undefined}
+              options={passengers.map((p, i) => ({ value: i, label: `${i + 1}. ${p.fullName}${p.phone ? ` – ${p.phone}` : ''}` }))}
+              onChange={pickPassenger}
+            />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={6}>
+          <Form.Item name="leaderName" label="Họ tên">
+            <Input placeholder="Tên HDV / trưởng đoàn" allowClear onChange={onChanged} />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={6}>
+          <Form.Item name="leaderPhone" label="SĐT / Zalo / WhatsApp">
+            <Input placeholder="+84… / +82…" allowClear onChange={onChanged} />
+          </Form.Item>
+        </Col>
+      </Row>
+    </Card>
+  );
+}

@@ -98,6 +98,17 @@ export class CreateBookingDto {
   /** Ngôn ngữ giấy tờ gửi khách (báo giá, danh sách hành khách, bảng đón) */
   @IsOptional() @IsIn(DOC_LANGUAGES, { message: 'Ngôn ngữ giấy tờ không hợp lệ' }) docLanguage?: string;
 
+  /** Người liên hệ trong chuyến: HDV | TRUONG_DOAN */
+  @IsOptional() @IsIn(['HDV', 'TRUONG_DOAN', null], { message: 'Vai trò người liên hệ không hợp lệ' }) leaderRole?: string | null;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() || null : value))
+  @IsOptional()
+  @IsString()
+  leaderName?: string | null;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() || null : value))
+  @IsOptional()
+  @IsString()
+  leaderPhone?: string | null;
+
   @IsString()
   @IsNotEmpty({ message: 'Chưa nhập tên người liên hệ' })
   contactName: string;

@@ -71,6 +71,13 @@ export default function PassengerListPage() {
           {t('paxCustomer')}: <b style={{ color: '#1a1a1a' }}>{b.customer?.name ?? b.contactName}</b> · {t('paxContact')}: {b.contactName} – {b.contactPhone}
         </div>
 
+        {(b.leaderName || b.leaderPhone) && (
+          <div className="doc-box" style={{ marginTop: 0 }}>
+            <b>{b.leaderRole === 'HDV' ? t('tourGuide') : t('tourLeader')}:</b> {b.leaderName}
+            {b.leaderPhone && <> – {b.leaderPhone}</>}
+          </div>
+        )}
+
         <h3>{t('tripInfo')}</h3>
         <table className="grid">
           <colgroup>
@@ -153,7 +160,12 @@ export default function PassengerListPage() {
             {b.passengers.map((p, i) => (
               <tr key={p.id ?? i}>
                 <td className="c">{i + 1}</td>
-                <td>{p.fullName}</td>
+                <td>
+                  {p.fullName}
+                  {b.leaderRole === 'TRUONG_DOAN' && b.leaderName && p.fullName.trim() === b.leaderName.trim() && (
+                    <b className="small"> ({t('tourLeader')})</b>
+                  )}
+                </td>
                 <td className="c">{p.gender === 'NAM' ? t('male') : p.gender === 'NU' ? t('female') : ''}</td>
                 <td className="c">{p.birthYear ?? ''}</td>
                 <td>{p.idNumber ?? ''}</td>

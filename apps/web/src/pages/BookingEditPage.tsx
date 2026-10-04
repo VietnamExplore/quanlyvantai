@@ -69,7 +69,7 @@ import {
   TRIP_STATUS,
   toOptions,
 } from "../labels";
-import { PassengersCard, SignCard, uploadSignFile } from "../components/BookingExtras";
+import { LeaderCard, PassengersCard, SignCard, uploadSignFile } from "../components/BookingExtras";
 import { PaymentsCard } from "../components/finance";
 import { QuickSelect } from "../components/QuickCreate";
 import { DocTranslationsModal } from "../components/DocTranslationsModal";
@@ -167,6 +167,9 @@ export default function BookingEditPage() {
       customerId: v.customerId ?? null,
       customerRef: v.customerRef?.trim() || null,
       docLanguage: v.docLanguage || "vi",
+      leaderRole: v.leaderRole || null,
+      leaderName: v.leaderName?.trim() || null,
+      leaderPhone: v.leaderPhone?.trim() || null,
       contactName: v.contactName,
       contactPhone: v.contactPhone,
       source: v.source,
@@ -791,6 +794,7 @@ export default function BookingEditPage() {
           />
         </Card>
 
+        <LeaderCard form={form} readOnly={readOnly} onChanged={() => setDirty(true)} />
         <PassengersCard
           form={form}
           readOnly={readOnly}

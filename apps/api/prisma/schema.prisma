@@ -359,6 +359,10 @@ model Booking {
   docLanguage     String             @default("vi")
   /// Bản dịch nội dung booking cho giấy tờ ngoại ngữ: { "en": { "trip.12.pickupAddress": { "src": "…", "text": "…" } } }
   docTranslations Json               @default("{}")
+  /// Người liên hệ trong chuyến: HDV (hướng dẫn viên) | TRUONG_DOAN (trưởng đoàn, thường là 1 khách trong đoàn)
+  leaderRole      String?
+  leaderName      String?
+  leaderPhone     String?
   customerId      Int?
   customer        Customer?          @relation(fields: [customerId], references: [id])
   contactName     String

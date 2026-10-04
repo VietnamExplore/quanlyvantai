@@ -309,6 +309,10 @@ export interface Booking extends Ref {
   docLanguage: string;
   /** Bản dịch nội dung cho giấy tờ ngoại ngữ: { en: { "trip.12.pickupAddress": { src, text } } } */
   docTranslations?: Record<string, Record<string, { src: string; text: string }>>;
+  /** Người liên hệ trong chuyến: HDV | TRUONG_DOAN */
+  leaderRole: 'HDV' | 'TRUONG_DOAN' | null;
+  leaderName: string | null;
+  leaderPhone: string | null;
   payments: Payment[];
   paid: number;
   balance: number;
@@ -355,6 +359,9 @@ export interface DispatchTrip extends Omit<BookingTrip, 'vehicleType' | 'routePr
     contactName: string;
     contactPhone: string;
     customer: { id: number; name: string } | null;
+    leaderRole?: 'HDV' | 'TRUONG_DOAN' | null;
+    leaderName?: string | null;
+    leaderPhone?: string | null;
     /** Hành khách đầu tiên trong danh sách hành khách (nếu có) */
     passengers?: { fullName: string; phone: string | null }[];
   };
