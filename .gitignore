@@ -8,3 +8,4 @@ build/
 .tunnel.log
 uploads/
 deploy/backups/
+backups/

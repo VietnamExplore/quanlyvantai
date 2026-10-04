@@ -71,11 +71,20 @@ const passengerRows = (list: PassengerDto[]) =>
     note: p.note?.trim() || null,
   }));
 
-/** Mã booking theo tháng giờ VN: BK2610-0001 */
-function codePrefix() {
-  const [y, m] = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: '2-digit', month: '2-digit' }).format(new Date()).split('-');
-  return `BK${y}${m}-`;
+/**
+ * Mã booking: VNECAR + năm tháng ngày đi (YYMMDD, giờ VN) + "-" + số thứ tự.
+ * Số thứ tự chạy liên tục trong cả năm (của ngày đi), sang năm mới đánh lại từ 1.
+ * Ví dụ: VNECAR261004-0015. Ngày đi = giờ đón sớm nhất; chưa có chuyến thì lấy ngày tạo.
+ */
+export const BOOKING_CODE_PREFIX = 'VNECAR';
+
+export function bookingDatePart(pickupTimes: Date[]) {
+  const first = pickupTimes.length ? new Date(Math.min(...pickupTimes.map((d) => d.getTime()))) : new Date();
+  const [y, m, d] = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: '2-digit', month: '2-digit', day: '2-digit' }).format(first).split('-');
+  return `${y}${m}${d}`;
 }
+
+export const formatBookingCode = (datePart: string, seq: number) => `${BOOKING_CODE_PREFIX}${datePart}-${String(seq).padStart(4, '0')}`;
 
 @Injectable()
 export class BookingsService {
@@ -154,15 +163,18 @@ export class BookingsService {
     const { trips, passengers, quoteValidUntil, ...data } = dto;
     const tripData = await this.buildTrips(trips);
 
+    const datePart = bookingDatePart(tripData.map((t) => t.pickupTime));
     for (let attempt = 0; ; attempt++) {
-      const prefix = codePrefix();
-      const last = await this.prisma.booking.findFirst({ where: { code: { startsWith: prefix } }, orderBy: { code: 'desc' } });
-      const next = last ? Number(last.code.slice(prefix.length)) + 1 : 1;
+      // Số lớn nhất đã dùng trong năm của ngày đi (2 số đầu của phần ngày)
+      const [{ max }] = await this.prisma.$queryRaw<{ max: number | null }[]>`
+        SELECT MAX(CAST(split_part(code, '-', 2) AS INTEGER)) AS max FROM "Booking"
+        WHERE code ~ ${`^${BOOKING_CODE_PREFIX}${datePart.slice(0, 2)}[0-9]{4}-[0-9]+$`}`;
+      const next = (max ?? 0) + 1;
       try {
         const booking = await this.prisma.booking.create({
           data: {
             ...data,
-            code: prefix + String(next).padStart(4, '0'),
+            code: formatBookingCode(datePart, next),
             status,
             quoteValidUntil: quoteValidUntil ? new Date(quoteValidUntil) : null,
             salesUserId: data.salesUserId ?? (user.roles.includes(Role.KINH_DOANH) ? user.id : null),
