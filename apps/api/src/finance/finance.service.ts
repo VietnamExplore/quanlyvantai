@@ -87,7 +87,20 @@ export class FinanceService implements OnModuleInit {
   // ───── Thu tiền khách ─────
 
   async addPayment(bookingId: number, dto: CreatePaymentDto, user: AuthUser) {
-    await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+    const booking = await this.prisma.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      include: { trips: { select: { amount: true, status: true } }, payments: { select: { amount: true } } },
+    });
+    const { total, paid, balance } = bookingTotals(booking);
+    const vnd = (n: number) => `${n.toLocaleString('vi-VN')} đ`;
+    // Thu tiền: không vượt số còn phải thu (booking chưa nhập giá thì vẫn cho thu trước)
+    if (dto.amount > 0 && total > 0 && dto.amount > balance) {
+      throw new BadRequestException(balance > 0 ? `Số tiền thu vượt số còn phải thu (${vnd(balance)})` : 'Booking đã thu đủ tiền');
+    }
+    // Hoàn tiền: không quá số khách đã trả
+    if (dto.amount < 0 && -dto.amount > paid) {
+      throw new BadRequestException(`Số tiền hoàn vượt số khách đã trả (${vnd(paid)})`);
+    }
     return this.prisma.payment.create({
       data: {
         bookingId,

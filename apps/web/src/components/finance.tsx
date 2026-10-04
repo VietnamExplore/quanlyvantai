@@ -1,6 +1,6 @@
-import { DeleteOutlined, DollarOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DollarOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Col, DatePicker, Descriptions, Empty, Flex, Form, Input, Modal, Popconfirm, Radio, Row, Table, Tag, Typography } from 'antd';
+import { Alert, App, Button, Card, Col, DatePicker, Descriptions, Empty, Flex, Form, Input, Modal, Popconfirm, Radio, Row, Space, Table, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api';
@@ -32,6 +32,8 @@ export function PaymentModal({
   title,
   defaultAmount,
   allowNegative,
+  refundOnly,
+  maxAmount,
   hint,
   onClose,
   onSubmit,
@@ -40,6 +42,10 @@ export function PaymentModal({
   title: string;
   defaultAmount?: number;
   allowNegative?: boolean;
+  /** Chỉ hoàn tiền cho khách (số tiền nhập là số dương, lưu thành số âm) */
+  refundOnly?: boolean;
+  /** Số tiền tối đa được nhập */
+  maxAmount?: number;
   hint?: ReactNode;
   onClose: () => void;
   onSubmit: (v: PaymentValues) => Promise<void>;
@@ -50,10 +56,10 @@ export function PaymentModal({
 
   useEffect(() => {
     if (!open) return;
-    setRefund(false);
+    setRefund(!!refundOnly);
     form.resetFields();
     form.setFieldsValue({ amount: defaultAmount && defaultAmount > 0 ? defaultAmount : undefined, method: 'CHUYEN_KHOAN', paidAt: dayjs() });
-  }, [open, defaultAmount, form]);
+  }, [open, defaultAmount, refundOnly, form]);
 
   async function submit() {
     let v;
@@ -81,7 +87,7 @@ export function PaymentModal({
     <Modal title={title} open={open} onCancel={onClose} onOk={submit} okText="Lưu" cancelText="Hủy" confirmLoading={saving} width={520} forceRender>
       {hint}
       <Form form={form} layout="vertical" name="payment_form" disabled={false}>
-        {allowNegative && (
+        {allowNegative && !refundOnly && (
           <Radio.Group value={refund} onChange={(e) => setRefund(e.target.value)} style={{ marginBottom: 12 }} optionType="button">
             <Radio.Button value={false}>Thu tiền</Radio.Button>
             <Radio.Button value={true}>Hoàn tiền cho khách</Radio.Button>
@@ -89,7 +95,16 @@ export function PaymentModal({
         )}
         <Row gutter={12}>
           <Col span={12}>
-            <Form.Item name="amount" label="Số tiền" rules={[{ required: true, message: 'Nhập số tiền' }]}>
+            <Form.Item
+              name="amount"
+              label={refund ? 'Số tiền hoàn' : 'Số tiền'}
+              rules={[
+                { required: true, message: 'Nhập số tiền' },
+                ...(maxAmount && maxAmount > 0
+                  ? [{ type: 'number' as const, max: maxAmount, message: `Tối đa ${maxAmount.toLocaleString('vi-VN')} đ` }]
+                  : []),
+              ]}
+            >
               <MoneyInput min={1} />
             </Form.Item>
           </Col>
@@ -127,8 +142,9 @@ export function PaymentsCard({ bookingId }: { bookingId: number }) {
   const { hasRole } = useAuth();
   const { message } = App.useApp();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const { data: booking, refetch } = useQuery({ queryKey: ['/bookings/payments', bookingId], queryFn: () => api<Booking>('/bookings/' + bookingId) });
+  const [open, setOpen] = useState<'collect' | 'refund' | null>(null);
+  // Khóa nằm dưới "/bookings": lưu booking (đổi giá) xong khung này tự tải lại
+  const { data: booking, refetch } = useQuery({ queryKey: ['/bookings', bookingId, 'payments'], queryFn: () => api<Booking>('/bookings/' + bookingId) });
   const onChanged = () => {
     refetch();
     queryClient.invalidateQueries({ queryKey: ['/finance'] });
@@ -138,6 +154,12 @@ export function PaymentsCard({ bookingId }: { bookingId: number }) {
   const canCollect = hasRole('ADMIN', 'KE_TOAN', 'KINH_DOANH');
   const canDelete = hasRole('ADMIN', 'KE_TOAN');
   if (!booking) return null;
+
+  const unpriced = booking.total <= 0 && booking.paid <= 0;
+  // Còn phải thu (hoặc chưa nhập giá: cho thu trước) → hiện nút thu; đã thu đủ → ẩn
+  const canCollectMore = booking.status !== 'HUY' && (booking.balance > 0 || unpriced);
+  // Khách đã trả nhiều hơn tổng tiền (giá giảm / bớt chuyến / booking hủy) → cần hoàn
+  const overpaid = booking.paid > booking.total ? booking.paid - booking.total : 0;
 
   async function remove(id: number) {
     try {
@@ -158,14 +180,45 @@ export function PaymentsCard({ bookingId }: { bookingId: number }) {
       }
       style={{ marginTop: 16 }}
       extra={
-        canCollect &&
-        booking.status !== 'HUY' && (
-          <Button type="primary" icon={<DollarOutlined />} onClick={() => setOpen(true)}>
-            Ghi nhận thu tiền
-          </Button>
+        canCollect && (
+          <Space wrap>
+            {canCollectMore && (
+              <Button type="primary" icon={<DollarOutlined />} onClick={() => setOpen('collect')}>
+                Ghi nhận thu tiền
+              </Button>
+            )}
+            {overpaid > 0 && (
+              <Button danger icon={<RollbackOutlined />} onClick={() => setOpen('refund')}>
+                Hoàn tiền
+              </Button>
+            )}
+          </Space>
         )
       }
     >
+      {overpaid > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message={`Khách đã trả dư ${overpaid.toLocaleString('vi-VN')} đ`}
+          description={
+            booking.status === 'HUY'
+              ? 'Booking đã hủy nhưng khách đã thanh toán. Cần hoàn tiền cho khách.'
+              : 'Tổng tiền booking đã giảm (sửa giá, bớt / hủy chuyến) thấp hơn số khách đã trả. Cần hoàn phần chênh lệch cho khách.'
+          }
+          action={
+            canCollect && (
+              <Button size="small" danger onClick={() => setOpen('refund')}>
+                Hoàn {overpaid.toLocaleString('vi-VN')} đ
+              </Button>
+            )
+          }
+        />
+      )}
+      {!overpaid && booking.total > 0 && booking.balance === 0 && (
+        <Alert type="success" showIcon style={{ marginBottom: 12 }} message="Đã thu đủ tiền booking này" />
+      )}
       <Descriptions size="small" column={{ xs: 1, sm: 3 }} bordered style={{ marginBottom: 12 }}>
         <Descriptions.Item label="Tổng tiền">
           <Money value={booking.total} strong />
@@ -173,9 +226,9 @@ export function PaymentsCard({ bookingId }: { bookingId: number }) {
         <Descriptions.Item label="Đã thu">
           <Money value={booking.paid} />
         </Descriptions.Item>
-        <Descriptions.Item label="Còn phải thu">
-          <Typography.Text strong type={booking.balance > 0 ? 'danger' : 'success'}>
-            {booking.balance.toLocaleString('vi-VN')} đ
+        <Descriptions.Item label={overpaid ? 'Trả dư (cần hoàn)' : 'Còn phải thu'}>
+          <Typography.Text strong type={overpaid ? 'warning' : booking.balance > 0 ? 'danger' : 'success'}>
+            {(overpaid || booking.balance).toLocaleString('vi-VN')} đ
           </Typography.Text>
         </Descriptions.Item>
       </Descriptions>
@@ -213,11 +266,22 @@ export function PaymentsCard({ bookingId }: { bookingId: number }) {
         ]}
       />
       <PaymentModal
-        open={open}
-        title={`Thu tiền booking ${booking.code}`}
-        defaultAmount={booking.balance}
-        allowNegative
-        onClose={() => setOpen(false)}
+        open={!!open}
+        title={open === 'refund' ? `Hoàn tiền booking ${booking.code}` : `Thu tiền booking ${booking.code}`}
+        refundOnly={open === 'refund'}
+        defaultAmount={open === 'refund' ? overpaid : booking.balance}
+        maxAmount={open === 'refund' ? booking.paid : booking.total > 0 ? booking.balance : undefined}
+        hint={
+          open === 'refund' ? (
+            <Typography.Paragraph type="secondary">
+              Khách đã trả {booking.paid.toLocaleString('vi-VN')} đ · tổng tiền hiện tại {booking.total.toLocaleString('vi-VN')} đ · cần hoàn{' '}
+              <b>{overpaid.toLocaleString('vi-VN')} đ</b>
+            </Typography.Paragraph>
+          ) : (
+            booking.balance > 0 && <Typography.Paragraph type="secondary">Còn phải thu: {booking.balance.toLocaleString('vi-VN')} đ</Typography.Paragraph>
+          )
+        }
+        onClose={() => setOpen(null)}
         onSubmit={async (v) => {
           try {
             await api(`/bookings/${booking.id}/payments`, { method: 'POST', body: v });
