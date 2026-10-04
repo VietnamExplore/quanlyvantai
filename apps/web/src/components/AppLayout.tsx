@@ -219,7 +219,7 @@ export function AppLayout() {
       {!narrow && (
         <div style={{ minWidth: 0, lineHeight: 1.25 }}>
           <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, whiteSpace: 'nowrap' }}>Quản lý vận tải</div>
-          <div style={{ color: 'rgba(148,163,184,.85)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 170 }}>
+          <div style={{ color: 'rgba(148,163,184,.85)', fontSize: 12, lineHeight: 1.35, marginTop: 2, wordBreak: 'break-word' }}>
             {settings.companyName || 'Vận chuyển hành khách'}
           </div>
         </div>
@@ -249,7 +249,7 @@ export function AppLayout() {
       {!isMobile && (
         <Layout.Sider
           className="app-sider"
-          width={236}
+          width={256}
           collapsedWidth={80}
           collapsed={collapsed}
           trigger={null}

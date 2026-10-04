@@ -178,3 +178,27 @@ body {
     padding: 10px 8px;
   }
 }
+
+/* Menu trái: hiện đủ chữ, mục dài thì xuống dòng thay vì "..." */
+.app-sider .ant-menu-inline .ant-menu-item {
+  height: auto;
+  min-height: 40px;
+  line-height: 1.35;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  white-space: normal;
+}
+.app-sider .ant-menu-inline .ant-menu-title-content,
+.app-sider .ant-menu-inline .ant-menu-item-group-title {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+/* Menu thu gọn (chỉ còn biểu tượng): tiêu đề nhóm thay bằng vạch ngăn, không hiện chữ bị cắt */
+.app-sider .ant-menu-inline-collapsed .ant-menu-item-group-title {
+  font-size: 0 !important;
+  height: 1px;
+  padding: 0 !important;
+  margin: 12px 18px 6px;
+  background: rgba(148, 163, 184, 0.22);
+}
