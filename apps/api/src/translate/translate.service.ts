@@ -29,22 +29,6 @@ Rules:
 
 Return only a JSON object of the form {"translations": ["...", "..."]} with exactly one translation per input text, in the same order. No other text.`;
 
-/** Dịch chữ trên giao diện phần mềm (menu, nút, nhãn, bảng) và dữ liệu hiện trên màn hình */
-export const UI_PROMPT = `You translate the on-screen text of a Vietnamese web application for managing a passenger-transport and inbound-travel company (bookings, trips, vehicle dispatch, drivers, partners/suppliers, quotations, receivables, payables, cash ledger, reports, price lists). Inputs are menu items, buttons, labels, table headers, statuses, messages, and data values shown in the app.
-
-Rules:
-- Use short, standard software-interface wording, consistent across texts (e.g. "Booking", "Trip", "Dispatch", "Quotation", "Driver", "Vehicle", "Partner", "Receivables", "Payables", "Cash ledger").
-- Placeholders like ⟦0⟧, ⟦1⟧ stand for numbers, dates or amounts: copy every placeholder exactly, keep it once, and place it where it belongs grammatically.
-- Keep unchanged: personal names, company and hotel names, codes (booking codes, plate numbers, flight numbers), phone numbers, emails, currency symbol "đ".
-- Vietnamese place names: use the common international spelling (e.g. "Sân bay Đà Nẵng" -> "Da Nang Airport", "Hội An" -> "Hoi An").
-- Keep punctuation, symbols (·, →, :, /, parentheses) and line breaks.
-- If a text is not Vietnamese (already English, a code, or a proper name), return it unchanged.
-
-Return only a JSON object of the form {"translations": ["...", "..."]} with exactly one translation per input text, in the same order. No other text.`;
-
-/** Dịch vụ dịch báo vượt giới hạn số lần gọi: cần chờ rồi thử lại, không nên gọi dồn thêm */
-export class TranslateRateLimitError extends ServiceUnavailableException {}
-
 @Injectable()
 export class TranslateService {
   constructor(private readonly prisma: PrismaService) {}
@@ -56,7 +40,7 @@ export class TranslateService {
   }
 
   /** Dịch nhiều đoạn tiếng Việt sang một ngôn ngữ; giữ nguyên thứ tự, đoạn trống trả về rỗng */
-  async translate(texts: string[], target: TargetLang, prompt = SYSTEM_PROMPT): Promise<string[]> {
+  async translate(texts: string[], target: TargetLang): Promise<string[]> {
     const { provider, apiKey } = await this.config();
     if (!apiKey) {
       throw new BadRequestException('Chưa cài khóa API dịch tự động. Admin vào Hệ thống → Thông tin công ty → Ngôn ngữ & dịch tự động để nhập.');
@@ -70,12 +54,12 @@ export class TranslateService {
     try {
       out =
         provider === 'gemini'
-          ? await this.gemini(input, target, apiKey, prompt)
+          ? await this.gemini(input, target, apiKey)
           : provider === 'google'
           ? await this.google(input, target, apiKey)
           : provider === 'deepl'
             ? await this.deepl(input, target, apiKey)
-            : await this.claude(input, target, apiKey, prompt);
+            : await this.claude(input, target, apiKey);
     } catch (e) {
       if (e instanceof BadRequestException || e instanceof ServiceUnavailableException) throw e;
       throw new ServiceUnavailableException(`Không dịch được: ${(e as Error).message}`);
@@ -87,7 +71,7 @@ export class TranslateService {
     return result;
   }
 
-  private async claude(texts: string[], target: TargetLang, apiKey: string, prompt: string) {
+  private async claude(texts: string[], target: TargetLang, apiKey: string) {
     const client = new Anthropic({ apiKey });
     let response: Anthropic.Beta.BetaMessage;
     try {
@@ -99,13 +83,13 @@ export class TranslateService {
         // Nếu model từ chối (hiếm gặp) thì tự chuyển sang model dự phòng phù hợp
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
-        system: prompt,
+        system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: `Target language: ${LANG_NAME[target]}\n\nTexts (JSON array):\n${JSON.stringify(texts)}` }],
       });
     } catch (e) {
       if (e instanceof Anthropic.AuthenticationError) throw new BadRequestException('Khóa API Claude không hợp lệ');
       if (e instanceof Anthropic.PermissionDeniedError) throw new BadRequestException('Khóa API Claude không có quyền dùng model này');
-      if (e instanceof Anthropic.RateLimitError) throw new TranslateRateLimitError('Dịch vụ Claude đang quá tải, thử lại sau ít phút');
+      if (e instanceof Anthropic.RateLimitError) throw new ServiceUnavailableException('Dịch vụ Claude đang quá tải, thử lại sau ít phút');
       if (e instanceof Anthropic.APIError) throw new ServiceUnavailableException(`Lỗi Claude API (${e.status}): ${e.message}`);
       throw e;
     }
@@ -121,9 +105,9 @@ export class TranslateService {
     throw new ServiceUnavailableException('Claude trả về kết quả không đúng định dạng, hãy thử lại');
   }
 
-  private async gemini(texts: string[], target: TargetLang, apiKey: string, prompt: string) {
+  private async gemini(texts: string[], target: TargetLang, apiKey: string) {
     const body = JSON.stringify({
-      systemInstruction: { parts: [{ text: prompt }] },
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents: [{ role: 'user', parts: [{ text: `Target language: ${LANG_NAME[target]}\n\nTexts (JSON array):\n${JSON.stringify(texts)}` }] }],
       generationConfig: {
         temperature: 0.2,
@@ -131,32 +115,26 @@ export class TranslateService {
         responseSchema: { type: 'OBJECT', properties: { translations: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['translations'] },
       },
     });
-    const errors: string[] = [];
+    let lastError = '';
     for (const model of GEMINI_MODELS) {
-      // Model đang quá tải (5xx): chờ rồi thử lại cùng model vài lần trước khi chuyển model khác
-      let res!: Response;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
         body,
       });
-        if (res.status < 500) break;
-      }
       const data = (await res.json().catch(() => null)) as {
         candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
         error?: { message?: string; status?: string };
       } | null;
       if (res.status === 404 || res.status >= 500) {
-        errors.push(`${model}: ${(data?.error?.message ?? `HTTP ${res.status}`).slice(0, 120)}`);
-        continue; // model chưa có với khóa này hoặc vẫn quá tải: thử model kế tiếp
+        lastError = data?.error?.message ?? `HTTP ${res.status}`;
+        continue; // model chưa có với khóa này hoặc đang quá tải: thử model kế tiếp
       }
       if (!res.ok) {
         const msg = data?.error?.message ?? String(res.status);
         if (res.status === 400 && /API key/i.test(msg)) throw new BadRequestException('Khóa API Gemini không hợp lệ');
         if (res.status === 403) throw new BadRequestException(`Khóa API Gemini không có quyền: ${msg}`);
-        if (res.status === 429) throw new TranslateRateLimitError(`Đã vượt hạn mức Gemini, thử lại sau. Chi tiết: ${msg.slice(0, 300)}`);
+        if (res.status === 429) throw new ServiceUnavailableException('Đã vượt hạn mức Gemini (quá nhiều yêu cầu hoặc hết hạn mức miễn phí), thử lại sau');
         throw new ServiceUnavailableException(`Lỗi Gemini (${res.status}): ${msg}`);
       }
       const text = (data?.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
@@ -169,7 +147,7 @@ export class TranslateService {
       const reason = data?.candidates?.[0]?.finishReason;
       throw new ServiceUnavailableException(reason === 'SAFETY' ? 'Gemini từ chối dịch nội dung này' : 'Gemini trả về kết quả không đúng định dạng, hãy thử lại');
     }
-    throw new ServiceUnavailableException(`Gemini chưa dịch được, thử lại sau. Chi tiết: ${errors.join(' | ')}`);
+    throw new ServiceUnavailableException(`Gemini chưa dịch được (đã thử các model ${GEMINI_MODELS.join(', ')}): ${lastError}`);
   }
 
   private async google(texts: string[], target: TargetLang, apiKey: string) {

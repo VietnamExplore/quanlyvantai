@@ -3,7 +3,6 @@ import { Alert, Button, Flex, Form, Grid, Input, Typography } from 'antd';
 import { useState, type ReactNode } from 'react';
 import { useAuth } from '../auth';
 import { BRAND } from '../theme';
-import { UiLanguageSwitcher } from '../components/UiLanguage';
 
 const FEATURES: { icon: ReactNode; title: string; text: string }[] = [
   { icon: <FileDoneOutlined />, title: 'Booking & báo giá', text: 'Tính giá tự động theo tuyến, theo ngày; báo giá in đẹp, gửi Zalo' },
@@ -95,10 +94,7 @@ export default function LoginPage() {
       )}
 
       {/* Cột đăng nhập */}
-      <Flex flex="1 1 48%" align="center" justify="center" style={{ padding: 24, position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 16, right: 16 }}>
-          <UiLanguageSwitcher />
-        </div>
+      <Flex flex="1 1 48%" align="center" justify="center" style={{ padding: 24 }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
           <Flex vertical align="center" style={{ marginBottom: 28 }}>
             {logoOk && (
