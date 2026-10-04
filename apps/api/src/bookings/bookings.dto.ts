@@ -1,6 +1,7 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { BookingStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
+import { DOC_LANGUAGES } from '../common/doc-language';
 import {
   IsArray,
   IsBoolean,
@@ -93,6 +94,9 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   customerRef?: string | null;
+
+  /** Ngôn ngữ giấy tờ gửi khách (báo giá, danh sách hành khách, bảng đón) */
+  @IsOptional() @IsIn(DOC_LANGUAGES, { message: 'Ngôn ngữ giấy tờ không hợp lệ' }) docLanguage?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Chưa nhập tên người liên hệ' })

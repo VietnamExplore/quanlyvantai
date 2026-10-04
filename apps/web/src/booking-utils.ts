@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { formatVnd } from './components/common';
+import { docDate, docFooter, docMoney, docServiceName, docT, docTime, docVehicleName, toDocLang, type DocLang } from './doc-i18n';
 import type { Booking, BookingTrip, PriceLine, ServiceType, Settings, TripStatus } from './types';
 
 /** Chuyến đang soạn trên form (chưa lưu hoặc đã lưu) */
@@ -93,42 +93,45 @@ export const routeText = (t: Pick<TripDraft, 'pickupAddress' | 'dropoffAddress'>
 /** Nhân viên báo giá: NV kinh doanh phụ trách, chưa gán thì người tạo booking */
 export const quoteStaff = (b: Pick<Booking, 'salesUser' | 'createdBy'>) => b.salesUser ?? b.createdBy;
 
-/** Nội dung báo giá dạng chữ để dán vào Zalo / email */
-export function buildQuoteText(b: Booking, s: Settings) {
-  const vnd = (v: number | string) => `${formatVnd(v)}đ`;
+/** Nội dung báo giá dạng chữ để dán vào Zalo / email, theo ngôn ngữ giấy tờ */
+export function buildQuoteText(b: Booking, s: Settings, lang: DocLang = toDocLang(b.docLanguage)) {
+  const t = docT(lang);
+  const money = (v: number | string) => docMoney(v, lang);
   const lines: string[] = [];
-  lines.push(`BÁO GIÁ DỊCH VỤ XE${s.companyName ? ` – ${s.companyName}` : ''}`);
-  lines.push(`Mã: ${b.code}${b.customerRef ? ` | Mã booking của Quý khách: ${b.customerRef}` : ''} | Ngày: ${dayjs().format('DD/MM/YYYY')}`);
-  lines.push(`Kính gửi: ${b.customer?.name ?? b.contactName} – ${b.contactPhone}`);
+  lines.push(`${t('quoteTextTitle')}${s.companyName ? ` – ${s.companyName}` : ''}`);
+  lines.push(
+    `${t('no')}: ${b.code}${b.customerRef ? ` | ${t('yourRef')}: ${b.customerRef}` : ''} | ${t('date')}: ${docDate(dayjs(), lang)}`,
+  );
+  lines.push(`${t('to')}: ${b.customer?.name ?? b.contactName} – ${b.contactPhone}`);
   lines.push('');
 
   b.trips
-    .filter((t) => t.status !== 'HUY')
-    .forEach((t, i) => {
-      lines.push(`${i + 1}) ${t.service?.name ?? t.serviceType} – ${fmtTime(t.pickupTime)}`);
-      lines.push(`   ${routeText(t)}${t.flightNumber ? ` (chuyến bay ${t.flightNumber})` : ''}`);
-      lines.push(`   ${t.vehicleType.name} – ${t.passengers} khách${t.days > 1 ? ` – ${t.days} ngày` : ''}`);
-      if (t.itinerary) lines.push(`   Lịch trình: ${t.itinerary.replace(/\n/g, '; ')}`);
-      lines.push(`   Giá: ${vnd(t.unitPrice)}`);
-      for (const sc of t.surcharges ?? []) lines.push(`   + ${sc.name}: ${vnd(sc.amount)}`);
-      if ((t.surcharges ?? []).length) lines.push(`   Thành tiền: ${vnd(t.amount)}`);
+    .filter((x) => x.status !== 'HUY')
+    .forEach((x, i) => {
+      lines.push(`${i + 1}) ${docServiceName(x.service, x.serviceType, lang)} – ${docTime(x.pickupTime, lang)}`);
+      lines.push(`   ${routeText(x)}${x.flightNumber ? ` (${t('flight')} ${x.flightNumber})` : ''}`);
+      lines.push(`   ${docVehicleName(x.vehicleType, lang)} – ${x.passengers} ${t('pax')}${x.days > 1 ? ` – ${x.days} ${t('days')}` : ''}`);
+      if (x.itinerary) lines.push(`   ${t('itinerary')}: ${x.itinerary.replace(/\n/g, '; ')}`);
+      lines.push(`   ${t('price')}: ${money(x.unitPrice)}`);
+      for (const sc of x.surcharges ?? []) lines.push(`   + ${sc.name}: ${money(sc.amount)}`);
+      if ((x.surcharges ?? []).length) lines.push(`   ${t('lineTotal')}: ${money(x.amount)}`);
       lines.push('');
     });
 
-  if (Number(b.discountAmount) || Number(b.vatPercent)) lines.push(`Tạm tính: ${vnd(b.subtotal)}`);
-  if (Number(b.discountAmount)) lines.push(`Giảm giá: -${vnd(b.discountAmount)}`);
-  if (Number(b.vatPercent)) lines.push(`VAT ${Number(b.vatPercent)}%: ${vnd(b.vatAmount)}`);
-  lines.push(`TỔNG CỘNG: ${vnd(b.total)}`);
-  if (Number(b.depositAmount)) lines.push(`Đặt cọc: ${vnd(b.depositAmount)} – Còn lại: ${vnd(b.remaining)}`);
-  if (b.quoteValidUntil) lines.push(`Báo giá có hiệu lực đến ${dayjs(b.quoteValidUntil).format('DD/MM/YYYY')}`);
+  if (Number(b.discountAmount) || Number(b.vatPercent)) lines.push(`${t('subtotal')}: ${money(b.subtotal)}`);
+  if (Number(b.discountAmount)) lines.push(`${t('discount')}: -${money(b.discountAmount)}`);
+  if (Number(b.vatPercent)) lines.push(`${t('vat')} ${Number(b.vatPercent)}%: ${money(b.vatAmount)}`);
+  lines.push(`${t('grandTotal')}: ${money(b.total)}`);
+  if (Number(b.depositAmount)) lines.push(`${t('deposit')}: ${money(b.depositAmount)} – ${t('balance')}: ${money(b.remaining)}`);
+  if (b.quoteValidUntil) lines.push(`${t('validUntil')} ${docDate(b.quoteValidUntil, lang)}`);
 
-  for (const extra of [b.notes, s.quoteFooter, s.bankInfo && `Chuyển khoản: ${s.bankInfo}`]) {
+  for (const extra of [b.notes, docFooter(s, lang), s.bankInfo && `${t('bankText')}: ${s.bankInfo}`]) {
     if (extra) lines.push('', extra);
   }
 
   // Liên hệ: nhân viên báo giá + SĐT, kèm hotline công ty
   const staff = quoteStaff(b);
-  lines.push('', `Nhân viên báo giá: ${staff.fullName}${staff.phone ? ` – ${staff.phone}` : ''}`);
-  if (s.companyPhone && s.companyPhone !== staff.phone) lines.push(`Hotline: ${s.companyPhone}`);
+  lines.push('', `${t('quoteStaff')}: ${staff.fullName}${staff.phone ? ` – ${staff.phone}` : ''}`);
+  if (s.companyPhone && s.companyPhone !== staff.phone) lines.push(`${t('hotline')}: ${s.companyPhone}`);
   return lines.join('\n');
 }

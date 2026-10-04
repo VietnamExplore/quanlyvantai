@@ -30,6 +30,11 @@ export const SETTING_KEYS = [
   'companyTaxCode',
   'bankInfo',
   'quoteFooter',
+  // Ghi chú cuối báo giá theo ngôn ngữ giấy tờ
+  'quoteFooter_en',
+  'quoteFooter_ko',
+  'quoteFooter_zh',
+  'quoteFooter_ja',
 ] as const;
 
 /** Logo công ty: apps/api/uploads/logo (đổi bằng biến môi trường UPLOAD_DIR); tên file lưu ở cài đặt "companyLogo" */

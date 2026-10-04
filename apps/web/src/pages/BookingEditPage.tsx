@@ -32,6 +32,7 @@ import {
   Spin,
   Table,
   Tag,
+  Dropdown,
   Tooltip,
   Typography,
 } from "antd";
@@ -70,6 +71,7 @@ import {
 import { PassengersCard, SignCard, uploadSignFile } from "../components/BookingExtras";
 import { PaymentsCard } from "../components/finance";
 import { QuickSelect } from "../components/QuickCreate";
+import { DOC_LANGS, toDocLang, type DocLang } from "../doc-i18n";
 import type { Booking, BookingStatus, Customer, Passenger } from "../types";
 
 // Booking đã hoàn thành vẫn sửa được; chỉ khóa booking đã hủy
@@ -109,6 +111,7 @@ export default function BookingEditPage() {
     if (isNew) {
       form.setFieldsValue({
         source: "HOTLINE",
+        docLanguage: "vi",
         vatPercent: 0,
         discountAmount: 0,
         depositAmount: 0,
@@ -159,6 +162,7 @@ export default function BookingEditPage() {
     const payload = {
       customerId: v.customerId ?? null,
       customerRef: v.customerRef?.trim() || null,
+      docLanguage: v.docLanguage || "vi",
       contactName: v.contactName,
       contactPhone: v.contactPhone,
       source: v.source,
@@ -262,14 +266,14 @@ export default function BookingEditPage() {
     });
   }
 
-  async function copyQuote() {
+  async function copyQuote(lang?: DocLang) {
     if (!booking) return;
     if (dirty) {
       message.warning("Hãy lưu booking trước khi sao chép báo giá");
       return;
     }
     try {
-      await navigator.clipboard.writeText(buildQuoteText(booking, settings));
+      await navigator.clipboard.writeText(buildQuoteText(booking, settings, lang ?? toDocLang(booking.docLanguage)));
       message.success(
         "Đã sao chép nội dung báo giá. Dán (Ctrl+V) vào Zalo hoặc email.",
       );
@@ -316,6 +320,8 @@ export default function BookingEditPage() {
       contactPhone: cur.contactPhone || c.phone || "",
       salesUserId: cur.salesUserId ?? c.salesUserId ?? undefined,
       source: c.type === "DAI_LY" ? "DAI_LY" : cur.source,
+      // Khách nước ngoài: giấy tờ theo ngôn ngữ mặc định của khách
+      docLanguage: c.docLanguage && c.docLanguage !== "vi" ? c.docLanguage : cur.docLanguage,
     });
   };
 
@@ -411,9 +417,16 @@ export default function BookingEditPage() {
                 >
                   Xem / In báo giá
                 </Button>
-                <Button icon={<CopyOutlined />} onClick={copyQuote}>
-                  Sao chép gửi Zalo
-                </Button>
+                <Dropdown.Button
+                  onClick={() => copyQuote()}
+                  menu={{
+                    items: DOC_LANGS.map((l) => ({ key: l.value, label: `Sao chép bằng ${l.label}` })),
+                    onClick: ({ key }) => copyQuote(key as DocLang),
+                  }}
+                >
+                  <CopyOutlined /> Sao chép gửi Zalo
+                  {booking && booking.docLanguage !== "vi" && ` (${toDocLang(booking.docLanguage).toUpperCase()})`}
+                </Dropdown.Button>
               </>
             )}
             {statusActions}
@@ -540,6 +553,15 @@ export default function BookingEditPage() {
             <Col xs={12} md={6}>
               <Form.Item name="quoteValidUntil" label="Báo giá hiệu lực đến">
                 <DatePicker format={DATE_FORMAT} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={6}>
+              <Form.Item
+                name="docLanguage"
+                label="Ngôn ngữ giấy tờ"
+                tooltip="Ngôn ngữ của báo giá, tin nhắn báo giá, danh sách hành khách, bảng đón gửi khách. Khi in vẫn đổi nhanh được sang ngôn ngữ khác."
+              >
+                <Select options={DOC_LANGS.map((l) => ({ value: l.value, label: l.label }))} />
               </Form.Item>
             </Col>
             {!isNew && booking && (

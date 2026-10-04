@@ -1,6 +1,7 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { Transform } from 'class-transformer';
-import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { CleanNames } from '../common/doc-language';
 
 export class CreateVehicleTypeDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
@@ -27,6 +28,12 @@ export class CreateVehicleTypeDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  /** Tên trên giấy tờ gửi khách nước ngoài */
+  @CleanNames()
+  @IsOptional()
+  @IsObject()
+  names?: Record<string, string>;
 }
 
 export class UpdateVehicleTypeDto extends PartialType(CreateVehicleTypeDto) {}

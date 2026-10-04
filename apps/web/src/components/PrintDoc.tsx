@@ -1,4 +1,7 @@
+import { Segmented } from 'antd';
 import type { ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DOC_LANGS, docT, toDocLang, type DocLang } from '../doc-i18n';
 import type { Settings } from '../types';
 
 /** Đường dẫn ảnh logo công ty (null = chưa tải logo). Thêm ?v=tên-file để đổi logo là trình duyệt tải ảnh mới. */
@@ -73,9 +76,10 @@ export const DOC_CSS = `
 `;
 
 /** Đầu trang in: logo + tên, địa chỉ, liên hệ công ty | khối số chứng từ bên phải */
-export function PrintHeader({ settings, meta }: { settings: Settings; meta?: ReactNode }) {
+export function PrintHeader({ settings, meta, lang = 'vi' }: { settings: Settings; meta?: ReactNode; lang?: DocLang }) {
+  const t = docT(lang);
   const logo = logoUrl(settings);
-  const contact = [settings.companyPhone && `Hotline: ${settings.companyPhone}`, settings.companyEmail && `Email: ${settings.companyEmail}`].filter(Boolean).join(' · ');
+  const contact = [settings.companyPhone && `${t('hotline')}: ${settings.companyPhone}`, settings.companyEmail && `${t('email')}: ${settings.companyEmail}`].filter(Boolean).join(' · ');
   return (
     <div className="doc-head">
       {logo && (
@@ -85,11 +89,45 @@ export function PrintHeader({ settings, meta }: { settings: Settings; meta?: Rea
       )}
       <div className="doc-company">
         <div className="name">{settings.companyName}</div>
-        {settings.companyAddress && <div>Địa chỉ: {settings.companyAddress}</div>}
+        {settings.companyAddress && (
+          <div>
+            {t('address')}: {settings.companyAddress}
+          </div>
+        )}
         {contact && <div>{contact}</div>}
-        {settings.companyTaxCode && <div>MST: {settings.companyTaxCode}</div>}
+        {settings.companyTaxCode && (
+          <div>
+            {t('taxCode')}: {settings.companyTaxCode}
+          </div>
+        )}
       </div>
       {meta && <div className="doc-meta">{meta}</div>}
     </div>
+  );
+}
+
+/** Ngôn ngữ của trang in: ?lang=… trên đường dẫn, mặc định theo booking */
+export function useDocLang(fallback?: string | null): [DocLang, (l: DocLang) => void] {
+  const [params, setParams] = useSearchParams();
+  const lang = toDocLang(params.get('lang') ?? fallback);
+  const setLang = (l: DocLang) =>
+    setParams(
+      (p) => {
+        p.set('lang', l);
+        return p;
+      },
+      { replace: true },
+    );
+  return [lang, setLang];
+}
+
+/** Nút chọn ngôn ngữ trên thanh công cụ trang in */
+export function DocLangSwitch({ value, onChange }: { value: DocLang; onChange: (l: DocLang) => void }) {
+  return (
+    <Segmented<DocLang>
+      value={value}
+      onChange={onChange}
+      options={DOC_LANGS.map((l) => ({ value: l.value, label: l.short, title: l.label }))}
+    />
   );
 }

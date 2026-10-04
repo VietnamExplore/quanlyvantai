@@ -1,6 +1,7 @@
 import { Col, Form, Input, InputNumber, Row, Select, Switch, Tag } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
+import { ForeignNamesFields } from '../components/ForeignNames';
 import type { VehicleType } from '../types';
 
 const LICENSE_CLASSES = ['B', 'C1', 'C', 'D1', 'D2', 'D', 'BE', 'C1E', 'CE', 'D1E', 'D2E', 'DE'];
@@ -17,6 +18,7 @@ export default function VehicleTypesPage() {
       columns={[
         { title: 'Mã', dataIndex: 'code', render: (v) => <b>{v}</b> },
         { title: 'Tên', dataIndex: 'name' },
+        { title: 'Tên ngoại ngữ', render: (_, r) => <span style={{ fontSize: 12, color: '#666' }}>{Object.values(r.names ?? {}).filter(Boolean).join(' · ')}</span> },
         { title: 'Số chỗ', dataIndex: 'seats', align: 'right' },
         { title: 'Khách tối đa', dataIndex: 'maxPassengers', align: 'right' },
         { title: 'Hạng bằng phù hợp', dataIndex: 'licenseClasses', render: (v: string[]) => v.map((c) => <Tag key={c}>{c}</Tag>) },
@@ -58,6 +60,12 @@ export default function VehicleTypesPage() {
             >
               <Select mode="tags" options={LICENSE_CLASSES.map((c) => ({ value: c, label: c }))} />
             </Form.Item>
+          </Col>
+          <Col span={24}>
+            <ForeignNamesFields
+              hint="Bỏ trống thì giấy tờ ngoại ngữ tự ghi theo số chỗ, ví dụ: 16-seat vehicle, 16인승 차량, 16座车, 16人乗り車両."
+              placeholders={{ en: '16-seat Ford Transit', ko: '16인승 포드 트랜짓', zh: '16座福特全顺', ja: '16人乗りフォード・トランジット' }}
+            />
           </Col>
         </Row>
       )}

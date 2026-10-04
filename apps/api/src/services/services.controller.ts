@@ -2,7 +2,8 @@ import { BadRequestException, Body, Controller, Get, Param, Patch, Post } from '
 import { PartialType } from '@nestjs/mapped-types';
 import { PricingMode, Role } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Matches } from 'class-validator';
+import { CleanNames } from '../common/doc-language';
 import { OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -22,6 +23,12 @@ class CreateServiceDto {
   @IsOptional() @IsString() color?: string | null;
   @IsOptional() @IsInt() sortOrder?: number;
   @IsOptional() @IsBoolean() isActive?: boolean;
+
+  /** Tên trên giấy tờ gửi khách nước ngoài */
+  @CleanNames()
+  @IsOptional()
+  @IsObject()
+  names?: Record<string, string>;
 }
 
 class UpdateServiceDto extends PartialType(CreateServiceDto) {}

@@ -1,6 +1,6 @@
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Col, Flex, Form, Input, Popconfirm, Row, Typography, Upload } from 'antd';
+import { App, Button, Card, Col, Flex, Form, Input, Popconfirm, Row, Tabs, Typography, Upload } from 'antd';
 import { useEffect, useState } from 'react';
 import { api, apiUpload } from '../api';
 import { logoUrl } from '../components/PrintDoc';
@@ -125,9 +125,30 @@ export default function SettingsPage() {
             </Form.Item>
           </Col>
           <Col span={24}>
-            <Form.Item name="quoteFooter" label="Ghi chú cuối báo giá" extra="Điều khoản giá bao gồm / không bao gồm, hiệu lực báo giá, chính sách hủy…">
-              <Input.TextArea rows={5} />
-            </Form.Item>
+            <Typography.Text strong>Ghi chú cuối báo giá</Typography.Text>
+            <Typography.Paragraph type="secondary" style={{ fontSize: 13, margin: '2px 0 4px' }}>
+              Điều khoản giá bao gồm / không bao gồm, hiệu lực báo giá, chính sách hủy… Nhập riêng cho từng ngôn ngữ giấy tờ; ngôn ngữ nào bỏ trống sẽ dùng bản tiếng
+              Việt.
+            </Typography.Paragraph>
+            <Tabs
+              size="small"
+              items={[
+                { key: 'vi', label: 'Tiếng Việt', name: 'quoteFooter', ph: '' },
+                { key: 'en', label: 'English', name: 'quoteFooter_en', ph: 'Price includes: modern vehicle, driver, fuel, tolls.\nPrice excludes: VAT, parking fees at attractions, driver accommodation (if any).' },
+                { key: 'ko', label: '한국어', name: 'quoteFooter_ko', ph: '포함 사항: 신형 차량, 기사, 유류비, 통행료.\n불포함 사항: 부가세, 관광지 주차비, 기사 숙박비(해당 시).' },
+                { key: 'zh', label: '中文', name: 'quoteFooter_zh', ph: '费用包含：新款车辆、司机、油费、过路费。\n费用不含：增值税、景点停车费、司机住宿费（如有）。' },
+                { key: 'ja', label: '日本語', name: 'quoteFooter_ja', ph: '料金に含まれるもの：新型車両、運転手、燃料費、通行料。\n含まれないもの：付加価値税、観光地の駐車料金、運転手の宿泊費（該当する場合）。' },
+              ].map((l) => ({
+                key: l.key,
+                label: l.label,
+                forceRender: true,
+                children: (
+                  <Form.Item name={l.name} style={{ marginBottom: 0 }}>
+                    <Input.TextArea rows={5} placeholder={l.ph} />
+                  </Form.Item>
+                ),
+              }))}
+            />
           </Col>
         </Row>
         <Button type="primary" htmlType="submit" loading={save.isPending}>

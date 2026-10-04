@@ -6,7 +6,8 @@ import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useSignFile } from '../components/BookingExtras';
 import { useSettings } from '../components/common';
-import { logoUrl } from '../components/PrintDoc';
+import { DocLangSwitch, logoUrl, useDocLang } from '../components/PrintDoc';
+import { docT } from '../doc-i18n';
 import type { Booking } from '../types';
 
 const css = `
@@ -36,6 +37,7 @@ export default function SignPage() {
   const { id } = useParams();
   const settings = useSettings();
   const { data: b, isLoading } = useQuery({ queryKey: ['/bookings', Number(id)], queryFn: () => api<Booking>(`/bookings/${id}`) });
+  const [lang, setLang] = useDocLang(b?.docLanguage);
   const [showCompany, setShowCompany] = useState(true);
   // Có file bảng đón khách gửi thì mặc định in file đó
   const signFile = useSignFile(Number(id));
@@ -122,6 +124,7 @@ export default function SignPage() {
             </Checkbox>
           </>
         )}
+        <DocLangSwitch value={lang} onChange={setLang} />
         <Button onClick={() => window.close()}>Đóng</Button>
       </Flex>
 
@@ -154,7 +157,9 @@ export default function SignPage() {
               </div>
               {subtitle && <div className="sign-sub">{subtitle}</div>}
             </div>
-            {showCompany && settings.companyPhone && <div className="sign-foot">Hotline: {settings.companyPhone}</div>}
+            {showCompany && settings.companyPhone && <div className="sign-foot">
+                {docT(lang)('hotline')}: {settings.companyPhone}
+              </div>}
           </div>
         )}
       </div>

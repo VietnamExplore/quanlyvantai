@@ -1,6 +1,7 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CustomerType } from '@prisma/client';
-import { IsBoolean, IsEmail, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { DOC_LANGUAGES } from '../common/doc-language';
 
 export class CreateCustomerDto {
   @IsOptional()
@@ -43,6 +44,9 @@ export class CreateCustomerDto {
   paymentTermDays?: number;
 
   @IsOptional() @IsString() notes?: string;
+
+  /** Ngôn ngữ giấy tờ mặc định cho booking của khách */
+  @IsOptional() @IsIn(DOC_LANGUAGES, { message: 'Ngôn ngữ giấy tờ không hợp lệ' }) docLanguage?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
 }
 

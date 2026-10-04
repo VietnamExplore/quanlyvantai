@@ -24,6 +24,8 @@ export interface VehicleType extends Ref {
   maxPassengers: number;
   licenseClasses: string[];
   isActive: boolean;
+  /** Tên trên giấy tờ gửi khách nước ngoài */
+  names?: Partial<Record<'en' | 'ko' | 'zh' | 'ja', string>>;
   _count?: { vehicles: number };
 }
 
@@ -93,6 +95,8 @@ export interface Customer extends Ref {
   discountPercent: string | null;
   paymentTermDays: number;
   notes: string | null;
+  /** Ngôn ngữ giấy tờ mặc định: vi | en | ko | zh | ja */
+  docLanguage: string;
   isActive: boolean;
 }
 
@@ -129,10 +133,12 @@ export interface Service {
   color: string | null;
   sortOrder: number;
   isActive: boolean;
+  /** Tên trên giấy tờ gửi khách nước ngoài */
+  names?: Partial<Record<'en' | 'ko' | 'zh' | 'ja', string>>;
   _count?: { trips: number; routes: number };
 }
 
-type ServiceRef = Pick<Service, 'code' | 'name' | 'color' | 'pricingMode' | 'hasFlight'>;
+type ServiceRef = Pick<Service, 'code' | 'name' | 'color' | 'pricingMode' | 'hasFlight' | 'names'>;
 export type SurchargeRule = 'BAN_DEM' | 'LE_TET' | 'THU_CONG';
 /** Mã nguồn khách trong danh mục Nguồn khách */
 export type BookingSource = string;
@@ -232,7 +238,7 @@ export interface BookingTrip extends Ref {
   flightNumber: string | null;
   passengers: number;
   vehicleTypeId: number;
-  vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number };
+  vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number; names?: VehicleType['names'] };
   routePriceId: number | null;
   routePrice: { id: number; name: string } | null;
   days: number;
@@ -299,6 +305,8 @@ export interface TripCostRow {
 
 export interface Booking extends Ref {
   customerRef: string | null;
+  /** Ngôn ngữ giấy tờ gửi khách: vi | en | ko | zh | ja */
+  docLanguage: string;
   payments: Payment[];
   paid: number;
   balance: number;
@@ -407,7 +415,7 @@ export interface DispatchOptions {
 }
 
 export type Settings = Partial<
-  Record<'companyName' | 'companyAddress' | 'companyPhone' | 'companyEmail' | 'companyTaxCode' | 'bankInfo' | 'quoteFooter' | 'companyLogo', string>
+  Record<'companyName' | 'companyAddress' | 'companyPhone' | 'companyEmail' | 'companyTaxCode' | 'bankInfo' | 'quoteFooter' | 'companyLogo' | 'quoteFooter_en' | 'quoteFooter_ko' | 'quoteFooter_zh' | 'quoteFooter_ja', string>
 >;
 
 export interface ExpiryAlert {

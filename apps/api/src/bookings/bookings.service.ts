@@ -17,9 +17,9 @@ const bookingInclude = {
   trips: {
     orderBy: { seq: 'asc' },
     include: {
-      vehicleType: { select: { id: true, code: true, name: true, seats: true, maxPassengers: true } },
+      vehicleType: { select: { id: true, code: true, name: true, seats: true, maxPassengers: true, names: true } },
       routePrice: { select: { id: true, name: true } },
-      service: { select: { code: true, name: true, color: true, pricingMode: true, hasFlight: true } },
+      service: { select: { code: true, name: true, color: true, pricingMode: true, hasFlight: true, names: true } },
       vehicle: { select: { plateNumber: true } },
       driver: { select: { fullName: true } },
       partner: { select: { name: true } },

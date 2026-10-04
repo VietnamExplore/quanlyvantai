@@ -49,6 +49,8 @@ model VehicleType {
   seats          Int // Tổng số chỗ, gồm cả ghế lái
   maxPassengers  Int
   licenseClasses String[] // Hạng bằng lái phù hợp, Admin tự cấu hình
+  /// Tên trên giấy tờ gửi khách nước ngoài: { "en": "...", "ko": "...", "zh": "...", "ja": "..." }
+  names          Json             @default("{}")
   isActive       Boolean          @default(true)
   vehicles       Vehicle[]
   routePrices    RoutePriceItem[]
@@ -185,6 +187,8 @@ model Customer {
   discountPercent Decimal?     @db.Decimal(5, 2)
   paymentTermDays Int          @default(0) // Số ngày được nợ sau khi kết thúc chuyến
   notes           String?
+  /// Ngôn ngữ giấy tờ mặc định cho booking của khách: vi | en | ko | zh | ja
+  docLanguage     String       @default("vi")
   isActive        Boolean      @default(true)
   bookings        Booking[]
   createdAt       DateTime     @default(now())
@@ -231,6 +235,8 @@ model Service {
   pricingMode PricingMode   @default(TUYEN)
   hasFlight   Boolean       @default(false) // Hiện ô số hiệu chuyến bay
   color       String? // Màu nhãn hiển thị
+  /// Tên trên giấy tờ gửi khách nước ngoài: { "en": "...", "ko": "...", "zh": "...", "ja": "..." }
+  names       Json          @default("{}")
   sortOrder   Int           @default(0)
   isActive    Boolean       @default(true)
   routes      RoutePrice[]
@@ -349,6 +355,8 @@ model Booking {
   id              Int                @id @default(autoincrement())
   code            String             @unique
   customerRef     String? // Mã booking của khách / đại lý (nếu có), dùng để đối chiếu
+  /// Ngôn ngữ giấy tờ gửi khách: vi | en | ko | zh | ja
+  docLanguage     String             @default("vi")
   customerId      Int?
   customer        Customer?          @relation(fields: [customerId], references: [id])
   contactName     String

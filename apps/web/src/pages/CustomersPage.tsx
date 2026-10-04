@@ -3,6 +3,7 @@ import { Col, Form, Input, InputNumber, Row, Select, Switch, Tag } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
 import { EnumTag, formatVnd, useSalesStaffOptions } from '../components/common';
+import { DOC_LANGS } from '../doc-i18n';
 import { CUSTOMER_TYPE, toOptions } from '../labels';
 import type { Customer } from '../types';
 
@@ -19,6 +20,7 @@ export default function CustomersPage() {
       newDefaults={{
         type: 'KHACH_LE',
         isActive: true,
+        docLanguage: 'vi',
         // Nhân viên kinh doanh tạo khách thì mặc định là người phụ trách
         salesUserId: user?.roles.includes('KINH_DOANH') ? user.id : undefined,
       }}
@@ -41,6 +43,7 @@ export default function CustomersPage() {
         { title: 'NV phụ trách', render: (_, r) => r.salesUser?.fullName },
         { title: 'Hạn mức công nợ', dataIndex: 'creditLimit', align: 'right', render: (v) => formatVnd(v) },
         { title: 'Chiết khấu', dataIndex: 'discountPercent', align: 'right', render: (v) => (v ? `${Number(v)}%` : '') },
+        { title: 'Ngôn ngữ', dataIndex: 'docLanguage', render: (v) => (v && v !== 'vi' ? <Tag color="geekblue">{String(v).toUpperCase()}</Tag> : null) },
         { title: 'Ngày công nợ', dataIndex: 'paymentTermDays', align: 'right', render: (v) => (v ? `${v} ngày` : '') },
         { title: 'Trạng thái', dataIndex: 'isActive', render: (v) => (v ? null : <Tag>Ngừng giao dịch</Tag>) },
       ]}
@@ -105,6 +108,11 @@ export default function CustomersPage() {
           <Col xs={24} md={5}>
             <Form.Item name="isActive" label="Đang giao dịch" valuePropName="checked">
               <Switch />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="docLanguage" label="Ngôn ngữ giấy tờ" tooltip="Booking của khách này mặc định in báo giá, danh sách hành khách, bảng đón bằng ngôn ngữ này">
+              <Select options={DOC_LANGS.map((l) => ({ value: l.value, label: l.label }))} />
             </Form.Item>
           </Col>
           <Col span={24}>
