@@ -4,7 +4,7 @@ import 'dayjs/locale/ja';
 import 'dayjs/locale/ko';
 import 'dayjs/locale/vi';
 import 'dayjs/locale/zh-cn';
-import type { Settings } from './types';
+import type { Booking, Settings } from './types';
 
 /** Ngôn ngữ giấy tờ gửi khách (báo giá, danh sách hành khách, bảng đón) */
 export type DocLang = 'vi' | 'en' | 'ko' | 'zh' | 'ja';
@@ -157,3 +157,30 @@ export const docFooter = (s: Settings, lang: DocLang) =>
 /** Thông tin công ty theo ngôn ngữ giấy tờ (bản dịch ở Thông tin công ty; bỏ trống thì dùng tiếng Việt) */
 export const docCompany = (s: Settings, lang: DocLang, field: 'companyName' | 'companyAddress' | 'bankInfo') =>
   (lang === 'vi' ? undefined : s[`${field}_${lang}`]?.trim()) || s[field] || '';
+
+type TrEntry = { src: string; text: string };
+
+/**
+ * Bản booking đã thay nội dung tiếng Việt bằng bản dịch đã lưu (điểm đón / trả, lịch trình, phụ thu, ghi chú, dòng phụ bảng đón).
+ * Chỉ dùng bản dịch khi câu gốc chưa bị sửa sau lúc dịch; còn lại giữ tiếng Việt.
+ */
+export function localizeBooking(b: Booking, lang: DocLang): Booking {
+  if (lang === 'vi') return b;
+  const map = (b.docTranslations?.[lang] ?? {}) as Record<string, TrEntry>;
+  const tr = (key: string, src: string | null | undefined) => {
+    const e = map[key];
+    return src && e && e.src === src.trim() && e.text ? e.text : src;
+  };
+  return {
+    ...b,
+    notes: tr('notes', b.notes) ?? null,
+    signSubtitle: tr('signSubtitle', b.signSubtitle) ?? null,
+    trips: b.trips.map((t) => ({
+      ...t,
+      pickupAddress: tr(`trip.${t.id}.pickupAddress`, t.pickupAddress) ?? t.pickupAddress,
+      dropoffAddress: tr(`trip.${t.id}.dropoffAddress`, t.dropoffAddress) ?? null,
+      itinerary: tr(`trip.${t.id}.itinerary`, t.itinerary) ?? null,
+      surcharges: (t.surcharges ?? []).map((s, k) => ({ ...s, name: tr(`trip.${t.id}.surcharge.${k}`, s.name) ?? s.name })),
+    })),
+  };
+}

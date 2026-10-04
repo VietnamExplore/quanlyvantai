@@ -307,6 +307,8 @@ export interface Booking extends Ref {
   customerRef: string | null;
   /** Ngôn ngữ giấy tờ gửi khách: vi | en | ko | zh | ja */
   docLanguage: string;
+  /** Bản dịch nội dung cho giấy tờ ngoại ngữ: { en: { "trip.12.pickupAddress": { src, text } } } */
+  docTranslations?: Record<string, Record<string, { src: string; text: string }>>;
   payments: Payment[];
   paid: number;
   balance: number;

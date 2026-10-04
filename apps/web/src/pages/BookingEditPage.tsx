@@ -3,6 +3,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   CopyOutlined,
+  TranslationOutlined,
   DeleteOutlined,
   EditOutlined,
   FilePdfOutlined,
@@ -71,6 +72,7 @@ import {
 import { PassengersCard, SignCard, uploadSignFile } from "../components/BookingExtras";
 import { PaymentsCard } from "../components/finance";
 import { QuickSelect } from "../components/QuickCreate";
+import { DocTranslationsModal } from "../components/DocTranslationsModal";
 import { DOC_LANGS, toDocLang, type DocLang } from "../doc-i18n";
 import type { Booking, BookingStatus, Customer, Passenger } from "../types";
 
@@ -98,6 +100,8 @@ export default function BookingEditPage() {
   const [editCompleted, setEditCompleted] = useState(() => new URLSearchParams(window.location.search).get("edit") === "1");
   // Tăng để nạp lại form từ dữ liệu đã lưu (bỏ thay đổi)
   const [reloadKey, setReloadKey] = useState(0);
+  // Bản dịch nội dung booking cho giấy tờ ngoại ngữ
+  const [translationsOpen, setTranslationsOpen] = useState(false);
   // Booking mới: file bảng đón khách gửi, tải lên ngay sau khi tạo booking
   const [pendingSignFile, setPendingSignFile] = useState<File | null>(null);
 
@@ -427,6 +431,14 @@ export default function BookingEditPage() {
                   <CopyOutlined /> Sao chép gửi Zalo
                   {booking && booking.docLanguage !== "vi" && ` (${toDocLang(booking.docLanguage).toUpperCase()})`}
                 </Dropdown.Button>
+                <Button
+                  icon={<TranslationOutlined />}
+                  disabled={dirty}
+                  title={dirty ? "Lưu booking trước khi dịch" : "Dịch điểm đón / trả, lịch trình, ghi chú… cho giấy tờ ngoại ngữ"}
+                  onClick={() => setTranslationsOpen(true)}
+                >
+                  Bản dịch giấy tờ
+                </Button>
               </>
             )}
             {statusActions}
@@ -921,6 +933,14 @@ export default function BookingEditPage() {
         </Row>
       </Form>
 
+      {booking && (
+        <DocTranslationsModal
+          bookingId={booking.id}
+          docLanguage={booking.docLanguage}
+          open={translationsOpen}
+          onClose={() => setTranslationsOpen(false)}
+        />
+      )}
       <TripModal
         open={tripModalOpen}
         trip={editingTrip}

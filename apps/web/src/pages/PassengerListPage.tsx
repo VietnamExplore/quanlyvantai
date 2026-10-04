@@ -2,20 +2,22 @@ import { PrinterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Flex, Spin } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { routeText } from '../booking-utils';
 import { useSettings } from '../components/common';
 import { DOC_CSS, DocLangSwitch, PrintHeader, useDocLang } from '../components/PrintDoc';
-import { docDate, docServiceName, docT, docTime, docVehicleName } from '../doc-i18n';
+import { docDate, docServiceName, docT, docTime, docVehicleName, localizeBooking } from '../doc-i18n';
 import type { Booking } from '../types';
 
 export default function PassengerListPage() {
   const { id } = useParams();
   const settings = useSettings();
-  const { data: b, isLoading } = useQuery({ queryKey: ['/bookings', Number(id)], queryFn: () => api<Booking>(`/bookings/${id}`) });
-  const [lang, setLang] = useDocLang(b?.docLanguage);
+  const { data: raw, isLoading } = useQuery({ queryKey: ['/bookings', Number(id)], queryFn: () => api<Booking>(`/bookings/${id}`) });
+  const [lang, setLang] = useDocLang(raw?.docLanguage);
+  // Nội dung đã dịch (điểm đón / trả, lịch trình…) theo ngôn ngữ đang in
+  const b = useMemo(() => raw && localizeBooking(raw, lang), [raw, lang]);
   const t = docT(lang);
 
   useEffect(() => {

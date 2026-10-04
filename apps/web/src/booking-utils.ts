@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { docCompany, docDate, docFooter, docMoney, docServiceName, docT, docTime, docVehicleName, toDocLang, type DocLang } from './doc-i18n';
+import { docCompany, docDate, docFooter, docMoney, docServiceName, docT, docTime, docVehicleName, toDocLang, localizeBooking, type DocLang } from './doc-i18n';
 import type { Booking, BookingTrip, PriceLine, ServiceType, Settings, TripStatus } from './types';
 
 /** Chuyến đang soạn trên form (chưa lưu hoặc đã lưu) */
@@ -94,7 +94,8 @@ export const routeText = (t: Pick<TripDraft, 'pickupAddress' | 'dropoffAddress'>
 export const quoteStaff = (b: Pick<Booking, 'salesUser' | 'createdBy'>) => b.salesUser ?? b.createdBy;
 
 /** Nội dung báo giá dạng chữ để dán vào Zalo / email, theo ngôn ngữ giấy tờ */
-export function buildQuoteText(b: Booking, s: Settings, lang: DocLang = toDocLang(b.docLanguage)) {
+export function buildQuoteText(raw: Booking, s: Settings, lang: DocLang = toDocLang(raw.docLanguage)) {
+  const b = localizeBooking(raw, lang);
   const t = docT(lang);
   const money = (v: number | string) => docMoney(v, lang);
   const lines: string[] = [];

@@ -1,13 +1,13 @@
 import { FilePdfOutlined, MinusOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Checkbox, Flex, Segmented, Space, Spin } from 'antd';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useSignFile } from '../components/BookingExtras';
 import { useSettings } from '../components/common';
 import { DocLangSwitch, logoUrl, useDocLang } from '../components/PrintDoc';
-import { docCompany, docT } from '../doc-i18n';
+import { docCompany, docT, localizeBooking } from '../doc-i18n';
 import type { Booking } from '../types';
 
 const css = `
@@ -36,8 +36,10 @@ const css = `
 export default function SignPage() {
   const { id } = useParams();
   const settings = useSettings();
-  const { data: b, isLoading } = useQuery({ queryKey: ['/bookings', Number(id)], queryFn: () => api<Booking>(`/bookings/${id}`) });
-  const [lang, setLang] = useDocLang(b?.docLanguage);
+  const { data: raw, isLoading } = useQuery({ queryKey: ['/bookings', Number(id)], queryFn: () => api<Booking>(`/bookings/${id}`) });
+  const [lang, setLang] = useDocLang(raw?.docLanguage);
+  // Nội dung đã dịch (điểm đón / trả, lịch trình…) theo ngôn ngữ đang in
+  const b = useMemo(() => raw && localizeBooking(raw, lang), [raw, lang]);
   const [showCompany, setShowCompany] = useState(true);
   // Có file bảng đón khách gửi thì mặc định in file đó
   const signFile = useSignFile(Number(id));

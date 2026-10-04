@@ -357,6 +357,8 @@ model Booking {
   customerRef     String? // Mã booking của khách / đại lý (nếu có), dùng để đối chiếu
   /// Ngôn ngữ giấy tờ gửi khách: vi | en | ko | zh | ja
   docLanguage     String             @default("vi")
+  /// Bản dịch nội dung booking cho giấy tờ ngoại ngữ: { "en": { "trip.12.pickupAddress": { "src": "…", "text": "…" } } }
+  docTranslations Json               @default("{}")
   customerId      Int?
   customer        Customer?          @relation(fields: [customerId], references: [id])
   contactName     String
