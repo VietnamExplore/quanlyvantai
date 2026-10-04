@@ -24,6 +24,8 @@ interface RecBooking {
   total: number;
   paid: number;
   balance: number;
+  /** Booking chưa nhập giá (tổng 0 đ, chưa thu) – vẫn coi là còn nợ */
+  unpriced: boolean;
 }
 
 interface RecCustomer {
@@ -38,9 +40,20 @@ interface RecCustomer {
   balance: number;
   overdue: number;
   maxOverdueDays: number;
+  /** Số booking chưa nhập giá */
+  unpriced: number;
   overLimit: boolean;
   bookings: RecBooking[];
 }
+
+/** Khách còn nợ: còn tiền phải thu, hoặc có booking chưa nhập giá (chưa biết phải thu bao nhiêu) */
+const owes = (c: RecCustomer) => Math.round(c.balance) > 0 || c.unpriced > 0;
+const bookingOwes = (b: RecBooking) => Math.round(b.balance) > 0 || b.unpriced;
+const UNPRICED_TAG = (
+  <Tooltip title="Booking có tổng tiền 0 đ: chưa nhập giá nên chưa xác định được số phải thu. Mở booking để nhập giá.">
+    <Tag color="orange">Chưa nhập giá</Tag>
+  </Tooltip>
+);
 
 interface Receivables {
   totalBalance: number;
@@ -62,7 +75,7 @@ export default function ReceivablesPage() {
 
   const customers = (data?.customers ?? []).filter(
     (c) =>
-      (!q || `${c.name} ${c.phone ?? ''}`.toLowerCase().includes(q.toLowerCase())) && (!onlyOverdue || c.overdue > 0) && (!onlyDebt || Math.round(c.balance) > 0),
+      (!q || `${c.name} ${c.phone ?? ''}`.toLowerCase().includes(q.toLowerCase())) && (!onlyOverdue || c.overdue > 0) && (!onlyDebt || owes(c)),
   );
 
   function exportCsv() {
@@ -70,7 +83,7 @@ export default function ReceivablesPage() {
       {
         name: 'Công nợ khách hàng',
         title: `CÔNG NỢ KHÁCH HÀNG – ngày ${dayjs().format('DD/MM/YYYY')}`,
-        headers: ['Khách hàng', 'SĐT', 'Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)'],
+        headers: ['Khách hàng', 'SĐT', 'Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)', 'Ghi chú'],
         sumColumns: [6, 7, 8],
         totalLabel: 'Tổng cộng',
         rows: customers.flatMap((c) =>
@@ -86,6 +99,7 @@ export default function ReceivablesPage() {
             b.balance,
             dayjs(b.dueDate).format(DATE_FORMAT),
             b.overdueDays || null,
+            b.unpriced ? 'Chưa nhập giá' : Math.round(b.balance) <= 0 ? 'Đã thu đủ' : '',
           ]),
         ),
       },
@@ -107,7 +121,7 @@ export default function ReceivablesPage() {
         </Col>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="Số khách còn nợ" value={(data?.customers ?? []).filter((c) => c.balance > 0).length} />
+            <Statistic title="Số khách còn nợ" value={(data?.customers ?? []).filter(owes).length} />
           </Card>
         </Col>
       </Row>
@@ -157,11 +171,16 @@ export default function ReceivablesPage() {
                   { title: 'NV kinh doanh', dataIndex: 'salesUser' },
                   { title: 'Tổng tiền', dataIndex: 'total', align: 'right', render: (v) => formatVnd(v) },
                   { title: 'Đã thu', dataIndex: 'paid', align: 'right', render: (v) => formatVnd(v) },
-                  { title: 'Còn nợ', dataIndex: 'balance', align: 'right', render: (v) => (Math.round(v) > 0 ? <b>{formatVnd(v)}</b> : <Tag color="green">Đã thu đủ</Tag>) },
+                  {
+                    title: 'Còn nợ',
+                    dataIndex: 'balance',
+                    align: 'right',
+                    render: (v, b) => (b.unpriced ? UNPRICED_TAG : Math.round(v) > 0 ? <b>{formatVnd(v)}</b> : <Tag color="green">Đã thu đủ</Tag>),
+                  },
                   {
                     title: 'Hạn thanh toán',
                     render: (_, b) =>
-                      Math.round(b.balance) <= 0 ? null : (
+                      !bookingOwes(b) ? null : (
                       <>
                         {dayjs(b.dueDate).format(DATE_FORMAT)}
                         {b.overdueDays > 0 && b.balance > 0 && (
@@ -210,7 +229,23 @@ export default function ReceivablesPage() {
               title: 'Còn nợ',
               dataIndex: 'balance',
               align: 'right',
-              render: (v) => (Math.round(v) > 0 ? <Money value={v} strong /> : <Tag color="green">Đã thanh toán đủ</Tag>),
+              render: (v, c) =>
+                Math.round(v) > 0 ? (
+                  <>
+                    <Money value={v} strong />
+                    {c.unpriced > 0 && (
+                      <div>
+                        <Tag color="orange" style={{ marginInlineEnd: 0 }}>
+                          + {c.unpriced} booking chưa nhập giá
+                        </Tag>
+                      </div>
+                    )}
+                  </>
+                ) : c.unpriced > 0 ? (
+                  UNPRICED_TAG
+                ) : (
+                  <Tag color="green">Đã thanh toán đủ</Tag>
+                ),
               sorter: (a, b) => a.balance - b.balance,
               defaultSortOrder: 'descend',
             },

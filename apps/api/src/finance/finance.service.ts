@@ -138,6 +138,8 @@ export class FinanceService implements OnModuleInit {
       balance: number;
       overdue: number;
       maxOverdueDays: number;
+      /** Số booking chưa nhập giá (tổng 0 đ, chưa thu): vẫn coi là còn nợ */
+      unpriced: number;
       bookings: unknown[];
     };
     const groups = new Map<string, Group>();
@@ -165,10 +167,14 @@ export class FinanceService implements OnModuleInit {
           balance: 0,
           overdue: 0,
           maxOverdueDays: 0,
+          unpriced: 0,
           bookings: [],
         });
       }
       const g = groups.get(key)!;
+      // Chưa nhập giá: tổng 0 đ và chưa thu đồng nào → chưa thể coi là đã thanh toán
+      const unpriced = Math.round(t.total) <= 0 && Math.round(t.paid) <= 0;
+      if (unpriced) g.unpriced += 1;
       g.totalBilled += t.total;
       g.totalPaid += t.paid;
       g.balance += t.balance;
@@ -188,13 +194,14 @@ export class FinanceService implements OnModuleInit {
         total: t.total,
         paid: t.paid,
         balance: t.balance,
+        unpriced,
       });
     }
 
     const list = [...groups.values()]
       .map((g) => ({ ...g, overLimit: g.creditLimit !== null && g.creditLimit > 0 && g.balance > g.creditLimit }))
-      // Khách còn nợ lên trước (nợ nhiều trước), sau đó khách đã thanh toán đủ theo tên
-      .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name, 'vi'));
+      // Khách còn nợ lên trước (nợ nhiều trước; khách có booking chưa nhập giá ngay sau), cuối cùng khách đã thanh toán đủ theo tên
+      .sort((a, b) => b.balance - a.balance || b.unpriced - a.unpriced || a.name.localeCompare(b.name, 'vi'));
     return {
       totalBalance: list.reduce((s, g) => s + g.balance, 0),
       totalOverdue: list.reduce((s, g) => s + g.overdue, 0),
