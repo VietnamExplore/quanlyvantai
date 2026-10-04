@@ -811,7 +811,6 @@ export default function BookingEditPage() {
           />
         </Card>
 
-        <LeaderCard form={form} readOnly={readOnly} onChanged={() => setDirty(true)} />
         <PassengersCard
           form={form}
           readOnly={readOnly}
@@ -823,6 +822,7 @@ export default function BookingEditPage() {
           bookingId={booking?.id}
           onChanged={() => setDirty(true)}
         />
+        <LeaderCard form={form} readOnly={readOnly} onChanged={() => setDirty(true)} />
         <SignCard
           form={form}
           defaultTitle={signDefault}
