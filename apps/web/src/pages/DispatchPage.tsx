@@ -412,6 +412,9 @@ function TripList({ onOpen }: { onOpen: (id: number) => void }) {
 
 export default function DispatchPage() {
   const [view, setView] = useState<"timeline" | "list">(() => {
+    // ?view=list | timeline: mở đúng chế độ xem (từ trang Tổng quan)
+    const fromUrl = new URLSearchParams(window.location.search).get("view");
+    if (fromUrl === "list" || fromUrl === "timeline") return fromUrl;
     try {
       return (
         (localStorage.getItem("dispatch_view") as "timeline" | "list") ||

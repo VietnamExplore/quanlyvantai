@@ -162,6 +162,42 @@ export default function DashboardPage() {
 
   return (
     <Flex vertical gap={16}>
+      {/* Việc cần xử lý ngay: luôn ở đầu trang, không phụ thuộc khoảng thời gian bên dưới */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={8}>
+          <Link to="/bookings?status=BAO_GIA">
+            <Card hoverable loading={isLoading} style={{ height: '100%', borderTop: '3px solid #2a78d6' }}>
+              <Statistic title="Báo giá chờ khách xác nhận" value={r?.pipeline.quotes ?? 0} />
+              <Typography.Text type="secondary">Trị giá {formatVnd(r?.pipeline.quoteValue ?? 0)} đ</Typography.Text>
+            </Card>
+          </Link>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Link to="/dispatch?view=timeline">
+            <Card
+              hoverable
+              loading={isLoading}
+              style={{ height: '100%', borderTop: `3px solid ${r?.pipeline.waitingDispatch ? '#eb6834' : '#d9d9d9'}` }}
+            >
+              <Statistic
+                title="Chuyến chờ điều xe"
+                value={r?.pipeline.waitingDispatch ?? 0}
+                styles={{ content: r?.pipeline.waitingDispatch ? { color: '#eb6834' } : undefined }}
+              />
+              <Typography.Text type="secondary">Đã xác nhận, chưa xếp xe</Typography.Text>
+            </Card>
+          </Link>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Link to="/dispatch?view=list">
+            <Card hoverable loading={isLoading} style={{ height: '100%', borderTop: '3px solid #1f9e5a' }}>
+              <Statistic title="Chuyến 7 ngày tới" value={r?.pipeline.upcoming7Days ?? 0} />
+              <Typography.Text type="secondary">Đã xác nhận · bấm để xem danh sách</Typography.Text>
+            </Card>
+          </Link>
+        </Col>
+      </Row>
+
       {/* Bộ lọc thời gian: một hàng phía trên các biểu đồ */}
       <Flex justify="space-between" align="center" wrap gap={12}>
         <div>
@@ -319,32 +355,12 @@ export default function DashboardPage() {
       {/* Việc cần xử lý */}
       <Row gutter={[16, 16]}>
         <Col xs={12} lg={6}>
-          <Link to="/bookings">
-            <Card hoverable style={{ height: '100%' }}>
-              <Statistic title="Báo giá chờ khách xác nhận" value={r?.pipeline.quotes ?? 0} />
-              <Typography.Text type="secondary">Trị giá {formatVnd(r?.pipeline.quoteValue ?? 0)} đ</Typography.Text>
-            </Card>
-          </Link>
-        </Col>
-        <Col xs={12} lg={6}>
-          <Link to="/bookings">
+          <Link to="/bookings?status=NHAP">
             <Card hoverable style={{ height: '100%' }}>
               <Statistic title="Booking nháp" value={r?.pipeline.drafts ?? 0} />
               <Typography.Text type="secondary">Chưa gửi báo giá</Typography.Text>
             </Card>
           </Link>
-        </Col>
-        <Col xs={12} lg={6}>
-          <Card style={{ height: '100%' }}>
-            <Statistic title="Chuyến chờ điều xe" value={r?.pipeline.waitingDispatch ?? 0} />
-            <Typography.Text type="secondary">Đã xác nhận, chưa xếp xe</Typography.Text>
-          </Card>
-        </Col>
-        <Col xs={12} lg={6}>
-          <Card style={{ height: '100%' }}>
-            <Statistic title="Chuyến 7 ngày tới" value={r?.pipeline.upcoming7Days ?? 0} />
-            <Typography.Text type="secondary">Đã xác nhận</Typography.Text>
-          </Card>
         </Col>
         <Col xs={12} lg={6}>
           <Link to="/finance/receivables">

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button, Card, DatePicker, Flex, Input, Select, Table, Typography } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime } from '../booking-utils';
@@ -17,7 +17,9 @@ export default function BookingsPage() {
   const { hasRole } = useAuth();
   const salesOptions = useSalesStaffOptions();
   const [q, setQ] = useState<string>();
-  const [status, setStatus] = useState<string>();
+  // ?status=BAO_GIA: mở sẵn bộ lọc (từ trang Tổng quan)
+  const [searchParams] = useSearchParams();
+  const [status, setStatus] = useState<string | undefined>(searchParams.get('status') ?? undefined);
   const [salesUserId, setSalesUserId] = useState<number>();
   const [range, setRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
@@ -42,7 +44,7 @@ export default function BookingsPage() {
         <Flex gap={8} wrap>
           <Input allowClear prefix={<SearchOutlined />} placeholder="Mã, mã của khách, tên, SĐT" style={{ width: 220 }} onChange={(e) => setQ(e.target.value || undefined)} />
           <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Đi từ ngày', 'đến ngày']} onChange={(v) => setRange(v)} />
-          <Select allowClear placeholder="Trạng thái" style={{ width: 150 }} options={toOptions(BOOKING_STATUS)} onChange={setStatus} />
+          <Select allowClear placeholder="Trạng thái" style={{ width: 150 }} options={toOptions(BOOKING_STATUS)} value={status} onChange={setStatus} />
           <Select allowClear placeholder="NV kinh doanh" style={{ width: 170 }} options={salesOptions} onChange={setSalesUserId} />
           {hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH') && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/bookings/new')}>
