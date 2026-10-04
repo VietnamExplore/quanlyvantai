@@ -98,6 +98,9 @@ export class BookingsService {
             { contactName: { contains: q, mode: 'insensitive' } },
             { contactPhone: { contains: q } },
             { customer: { name: { contains: q, mode: 'insensitive' } } },
+            // Tìm theo hành trình: điểm đón / điểm trả của chuyến
+            { trips: { some: { pickupAddress: { contains: q, mode: 'insensitive' } } } },
+            { trips: { some: { dropoffAddress: { contains: q, mode: 'insensitive' } } } },
           ],
         }),
       },

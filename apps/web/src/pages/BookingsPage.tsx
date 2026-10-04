@@ -1,12 +1,12 @@
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, DatePicker, Flex, Input, Select, Table, Typography } from 'antd';
-import type { Dayjs } from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { fmtTime } from '../booking-utils';
+import { fmtTime, routeText } from '../booking-utils';
 import { EnumTag, Money, ServiceTag, useSalesStaffOptions } from '../components/common';
 import { PaidTag } from '../components/finance';
 import { BOOKING_STATUS, toOptions } from '../labels';
@@ -42,7 +42,7 @@ export default function BookingsPage() {
           Booking <Typography.Text type="secondary">({data.length})</Typography.Text>
         </Typography.Title>
         <Flex gap={8} wrap>
-          <Input allowClear prefix={<SearchOutlined />} placeholder="Mã, mã của khách, tên, SĐT" style={{ width: 220 }} onChange={(e) => setQ(e.target.value || undefined)} />
+          <Input allowClear prefix={<SearchOutlined />} placeholder="Mã, tên, SĐT, địa điểm đón/trả" style={{ width: 250 }} onChange={(e) => setQ(e.target.value || undefined)} />
           <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Đi từ ngày', 'đến ngày']} onChange={(v) => setRange(v)} />
           <Select allowClear placeholder="Trạng thái" style={{ width: 150 }} options={toOptions(BOOKING_STATUS)} value={status} onChange={setStatus} />
           <Select allowClear placeholder="NV kinh doanh" style={{ width: 170 }} options={salesOptions} onChange={setSalesUserId} />
@@ -101,6 +101,25 @@ export default function BookingsPage() {
                   <br />
                   <ServiceTag code={first.serviceType} />
                 </>
+              );
+            },
+          },
+          {
+            title: 'Hành trình',
+            render: (_, r) => {
+              const trips = r.trips.filter((t) => t.status !== 'HUY');
+              const list = trips.length ? trips : r.trips;
+              if (!list.length) return null;
+              return (
+                <div style={{ maxWidth: 320, minWidth: 200, whiteSpace: 'normal', fontSize: 13, lineHeight: '18px' }}>
+                  {list.slice(0, 2).map((t) => (
+                    <div key={t.id} style={{ marginBottom: 2 }}>
+                      {list.length > 1 && <Typography.Text type="secondary">{dayjs(t.pickupTime).format('HH:mm DD/MM')} · </Typography.Text>}
+                      {routeText(t)}
+                    </div>
+                  ))}
+                  {list.length > 2 && <Typography.Text type="secondary">+{list.length - 2} chuyến khác</Typography.Text>}
+                </div>
               );
             },
           },
