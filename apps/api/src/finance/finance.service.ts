@@ -46,13 +46,13 @@ export class FinanceService implements OnModuleInit {
     }
   }
 
-  async createCategory(name: string, code?: string, sortOrder?: number) {
+  async createCategory(name: string, code?: string, sortOrder?: number, driverVisible?: boolean) {
     const base = code || codeFromName(name);
     if (!base) throw new BadRequestException('Không tạo được mã từ tên, hãy nhập mã');
     let finalCode = base;
     for (let i = 2; await this.prisma.costCategory.findUnique({ where: { code: finalCode } }); i++) finalCode = `${base.slice(0, 36)}_${i}`;
     const max = await this.prisma.costCategory.aggregate({ _max: { sortOrder: true } });
-    return this.prisma.costCategory.create({ data: { code: finalCode, name, sortOrder: sortOrder ?? (max._max.sortOrder ?? 0) + 1 } });
+    return this.prisma.costCategory.create({ data: { code: finalCode, name, sortOrder: sortOrder ?? (max._max.sortOrder ?? 0) + 1, driverVisible } });
   }
 
   // ───── Chi phí chuyến ─────
@@ -70,6 +70,7 @@ export class FinanceService implements OnModuleInit {
     if (trip.status === TripStatus.HUY) throw new BadRequestException('Chuyến đã hủy');
     const category = await this.prisma.costCategory.findUnique({ where: { code: dto.categoryCode } });
     if (!category || !category.isActive) throw new BadRequestException('Loại chi phí không tồn tại hoặc đã ngừng dùng');
+    if (byDriver && !category.driverVisible) throw new BadRequestException('Loại chi phí này do văn phòng nhập, lái xe không nhập trên app');
     await this.prisma.tripCost.create({
       data: {
         tripId,

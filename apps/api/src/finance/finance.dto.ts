@@ -15,6 +15,8 @@ export class CreateCostCategoryDto {
 
   @IsOptional() @IsInt() sortOrder?: number;
   @IsOptional() @IsBoolean() isActive?: boolean;
+  /** Lái xe được chọn loại này trên app */
+  @IsOptional() @IsBoolean() driverVisible?: boolean;
 }
 
 export class UpdateCostCategoryDto extends PartialType(CreateCostCategoryDto) {}

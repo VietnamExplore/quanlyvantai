@@ -288,6 +288,8 @@ export interface CostCategory {
   name: string;
   sortOrder: number;
   isActive: boolean;
+  /** Lái xe được chọn trên app */
+  driverVisible: boolean;
   _count?: { costs: number };
 }
 

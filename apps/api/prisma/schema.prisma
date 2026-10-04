@@ -504,6 +504,8 @@ model CostCategory {
   name      String
   sortOrder Int        @default(0)
   isActive  Boolean    @default(true)
+  /// Lái xe được chọn loại này khi nhập chi phí trên app (lương, tạm ứng… thì tắt)
+  driverVisible Boolean @default(true)
   costs     TripCost[]
   vouchers  CashVoucher[]
 }

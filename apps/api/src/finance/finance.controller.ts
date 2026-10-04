@@ -30,8 +30,11 @@ export class FinanceController {
 
   @Get('cost-categories')
   @Roles(...OFFICE_ROLES, Role.LAI_XE)
-  categories() {
+  categories(@CurrentUser() user: AuthUser) {
+    // Tài khoản chỉ là lái xe: chỉ thấy loại đang dùng và được phép chọn trên app (không có lương, tạm ứng…)
+    const driverOnly = !user.roles.some((r) => OFFICE_ROLES.includes(r));
     return this.prisma.costCategory.findMany({
+      ...(driverOnly && { where: { isActive: true, driverVisible: true } }),
       orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }, { name: 'asc' }],
       include: { _count: { select: { costs: true } } },
     });
@@ -40,7 +43,7 @@ export class FinanceController {
   @Post('cost-categories')
   @Roles(...ACCOUNTING)
   createCategory(@Body() dto: CreateCostCategoryDto) {
-    return this.finance.createCategory(dto.name, dto.code, dto.sortOrder);
+    return this.finance.createCategory(dto.name, dto.code, dto.sortOrder, dto.driverVisible);
   }
 
   /** Mã không đổi được; ngừng dùng bằng isActive = false */
