@@ -1,6 +1,24 @@
-import { BadRequestException, Body, Controller, Get, Put } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Post,
+  Put,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Role } from '@prisma/client';
-import { OFFICE_ROLES, Roles } from '../auth/auth.decorators';
+import { randomBytes } from 'crypto';
+import type { Response } from 'express';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { diskStorage } from 'multer';
+import { join, resolve } from 'path';
+import { OFFICE_ROLES, Public, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Các khóa cài đặt được phép lưu */
@@ -13,6 +31,18 @@ export const SETTING_KEYS = [
   'bankInfo',
   'quoteFooter',
 ] as const;
+
+/** Logo công ty: apps/api/uploads/logo (đổi bằng biến môi trường UPLOAD_DIR); tên file lưu ở cài đặt "companyLogo" */
+const LOGO_DIR = resolve(process.env.UPLOAD_DIR ?? join(__dirname, '..', '..', 'uploads'), 'logo');
+mkdirSync(LOGO_DIR, { recursive: true });
+const LOGO_TYPES: Record<string, string> = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp' };
+const LOGO_KEY = 'companyLogo';
+
+function removeLogo(name?: string | null) {
+  if (!name) return;
+  const path = join(LOGO_DIR, name);
+  if (resolve(path).startsWith(LOGO_DIR) && existsSync(path)) unlinkSync(path);
+}
 
 @Controller('settings')
 @Roles(...OFFICE_ROLES)
@@ -35,6 +65,47 @@ export class SettingsController {
         this.prisma.setting.upsert({ where: { key }, update: { value: value as string }, create: { key, value: value as string } }),
       ),
     );
+    return this.get();
+  }
+
+  /** Ảnh logo – công khai để thẻ <img> trên các trang in hiển thị được (logo không phải dữ liệu nhạy cảm) */
+  @Get('logo')
+  @Public()
+  async logo(@Res() res: Response) {
+    const row = await this.prisma.setting.findUnique({ where: { key: LOGO_KEY } });
+    if (!row?.value || !existsSync(join(LOGO_DIR, row.value))) throw new NotFoundException('Chưa có logo');
+    // Tên file đổi mỗi lần tải lên (?v=tên-file), nên cho trình duyệt nhớ lâu
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.sendFile(row.value, { root: LOGO_DIR });
+  }
+
+  @Post('logo')
+  @Roles(Role.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: LOGO_DIR,
+        filename: (_req, file, cb) => cb(null, `logo-${Date.now()}-${randomBytes(4).toString('hex')}${LOGO_TYPES[file.mimetype]}`),
+      }),
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+      fileFilter: (_req, file, cb) =>
+        LOGO_TYPES[file.mimetype] ? cb(null, true) : cb(new BadRequestException('Logo phải là ảnh PNG, JPG hoặc WEBP'), false),
+    }),
+  )
+  async uploadLogo(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Chưa chọn file logo');
+    const old = await this.prisma.setting.findUnique({ where: { key: LOGO_KEY } });
+    await this.prisma.setting.upsert({ where: { key: LOGO_KEY }, update: { value: file.filename }, create: { key: LOGO_KEY, value: file.filename } });
+    removeLogo(old?.value);
+    return this.get();
+  }
+
+  @Delete('logo')
+  @Roles(Role.ADMIN)
+  async deleteLogo() {
+    const old = await this.prisma.setting.findUnique({ where: { key: LOGO_KEY } });
+    await this.prisma.setting.deleteMany({ where: { key: LOGO_KEY } });
+    removeLogo(old?.value);
     return this.get();
   }
 }

@@ -7,23 +7,8 @@ import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { fmtTime, routeText } from '../booking-utils';
 import { formatVnd, useSettings } from '../components/common';
+import { DOC_CSS, PrintHeader } from '../components/PrintDoc';
 import type { Booking } from '../types';
-
-const css = `
-  .quote { max-width: 820px; margin: 24px auto; background: #fff; color: #222; padding: 40px 48px; font-size: 14px; line-height: 1.5;
-           box-shadow: 0 2px 12px rgba(0,0,0,.08); font-family: 'Times New Roman', serif; }
-  .quote h1 { text-align: center; font-size: 22px; margin: 24px 0 4px; letter-spacing: .5px; }
-  .quote table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-  .quote th, .quote td { border: 1px solid #999; padding: 6px 8px; vertical-align: top; }
-  .quote th { background: #f0f0f0; }
-  .quote .r { text-align: right; white-space: nowrap; }
-  .quote .muted { color: #666; font-size: 13px; }
-  .quote .totals td { border: none; padding: 2px 8px; }
-  .quote pre { font-family: inherit; white-space: pre-wrap; margin: 0; }
-  .toolbar { position: sticky; top: 0; padding: 12px; background: #f5f5f5; z-index: 1; }
-  @media (max-width: 700px) { .quote { padding: 20px 16px; margin: 0; } }
-  @media print { .toolbar { display: none; } body { background: #fff !important; } .quote { box-shadow: none; margin: 0; max-width: none; padding: 0; } }
-`;
 
 export default function QuotePage() {
   const { id } = useParams();
@@ -44,10 +29,11 @@ export default function QuotePage() {
 
   const trips = b.trips.filter((t) => t.status !== 'HUY');
   const vnd = (v: number | string) => formatVnd(v);
+  const hasAdjust = Number(b.discountAmount) > 0 || Number(b.vatPercent) > 0;
 
   return (
     <>
-      <style>{css}</style>
+      <style>{DOC_CSS}</style>
       <Flex className="toolbar" justify="center" gap={8}>
         <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()}>
           In / Lưu PDF
@@ -55,55 +41,80 @@ export default function QuotePage() {
         <Button onClick={() => window.close()}>Đóng</Button>
       </Flex>
 
-      <div className="quote">
-        <div>
-          <b style={{ fontSize: 16 }}>{settings.companyName}</b>
-          {settings.companyAddress && <div>Địa chỉ: {settings.companyAddress}</div>}
-          <div>
-            {settings.companyPhone && <>Hotline: {settings.companyPhone}</>}
-            {settings.companyEmail && <> · Email: {settings.companyEmail}</>}
-            {settings.companyTaxCode && <> · MST: {settings.companyTaxCode}</>}
-          </div>
-        </div>
+      <div className="doc">
+        <PrintHeader
+          settings={settings}
+          meta={
+            <>
+              <div>
+                Số: <b>{b.code}</b>
+              </div>
+              {b.customerRef && (
+                <div>
+                  Mã của Quý khách: <b>{b.customerRef}</b>
+                </div>
+              )}
+              <div>Ngày: {dayjs().format('DD/MM/YYYY')}</div>
+            </>
+          }
+        />
 
-        <h1>BÁO GIÁ DỊCH VỤ VẬN CHUYỂN</h1>
-        <div style={{ textAlign: 'center' }} className="muted">
-          Số: {b.code}
-          {b.customerRef && <> · Mã booking của Quý khách: {b.customerRef}</>} · Ngày {dayjs().format('DD/MM/YYYY')}
-        </div>
+        <div className="doc-title">BÁO GIÁ DỊCH VỤ VẬN CHUYỂN</div>
+        <div className="doc-subtitle">Kính gửi Quý khách báo giá dịch vụ xe như sau</div>
 
-        <div style={{ marginTop: 20 }}>
-          <div>
-            <b>Kính gửi:</b> {b.customer?.name ?? b.contactName}
-          </div>
-          {b.customer && <div>Người liên hệ: {b.contactName}</div>}
-          <div>Điện thoại: {b.contactPhone}</div>
-          {b.customer?.address && <div>Địa chỉ: {b.customer.address}</div>}
-          {b.customer?.taxCode && <div>MST: {b.customer.taxCode}</div>}
-          <p>Công ty chúng tôi xin trân trọng gửi Quý khách báo giá dịch vụ xe như sau:</p>
-        </div>
+        <dl className="doc-info">
+          <dt>Kính gửi:</dt>
+          <dd>{b.customer?.name ?? b.contactName}</dd>
+          {b.customer && (
+            <>
+              <dt>Người liên hệ:</dt>
+              <dd>{b.contactName}</dd>
+            </>
+          )}
+          <dt>Điện thoại:</dt>
+          <dd>{b.contactPhone}</dd>
+          {b.customer?.address && (
+            <>
+              <dt>Địa chỉ:</dt>
+              <dd>{b.customer.address}</dd>
+            </>
+          )}
+          {b.customer?.taxCode && (
+            <>
+              <dt>MST:</dt>
+              <dd>{b.customer.taxCode}</dd>
+            </>
+          )}
+        </dl>
 
-        <table>
+        <table className="grid">
+          <colgroup>
+            <col style={{ width: '9mm' }} />
+            <col />
+            <col style={{ width: '30mm' }} />
+            <col style={{ width: '27mm' }} />
+            <col style={{ width: '30mm' }} />
+          </colgroup>
           <thead>
             <tr>
-              <th style={{ width: 36 }}>STT</th>
+              <th>STT</th>
               <th>Dịch vụ / Hành trình</th>
-              <th style={{ width: 130 }}>Thời gian</th>
-              <th style={{ width: 110 }}>Loại xe</th>
-              <th style={{ width: 120 }} className="r">Thành tiền (đ)</th>
+              <th>Thời gian</th>
+              <th>Loại xe</th>
+              <th>Thành tiền (đ)</th>
             </tr>
           </thead>
           <tbody>
             {trips.map((t, i) => (
               <tr key={t.id}>
-                <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                <td className="c">{i + 1}</td>
                 <td>
                   <b>{t.service?.name ?? t.serviceType}</b>
                   <div>{routeText(t)}</div>
-                  {t.flightNumber && <div className="muted">Chuyến bay: {t.flightNumber}</div>}
-                  {t.itinerary && <pre className="muted">{t.itinerary}</pre>}
+                  {t.flightNumber && <div className="muted small">Chuyến bay: {t.flightNumber}</div>}
+                  {t.itinerary && <pre className="muted small">{t.itinerary}</pre>}
                   {t.surcharges.length > 0 && (
-                    <div className="muted">
+                    <div className="muted small">
                       Giá xe: {vnd(t.unitPrice)}
                       {t.surcharges.map((s, k) => (
                         <div key={k}>
@@ -115,11 +126,11 @@ export default function QuotePage() {
                 </td>
                 <td>
                   {fmtTime(t.pickupTime)}
-                  {t.days > 1 && <div className="muted">{t.days} ngày</div>}
+                  {t.days > 1 && <div className="muted small">{t.days} ngày</div>}
                 </td>
                 <td>
                   {t.vehicleType.name}
-                  <div className="muted">{t.passengers} khách</div>
+                  <div className="muted small">{t.passengers} khách</div>
                 </td>
                 <td className="r">{vnd(t.amount)}</td>
               </tr>
@@ -127,68 +138,74 @@ export default function QuotePage() {
           </tbody>
         </table>
 
-        <table className="totals" style={{ width: 'auto', marginLeft: 'auto' }}>
+        <table className="doc-totals">
           <tbody>
-            {(Number(b.discountAmount) > 0 || Number(b.vatPercent) > 0) && (
+            {hasAdjust && (
               <tr>
-                <td>Tạm tính:</td>
+                <td>Tạm tính</td>
                 <td className="r">{vnd(b.subtotal)} đ</td>
               </tr>
             )}
             {Number(b.discountAmount) > 0 && (
               <tr>
-                <td>Giảm giá:</td>
+                <td>Giảm giá</td>
                 <td className="r">-{vnd(b.discountAmount)} đ</td>
               </tr>
             )}
             {Number(b.vatPercent) > 0 && (
               <tr>
-                <td>VAT {Number(b.vatPercent)}%:</td>
+                <td>VAT {Number(b.vatPercent)}%</td>
                 <td className="r">{vnd(b.vatAmount)} đ</td>
               </tr>
             )}
-            <tr>
-              <td>
-                <b>TỔNG CỘNG:</b>
-              </td>
-              <td className="r">
-                <b style={{ fontSize: 16 }}>{vnd(b.total)} đ</b>
-              </td>
+            <tr className="grand">
+              <td>TỔNG CỘNG</td>
+              <td className="r">{vnd(b.total)} đ</td>
             </tr>
             {Number(b.depositAmount) > 0 && (
               <tr>
-                <td>Đặt cọc:</td>
+                <td>Đặt cọc</td>
                 <td className="r">{vnd(b.depositAmount)} đ</td>
               </tr>
             )}
           </tbody>
         </table>
 
-        {b.notes && <pre style={{ marginTop: 12 }}>{b.notes}</pre>}
-        {settings.quoteFooter && (
-          <div style={{ marginTop: 16 }}>
-            <b>Ghi chú:</b>
-            <pre>{settings.quoteFooter}</pre>
+        {b.notes && (
+          <div className="doc-box">
+            <pre>{b.notes}</pre>
           </div>
         )}
-        {b.quoteValidUntil && <div style={{ marginTop: 8 }}>Báo giá có hiệu lực đến ngày {dayjs(b.quoteValidUntil).format('DD/MM/YYYY')}.</div>}
+        {settings.quoteFooter && (
+          <div className="doc-box">
+            <b>Ghi chú</b>
+            <pre>{settings.quoteFooter}</pre>
+            {b.quoteValidUntil && <div style={{ marginTop: '1.5mm' }}>Báo giá có hiệu lực đến ngày {dayjs(b.quoteValidUntil).format('DD/MM/YYYY')}.</div>}
+          </div>
+        )}
+        {!settings.quoteFooter && b.quoteValidUntil && (
+          <div className="doc-box">Báo giá có hiệu lực đến ngày {dayjs(b.quoteValidUntil).format('DD/MM/YYYY')}.</div>
+        )}
         {settings.bankInfo && (
-          <div style={{ marginTop: 8 }}>
-            <b>Thông tin chuyển khoản:</b>
+          <div className="doc-box">
+            <b>Thông tin chuyển khoản</b>
             <pre>{settings.bankInfo}</pre>
           </div>
         )}
 
-        <Flex justify="space-between" style={{ marginTop: 40, textAlign: 'center' }}>
-          <div style={{ width: '45%' }}>
-            <b>XÁC NHẬN CỦA KHÁCH HÀNG</b>
+        <div className="doc-sign">
+          <div>
+            <div className="role">Xác nhận của khách hàng</div>
+            <div className="hint">(Ký, ghi rõ họ tên)</div>
+            <div className="space" />
           </div>
-          <div style={{ width: '45%' }}>
-            <b>ĐẠI DIỆN CÔNG TY</b>
-            <div className="muted">{b.salesUser?.fullName ?? b.createdBy.fullName}</div>
+          <div>
+            <div className="role">Đại diện công ty</div>
+            <div className="hint">(Ký, ghi rõ họ tên)</div>
+            <div className="space" />
+            <div>{b.salesUser?.fullName ?? b.createdBy.fullName}</div>
           </div>
-        </Flex>
-        <div style={{ height: 80 }} />
+        </div>
       </div>
     </>
   );

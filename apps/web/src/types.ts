@@ -375,7 +375,7 @@ export interface DispatchOptions {
 }
 
 export type Settings = Partial<
-  Record<'companyName' | 'companyAddress' | 'companyPhone' | 'companyEmail' | 'companyTaxCode' | 'bankInfo' | 'quoteFooter', string>
+  Record<'companyName' | 'companyAddress' | 'companyPhone' | 'companyEmail' | 'companyTaxCode' | 'bankInfo' | 'quoteFooter' | 'companyLogo', string>
 >;
 
 export interface ExpiryAlert {

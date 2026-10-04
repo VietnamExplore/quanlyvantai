@@ -7,27 +7,8 @@ import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { fmtTime, routeText } from '../booking-utils';
 import { useSettings } from '../components/common';
+import { DOC_CSS, PrintHeader } from '../components/PrintDoc';
 import type { Booking } from '../types';
-
-const css = `
-  .plist { max-width: 820px; margin: 24px auto; background: #fff; color: #111; padding: 32px 40px; font-size: 13.5px; line-height: 1.45;
-           box-shadow: 0 2px 12px rgba(0,0,0,.08); font-family: 'Times New Roman', serif; }
-  .plist h1 { text-align: center; font-size: 20px; margin: 18px 0 2px; }
-  .plist table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; }
-  .plist th, .plist td { border: 1px solid #777; padding: 4px 6px; vertical-align: top; }
-  .plist th { background: #f0f0f0; font-weight: 700; }
-  .plist .c { text-align: center; }
-  .plist .muted { color: #555; }
-  .plist h3 { font-size: 14px; margin: 14px 0 0; }
-  .toolbar { position: sticky; top: 0; padding: 12px; background: #f5f5f5; z-index: 1; }
-  @media (max-width: 700px) { .plist { padding: 16px; margin: 0; } }
-  @media print {
-    @page { size: A4 portrait; margin: 12mm; }
-    .toolbar { display: none; } body { background: #fff !important; }
-    .plist { box-shadow: none; margin: 0; max-width: none; padding: 0; }
-    tr { page-break-inside: avoid; }
-  }
-`;
 
 export default function PassengerListPage() {
   const { id } = useParams();
@@ -50,7 +31,7 @@ export default function PassengerListPage() {
 
   return (
     <>
-      <style>{css}</style>
+      <style>{DOC_CSS}</style>
       <Flex className="toolbar" justify="center" gap={8}>
         <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()}>
           In / Lưu PDF
@@ -58,41 +39,43 @@ export default function PassengerListPage() {
         <Button onClick={() => window.close()}>Đóng</Button>
       </Flex>
 
-      <div className="plist">
-        <Flex justify="space-between">
-          <div>
-            <b>{settings.companyName}</b>
-            {settings.companyAddress && <div className="muted">{settings.companyAddress}</div>}
-            {settings.companyPhone && <div className="muted">Hotline: {settings.companyPhone}</div>}
-          </div>
-          <div style={{ textAlign: 'right' }} className="muted">
-            Số: {b.code}
-            {b.customerRef && (
-              <>
-                <br />
-                Mã của khách: {b.customerRef}
-              </>
-            )}
-            <br />
-            Ngày in: {dayjs().format('DD/MM/YYYY')}
-          </div>
-        </Flex>
+      <div className="doc">
+        <PrintHeader
+          settings={settings}
+          meta={
+            <>
+              <div>
+                Số: <b>{b.code}</b>
+              </div>
+              {b.customerRef && (
+                <div>
+                  Mã của khách: <b>{b.customerRef}</b>
+                </div>
+              )}
+              <div>Ngày in: {dayjs().format('DD/MM/YYYY')}</div>
+            </>
+          }
+        />
 
-        <h1>DANH SÁCH HÀNH KHÁCH</h1>
-        <div className="c muted">
-          Đơn vị / khách hàng: <b style={{ color: '#111' }}>{b.customer?.name ?? b.contactName}</b> · Liên hệ: {b.contactName} – {b.contactPhone}
+        <div className="doc-title">DANH SÁCH HÀNH KHÁCH</div>
+        <div className="doc-subtitle">
+          Đơn vị / khách hàng: <b style={{ color: '#1a1a1a' }}>{b.customer?.name ?? b.contactName}</b> · Liên hệ: {b.contactName} – {b.contactPhone}
         </div>
 
         <h3>Thông tin chuyến xe</h3>
-        <table>
+        <table className="grid">
+          <colgroup>
+            <col style={{ width: '9mm' }} />
+            <col style={{ width: '30mm' }} />
+            <col />
+            <col style={{ width: '44mm' }} />
+          </colgroup>
           <thead>
             <tr>
-              <th className="c" style={{ width: 30 }}>
-                #
-              </th>
-              <th style={{ width: 120 }}>Thời gian</th>
+              <th>#</th>
+              <th>Thời gian</th>
               <th>Hành trình</th>
-              <th style={{ width: 170 }}>Xe / Lái xe</th>
+              <th>Xe / Lái xe</th>
             </tr>
           </thead>
           <tbody>
@@ -102,18 +85,18 @@ export default function PassengerListPage() {
                 <td>{fmtTime(t.pickupTime)}</td>
                 <td>
                   {t.service?.name ?? t.serviceType}: {routeText(t)}
-                  {t.flightNumber && <span className="muted"> · Chuyến bay {t.flightNumber}</span>}
+                  {t.flightNumber && <span className="muted small"> · Chuyến bay {t.flightNumber}</span>}
                 </td>
                 <td>
                   {t.vehicle ? (
                     <>
                       {t.vehicle.plateNumber}
-                      {t.driver && <div className="muted">{t.driver.fullName}</div>}
+                      {t.driver && <div className="muted small">{t.driver.fullName}</div>}
                     </>
                   ) : t.partner ? (
                     <>
                       {t.partnerPlate ?? t.vehicleType.name}
-                      <div className="muted">{[t.partnerDriverName, t.partnerDriverPhone].filter(Boolean).join(' – ') || t.partner.name}</div>
+                      <div className="muted small">{[t.partnerDriverName, t.partnerDriverPhone].filter(Boolean).join(' – ') || t.partner.name}</div>
                     </>
                   ) : (
                     <span className="muted">{t.vehicleType.name} (chưa điều xe)</span>
@@ -125,23 +108,27 @@ export default function PassengerListPage() {
         </table>
 
         <h3>Danh sách hành khách ({b.passengers.length} người)</h3>
-        <table>
+        <table className="grid">
+          <colgroup>
+            <col style={{ width: '10mm' }} />
+            <col />
+            <col style={{ width: '14mm' }} />
+            <col style={{ width: '15mm' }} />
+            <col style={{ width: '30mm' }} />
+            <col style={{ width: '20mm' }} />
+            <col style={{ width: '24mm' }} />
+            <col style={{ width: '22mm' }} />
+          </colgroup>
           <thead>
             <tr>
-              <th className="c" style={{ width: 34 }}>
-                STT
-              </th>
+              <th>STT</th>
               <th>Họ và tên</th>
-              <th className="c" style={{ width: 54 }}>
-                Giới tính
-              </th>
-              <th className="c" style={{ width: 54 }}>
-                Năm sinh
-              </th>
-              <th style={{ width: 120 }}>CCCD / Hộ chiếu</th>
-              <th style={{ width: 80 }}>Quốc tịch</th>
-              <th style={{ width: 96 }}>SĐT</th>
-              <th style={{ width: 100 }}>Ghi chú</th>
+              <th>Giới tính</th>
+              <th>Năm sinh</th>
+              <th>CCCD / Hộ chiếu</th>
+              <th>Quốc tịch</th>
+              <th>SĐT</th>
+              <th>Ghi chú</th>
             </tr>
           </thead>
           <tbody>
@@ -160,17 +147,18 @@ export default function PassengerListPage() {
           </tbody>
         </table>
 
-        <Flex justify="space-between" style={{ marginTop: 28, textAlign: 'center' }}>
-          <div style={{ width: '45%' }}>
-            <b>LÁI XE</b>
-            <div className="muted">(Ký, ghi rõ họ tên)</div>
+        <div className="doc-sign">
+          <div>
+            <div className="role">Lái xe</div>
+            <div className="hint">(Ký, ghi rõ họ tên)</div>
+            <div className="space" />
           </div>
-          <div style={{ width: '45%' }}>
-            <b>ĐẠI DIỆN ĐƠN VỊ VẬN TẢI</b>
-            <div className="muted">(Ký, ghi rõ họ tên, đóng dấu)</div>
+          <div>
+            <div className="role">Đại diện đơn vị vận tải</div>
+            <div className="hint">(Ký, ghi rõ họ tên, đóng dấu)</div>
+            <div className="space" />
           </div>
-        </Flex>
-        <div style={{ height: 70 }} />
+        </div>
       </div>
     </>
   );

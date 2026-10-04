@@ -6,14 +6,17 @@ import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useSignFile } from '../components/BookingExtras';
 import { useSettings } from '../components/common';
+import { logoUrl } from '../components/PrintDoc';
 import type { Booking } from '../types';
 
 const css = `
   body { background: #e9e9e9; }
+  .sign-page, .sign-page * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .sign-page { width: 297mm; height: 210mm; margin: 16px auto; background: #fff; color: #000; box-sizing: border-box;
                padding: 14mm 16mm; display: flex; flex-direction: column; box-shadow: 0 2px 14px rgba(0,0,0,.15);
                font-family: Arial, 'Helvetica Neue', sans-serif; }
-  .sign-head { text-align: center; font-size: 6mm; font-weight: 700; letter-spacing: .5mm; color: #222; border-bottom: .6mm solid #000; padding-bottom: 3mm; }
+  .sign-head { display: flex; align-items: center; justify-content: center; gap: 5mm; font-size: 6mm; font-weight: 700; letter-spacing: .5mm; color: #222; border-bottom: .6mm solid #000; padding-bottom: 3mm; text-transform: uppercase; }
+  .sign-head img { height: 15mm; max-width: 55mm; object-fit: contain; }
   .sign-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
   .sign-title { font-weight: 900; line-height: 1.08; text-transform: uppercase; word-break: break-word; }
   .sign-sub { margin-top: 6mm; font-size: 9mm; line-height: 1.2; color: #222; }
@@ -115,7 +118,7 @@ export default function SignPage() {
               <Button icon={<PlusOutlined />} onClick={() => setScale((s) => Math.min(1.5, s + 0.1))} title="Chữ to hơn" />
             </Space.Compact>
             <Checkbox checked={showCompany} onChange={(e) => setShowCompany(e.target.checked)}>
-              Hiện tên công ty
+              Hiện logo, tên công ty
             </Checkbox>
           </>
         )}
@@ -139,7 +142,12 @@ export default function SignPage() {
           </div>
         ) : (
           <div className="sign-page">
-            {showCompany && settings.companyName && <div className="sign-head">{settings.companyName}</div>}
+            {showCompany && (settings.companyName || logoUrl(settings)) && (
+              <div className="sign-head">
+                {logoUrl(settings) && <img src={logoUrl(settings)!} alt="Logo" />}
+                {settings.companyName && <span>{settings.companyName}</span>}
+              </div>
+            )}
             <div className="sign-body" ref={bodyRef}>
               <div className="sign-title" ref={titleRef} style={{ fontSize: `${fitSize * scale}mm` }}>
                 {title}
