@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { fmtTime, routeText } from '../booking-utils';
+import { flightText, fmtTime, routeText } from '../booking-utils';
 import { BookingFilterBar, useBookingFilters } from '../components/BookingFilters';
 import { BookingStatusMenu } from '../components/BookingStatusMenu';
 import { EnumTag, Money, ServiceTag, formatVnd } from '../components/common';
@@ -83,13 +83,6 @@ export default function BookingsPage() {
                     <Typography.Text type="secondary">Mã khách: {r.customerRef}</Typography.Text>
                   </div>
                 )}
-                {(r.arrivalFlight || r.departureFlight) && (
-                  <div style={{ fontSize: 12 }}>
-                    <Typography.Text type="secondary">
-                      ✈ {[r.arrivalFlight && `Đến ${r.arrivalFlight}`, r.departureFlight && `Về ${r.departureFlight}`].filter(Boolean).join(' · ')}
-                    </Typography.Text>
-                  </div>
-                )}
               </>
             ),
           },
@@ -132,6 +125,7 @@ export default function BookingsPage() {
                     <div key={t.id} style={{ marginBottom: 2 }}>
                       {list.length > 1 && <Typography.Text type="secondary">{dayjs(t.pickupTime).format('HH:mm DD/MM')} · </Typography.Text>}
                       {routeText(t)}
+                      {flightText(t) && <Typography.Text type="secondary"> · ✈ {flightText(t)}</Typography.Text>}
                     </div>
                   ))}
                   {list.length > 2 && <Typography.Text type="secondary">+{list.length - 2} chuyến khác</Typography.Text>}

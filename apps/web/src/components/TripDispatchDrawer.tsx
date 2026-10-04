@@ -363,7 +363,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
             </Descriptions.Item>
             <Descriptions.Item label="Hành trình">
               {routeText(trip)}
-              {trip.flightNumber && <Tag style={{ marginLeft: 6 }}>✈ {trip.flightNumber}</Tag>}
+              {trip.flightNumber && <Tag color="blue" style={{ marginLeft: 6 }}>✈ Đón {trip.flightNumber}</Tag>}
+              {trip.departureFlight && <Tag color="purple" style={{ marginLeft: 6 }}>✈ Tiễn {trip.departureFlight}</Tag>}
             </Descriptions.Item>
             <Descriptions.Item label="Khách">
               {trip.booking.customer?.name ? `${trip.booking.customer.name} · ` : ''}

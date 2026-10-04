@@ -54,6 +54,7 @@ const driverTripSelect = {
   pickupAddress: true,
   dropoffAddress: true,
   flightNumber: true,
+  departureFlight: true,
   passengers: true,
   days: true,
   itinerary: true,

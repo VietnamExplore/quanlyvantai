@@ -18,6 +18,7 @@ export interface Trip {
   pickupAddress: string;
   dropoffAddress: string | null;
   flightNumber: string | null;
+  departureFlight?: string | null;
   passengers: number;
   days: number;
   itinerary: string | null;

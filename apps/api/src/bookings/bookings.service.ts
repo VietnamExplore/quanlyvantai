@@ -116,8 +116,6 @@ export class BookingsService {
           OR: [
             { code: { contains: q, mode: 'insensitive' } },
             { customerRef: { contains: q, mode: 'insensitive' } },
-            { arrivalFlight: { contains: q, mode: 'insensitive' } },
-            { departureFlight: { contains: q, mode: 'insensitive' } },
             { contactName: { contains: q, mode: 'insensitive' } },
             { contactPhone: { contains: q } },
             { customer: { name: { contains: q, mode: 'insensitive' } } },
@@ -125,6 +123,9 @@ export class BookingsService {
             { trips: { some: { pickupAddress: { contains: q, mode: 'insensitive' } } } },
             { trips: { some: { dropoffAddress: { contains: q, mode: 'insensitive' } } } },
             { trips: { some: { itinerary: { contains: q, mode: 'insensitive' } } } },
+            // Tìm theo số hiệu chuyến bay đón / tiễn
+            { trips: { some: { flightNumber: { contains: q, mode: 'insensitive' } } } },
+            { trips: { some: { departureFlight: { contains: q, mode: 'insensitive' } } } },
           ],
         }),
       },
@@ -340,6 +341,7 @@ export class BookingsService {
         dropoffLocationId: t.dropoffLocationId ?? null,
         dropoffAddress: t.dropoffAddress?.trim() || null,
         flightNumber: t.flightNumber?.trim().toUpperCase() || null,
+        departureFlight: t.departureFlight?.trim().toUpperCase() || null,
         passengers: t.passengers,
         vehicleTypeId: t.vehicleTypeId,
         routePriceId: t.routePriceId ?? null,

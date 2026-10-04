@@ -49,7 +49,10 @@ export class TripDto {
 
   @IsOptional() @IsInt() dropoffLocationId?: number | null;
   @IsOptional() @IsString() dropoffAddress?: string | null;
+  /** Số hiệu chuyến bay đón (khách đến) */
   @IsOptional() @IsString() flightNumber?: string | null;
+  /** Số hiệu chuyến bay tiễn (khách về) */
+  @IsOptional() @IsString() departureFlight?: string | null;
 
   @IsInt() @Min(1, { message: 'Số khách phải từ 1 trở lên' }) passengers: number;
   @IsInt() vehicleTypeId: number;
@@ -94,16 +97,6 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   customerRef?: string | null;
-
-  /** Số hiệu chuyến bay đón (khách đến) / tiễn (khách về): viết hoa, bỏ khoảng trắng thừa */
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() || null : value))
-  @IsOptional()
-  @IsString()
-  arrivalFlight?: string | null;
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() || null : value))
-  @IsOptional()
-  @IsString()
-  departureFlight?: string | null;
 
   /** Ngôn ngữ giấy tờ gửi khách (báo giá, danh sách hành khách, bảng đón) */
   @IsOptional() @IsIn(DOC_LANGUAGES, { message: 'Ngôn ngữ giấy tờ không hợp lệ' }) docLanguage?: string;

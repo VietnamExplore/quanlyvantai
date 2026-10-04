@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
-import { routeText } from '../booking-utils';
+import { flightText, routeText } from '../booking-utils';
 import { useSettings } from '../components/common';
 import { DOC_CSS, DocLangSwitch, PrintHeader, useDocLang } from '../components/PrintDoc';
 import { docDate, docServiceName, docT, docTime, docVehicleName, localizeBooking } from '../doc-i18n';
@@ -59,16 +59,6 @@ export default function PassengerListPage() {
                   {t('yourRef')}: <b>{b.customerRef}</b>
                 </div>
               )}
-              {b.arrivalFlight && (
-                <div>
-                  {t('arrivalFlight')}: <b>{b.arrivalFlight}</b>
-                </div>
-              )}
-              {b.departureFlight && (
-                <div>
-                  {t('departureFlight')}: <b>{b.departureFlight}</b>
-                </div>
-              )}
               <div>
                 {t('printDate')}: {docDate(dayjs(), lang)}
               </div>
@@ -111,10 +101,10 @@ export default function PassengerListPage() {
                 <td>{docTime(x.pickupTime, lang)}</td>
                 <td>
                   {docServiceName(x.service, x.serviceType, lang)}: {routeText(x)}
-                  {x.flightNumber && (
+                  {(x.flightNumber || x.departureFlight) && (
                     <span className="muted small">
                       {' '}
-                      · {t('flight')} {x.flightNumber}
+                      · {flightText(x, t('arrivalFlight'), t('departureFlight'))}
                     </span>
                   )}
                 </td>

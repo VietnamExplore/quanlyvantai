@@ -40,11 +40,8 @@ export function buildDispatchText(t: DispatchTrip) {
     `Điểm đón: ${t.pickupAddress}`,
   ];
   if (t.dropoffAddress) lines.push(`Điểm trả: ${t.dropoffAddress}`);
-  if (t.flightNumber) lines.push(`Chuyến bay: ${t.flightNumber}`);
-  else {
-    const flights = [t.booking.arrivalFlight && `đến ${t.booking.arrivalFlight}`, t.booking.departureFlight && `về ${t.booking.departureFlight}`].filter(Boolean);
-    if (flights.length) lines.push(`Chuyến bay: ${flights.join(' · ')}`);
-  }
+  if (t.flightNumber) lines.push(`Chuyến bay đón: ${t.flightNumber}`);
+  if (t.departureFlight) lines.push(`Chuyến bay tiễn: ${t.departureFlight}`);
   // Khách: ưu tiên hành khách đầu tiên trong danh sách hành khách; không có thì lấy tên khách hàng / người liên hệ
   const guest = t.booking.passengers?.[0];
   const guestName = guest?.fullName || t.booking.customer?.name || t.booking.contactName;

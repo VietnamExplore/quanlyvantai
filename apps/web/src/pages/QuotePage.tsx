@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
-import { quoteStaff, routeText } from '../booking-utils';
+import { flightText, quoteStaff, routeText } from '../booking-utils';
 import { useSettings } from '../components/common';
 import { DOC_CSS, DocLangSwitch, PrintHeader, useDocLang } from '../components/PrintDoc';
 import { docCompany, docDate, docFooter, docMoney, docServiceName, docT, docTime, docVehicleName, localizeBooking } from '../doc-i18n';
@@ -63,16 +63,6 @@ export default function QuotePage() {
               {b.customerRef && (
                 <div>
                   {t('yourRef')}: <b>{b.customerRef}</b>
-                </div>
-              )}
-              {b.arrivalFlight && (
-                <div>
-                  {t('arrivalFlight')}: <b>{b.arrivalFlight}</b>
-                </div>
-              )}
-              {b.departureFlight && (
-                <div>
-                  {t('departureFlight')}: <b>{b.departureFlight}</b>
                 </div>
               )}
               <div>
@@ -144,10 +134,8 @@ export default function QuotePage() {
                 <td>
                   <b>{docServiceName(x.service, x.serviceType, lang)}</b>
                   <div>{routeText(x)}</div>
-                  {x.flightNumber && (
-                    <div className="muted small">
-                      {t('flight')}: {x.flightNumber}
-                    </div>
+                  {(x.flightNumber || x.departureFlight) && (
+                    <div className="muted small">{flightText(x, t('arrivalFlight'), t('departureFlight'))}</div>
                   )}
                   {x.itinerary && <pre className="muted small">{x.itinerary}</pre>}
                   {x.surcharges.length > 0 && (

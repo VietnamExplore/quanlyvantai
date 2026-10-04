@@ -236,6 +236,7 @@ export interface BookingTrip extends Ref {
   dropoffLocationId: number | null;
   dropoffAddress: string | null;
   flightNumber: string | null;
+  departureFlight: string | null;
   passengers: number;
   vehicleTypeId: number;
   vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number; names?: VehicleType['names'] };
@@ -305,9 +306,6 @@ export interface TripCostRow {
 
 export interface Booking extends Ref {
   customerRef: string | null;
-  /** Số hiệu chuyến bay đón (khách đến) / tiễn (khách về) */
-  arrivalFlight: string | null;
-  departureFlight: string | null;
   /** Ngôn ngữ giấy tờ gửi khách: vi | en | ko | zh | ja */
   docLanguage: string;
   /** Bản dịch nội dung cho giấy tờ ngoại ngữ: { en: { "trip.12.pickupAddress": { src, text } } } */
@@ -358,8 +356,6 @@ export interface DispatchTrip extends Omit<BookingTrip, 'vehicleType' | 'routePr
     id: number;
     code: string;
     customerRef: string | null;
-    arrivalFlight: string | null;
-    departureFlight: string | null;
     status: BookingStatus;
     contactName: string;
     contactPhone: string;

@@ -115,7 +115,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           <Row label="Liên hệ">{trip.booking.contactName}</Row>
           {trip.booking.customer && <Row label="Đơn vị">{trip.booking.customer.name}</Row>}
           <Row label="Số khách">{`${trip.passengers} khách`}</Row>
-          {trip.flightNumber && <Row label="Chuyến bay">{trip.flightNumber}</Row>}
+          {trip.flightNumber && <Row label="Chuyến bay đón">{trip.flightNumber}</Row>}
+          {trip.departureFlight && <Row label="Chuyến bay tiễn">{trip.departureFlight}</Row>}
           <View style={s.contactRow}>
             <Button title={`📞 Gọi ${phone}`} onPress={() => Linking.openURL(`tel:${phone}`)} style={{ flex: 1 }} />
             <Button title="💬 Nhắn tin" variant="outline" onPress={() => Linking.openURL(`sms:${phone}`)} style={{ flex: 0.6 }} />

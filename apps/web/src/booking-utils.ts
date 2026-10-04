@@ -15,6 +15,7 @@ export interface TripDraft {
   dropoffLocationId: number | null;
   dropoffAddress: string | null;
   flightNumber: string | null;
+  departureFlight: string | null;
   passengers: number;
   vehicleTypeId: number;
   vehicleTypeName?: string;
@@ -49,6 +50,7 @@ export function fromTrip(t: BookingTrip): TripDraft {
     dropoffLocationId: t.dropoffLocationId,
     dropoffAddress: t.dropoffAddress,
     flightNumber: t.flightNumber,
+    departureFlight: t.departureFlight,
     passengers: t.passengers,
     vehicleTypeId: t.vehicleTypeId,
     vehicleTypeName: t.vehicleType.name,
@@ -87,7 +89,12 @@ export function computeTotals(trips: TripDraft[], discount: number, vatPercent: 
 
 export const fmtTime = (iso: string) => dayjs(iso).format('HH:mm dd DD/MM/YYYY');
 
-export const routeText = (t: Pick<TripDraft, 'pickupAddress' | 'dropoffAddress'>) =>
+/** Số hiệu chuyến bay đón / tiễn của chuyến: "Đón VN123 · Tiễn VJ636" (rỗng nếu không có) */
+export function flightText(t: { flightNumber?: string | null; departureFlight?: string | null }, arrival = 'Đón', departure = 'Tiễn') {
+  return [t.flightNumber && `${arrival} ${t.flightNumber}`, t.departureFlight && `${departure} ${t.departureFlight}`].filter(Boolean).join(' · ');
+}
+
+export const routeText =(t: Pick<TripDraft, 'pickupAddress' | 'dropoffAddress'>) =>
   t.dropoffAddress ? `${t.pickupAddress} → ${t.dropoffAddress}` : t.pickupAddress;
 
 /** Nhân viên báo giá: NV kinh doanh phụ trách, chưa gán thì người tạo booking */
@@ -104,15 +111,14 @@ export function buildQuoteText(raw: Booking, s: Settings, lang: DocLang = toDocL
     `${t('no')}: ${b.code}${b.customerRef ? ` | ${t('yourRef')}: ${b.customerRef}` : ''} | ${t('date')}: ${docDate(dayjs(), lang)}`,
   );
   lines.push(`${t('to')}: ${b.customer?.name ?? b.contactName} – ${b.contactPhone}`);
-  const flights = [b.arrivalFlight && `${t('arrivalFlight')}: ${b.arrivalFlight}`, b.departureFlight && `${t('departureFlight')}: ${b.departureFlight}`].filter(Boolean);
-  if (flights.length) lines.push(`✈ ${flights.join(' | ')}`);
   lines.push('');
 
   b.trips
     .filter((x) => x.status !== 'HUY')
     .forEach((x, i) => {
       lines.push(`${i + 1}) ${docServiceName(x.service, x.serviceType, lang)} – ${docTime(x.pickupTime, lang)}`);
-      lines.push(`   ${routeText(x)}${x.flightNumber ? ` (${t('flight')} ${x.flightNumber})` : ''}`);
+      const fl = flightText(x, t('arrivalFlight'), t('departureFlight'));
+      lines.push(`   ${routeText(x)}${fl ? ` (${fl})` : ''}`);
       lines.push(`   ${docVehicleName(x.vehicleType, lang)} – ${x.passengers} ${t('pax')}${x.days > 1 ? ` – ${x.days} ${t('days')}` : ''}`);
       if (x.itinerary) lines.push(`   ${t('itinerary')}: ${x.itinerary.replace(/\n/g, '; ')}`);
       lines.push(`   ${t('price')}: ${money(x.unitPrice)}`);

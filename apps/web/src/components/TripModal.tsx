@@ -68,11 +68,9 @@ interface Props {
   title?: string;
   okText?: string;
   saving?: boolean;
-  /** Chuyến bay đón / tiễn đã nhập ở booking: hiện nút điền nhanh */
-  bookingFlights?: { arrival?: string | null; departure?: string | null };
 }
 
-export function TripModal({ open, trip, onCancel, onSave, withContact, title, okText, saving, bookingFlights }: Props) {
+export function TripModal({ open, trip, onCancel, onSave, withContact, title, okText, saving }: Props) {
   const customers = useCustomers();
   const [form] = Form.useForm();
   const { vehicleTypes } = useVehicleTypeOptions();
@@ -110,7 +108,6 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
   const isRentalCode = (code?: string) =>
     !!code && servicesByCode[code]?.pricingMode === "THEO_NGAY";
   const isRental = isRentalCode(serviceType);
-  const hasFlight = !!serviceType && !!servicesByCode[serviceType]?.hasFlight;
   const vehicleType = vehicleTypes.find((t) => t.id === vehicleTypeId);
   const amount = tripAmount({ unitPrice, surcharges });
   const estimatedCost: number | null | undefined = Form.useWatch(
@@ -333,7 +330,8 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
       pickupLocationId: v.pickupLocationId ?? null,
       dropoffLocationId: v.dropoffLocationId ?? null,
       dropoffAddress: v.dropoffAddress || null,
-      flightNumber: v.flightNumber || null,
+      flightNumber: v.flightNumber?.trim().toUpperCase() || null,
+      departureFlight: v.departureFlight?.trim().toUpperCase() || null,
       itinerary: v.itinerary || null,
       notes: v.notes || null,
       days: !rentalOption || rentalOption === "DAY" ? v.days || 1 : 1,
@@ -599,33 +597,26 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               <Input />
             </Form.Item>
           </Col>
-          {hasFlight && (
-            <Col xs={24} md={8}>
-              <Form.Item
-                name="flightNumber"
-                label="Số hiệu chuyến bay"
-                normalize={(v?: string) => v?.toUpperCase()}
-                extra={
-                  (bookingFlights?.arrival || bookingFlights?.departure) && (
-                    <Space size={4} wrap style={{ marginTop: 4 }}>
-                      {bookingFlights.arrival && (
-                        <Button size="small" type="dashed" onClick={() => form.setFieldValue("flightNumber", bookingFlights.arrival)}>
-                          Đón: {bookingFlights.arrival}
-                        </Button>
-                      )}
-                      {bookingFlights.departure && (
-                        <Button size="small" type="dashed" onClick={() => form.setFieldValue("flightNumber", bookingFlights.departure)}>
-                          Tiễn: {bookingFlights.departure}
-                        </Button>
-                      )}
-                    </Space>
-                  )
-                }
-              >
-                <Input placeholder="VN123" />
-              </Form.Item>
-            </Col>
-          )}
+          <Col xs={12} md={8}>
+            <Form.Item
+              name="flightNumber"
+              label="Số hiệu chuyến bay đón"
+              tooltip="Chuyến bay khách đến (đón tại sân bay). Để trống nếu không có."
+              normalize={(v?: string) => v?.toUpperCase()}
+            >
+              <Input placeholder="VD: VN123" prefix="✈" allowClear />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={8}>
+            <Form.Item
+              name="departureFlight"
+              label="Số hiệu chuyến bay tiễn"
+              tooltip="Chuyến bay khách về (tiễn ra sân bay). Để trống nếu không có."
+              normalize={(v?: string) => v?.toUpperCase()}
+            >
+              <Input placeholder="VD: VJ636" prefix="✈" allowClear />
+            </Form.Item>
+          </Col>
           <Col span={24}>
             <Form.Item
               name="itinerary"
