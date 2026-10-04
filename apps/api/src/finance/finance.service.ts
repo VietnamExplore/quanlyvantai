@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
-import { BookingStatus, Prisma, TripStatus } from '@prisma/client';
+import { BookingStatus, Ownership, Prisma, TripStatus, VoucherType } from '@prisma/client';
 import { AuthUser } from '../auth/auth.decorators';
 import { bookingTotals } from '../bookings/bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DEFAULT_COST_CATEGORIES } from './cost.util';
-import { CreatePartnerPaymentDto, CreatePaymentDto, CreateTripCostDto } from './finance.dto';
+import { CreatePartnerPaymentDto, CreatePaymentDto, CreateTripCostDto, CreateVoucherDto, UpdateVoucherDto } from './finance.dto';
 
 const TZ = 'Asia/Ho_Chi_Minh';
 const DAY_MS = 86_400_000;
@@ -27,6 +27,13 @@ export function codeFromName(name: string) {
     .replace(/^_+|_+$/g, '')
     .slice(0, 40);
 }
+
+const VOUCHER_INCLUDE = {
+  category: { select: { name: true } },
+  vehicle: { select: { plateNumber: true, ownership: true } },
+  partner: { select: { name: true } },
+  createdBy: { select: { fullName: true } },
+} satisfies Prisma.CashVoucherInclude;
 
 @Injectable()
 export class FinanceService implements OnModuleInit {
@@ -264,7 +271,7 @@ export class FinanceService implements OnModuleInit {
     const t = to ?? vnYmd(new Date());
     const range: Prisma.DateTimeFilter = { gte: dateOnly(f), lte: dateOnly(t) };
 
-    const [payments, partnerPayments, costs] = await Promise.all([
+    const [payments, partnerPayments, costs, vouchers] = await Promise.all([
       this.prisma.payment.findMany({
         where: { paidAt: range },
         include: { booking: { select: { id: true, code: true, contactName: true, customer: { select: { name: true } } } }, createdBy: { select: { fullName: true } } },
@@ -275,10 +282,19 @@ export class FinanceService implements OnModuleInit {
         include: {
           category: { select: { name: true } },
           createdBy: { select: { fullName: true } },
-          trip: { select: { booking: { select: { id: true, code: true } }, vehicle: { select: { plateNumber: true } }, driver: { select: { fullName: true } } } },
+          trip: {
+            select: {
+              booking: { select: { id: true, code: true } },
+              vehicle: { select: { id: true, plateNumber: true, ownership: true } },
+              partner: { select: { id: true, name: true } },
+              driver: { select: { fullName: true } },
+            },
+          },
         },
       }),
+      this.prisma.cashVoucher.findMany({ where: { date: range }, include: VOUCHER_INCLUDE }),
     ]);
+    const none = { vehicleId: null, vehicle: null, ownership: null, partnerId: null, partner: null, code: null };
 
     const entries = [
       ...payments.map((p) => ({
@@ -295,6 +311,7 @@ export class FinanceService implements OnModuleInit {
         reference: p.reference,
         note: p.note,
         by: p.createdBy.fullName,
+        ...none,
       })),
       ...partnerPayments.map((p) => ({
         key: `pp${p.id}`,
@@ -310,6 +327,9 @@ export class FinanceService implements OnModuleInit {
         reference: p.reference,
         note: p.note,
         by: p.createdBy.fullName,
+        ...none,
+        partnerId: p.partnerId as number | null,
+        partner: p.partner.name as string | null,
       })),
       ...costs.map((c) => ({
         key: `c${c.id}`,
@@ -325,11 +345,119 @@ export class FinanceService implements OnModuleInit {
         reference: null,
         note: c.note,
         by: c.byDriver ? `${c.createdBy?.fullName ?? ''} (app)` : (c.createdBy?.fullName ?? ''),
+        ...none,
+        vehicleId: c.trip.vehicle?.id ?? null,
+        vehicle: c.trip.vehicle?.plateNumber ?? null,
+        ownership: c.trip.vehicle?.ownership ?? (c.trip.partner ? Ownership.DOI_TAC : null),
+        partnerId: c.trip.partner?.id ?? null,
+        partner: c.trip.partner?.name ?? null,
+      })),
+      ...vouchers.map((v) => ({
+        key: `v${v.id}`,
+        id: v.id,
+        source: 'VOUCHER' as const,
+        type: v.type,
+        date: vnYmd(v.date),
+        category: v.category?.name ?? v.title ?? (v.type === VoucherType.THU ? 'Thu khác' : 'Chi khác'),
+        amount: Number(v.amount),
+        description: [v.code, v.counterparty].filter(Boolean).join(' · '),
+        bookingId: null,
+        method: v.method,
+        reference: v.reference,
+        note: v.note,
+        by: v.createdBy.fullName,
+        code: v.code,
+        vehicleId: v.vehicleId,
+        vehicle: v.vehicle?.plateNumber ?? null,
+        ownership: v.vehicle?.ownership ?? (v.partnerId ? Ownership.DOI_TAC : null),
+        partnerId: v.partnerId,
+        partner: v.partner?.name ?? null,
       })),
     ].sort((a, b) => (a.date === b.date ? a.key.localeCompare(b.key) : a.date.localeCompare(b.date)));
 
     const income = entries.filter((e) => e.type === 'THU').reduce((s, e) => s + e.amount, 0);
     const expense = entries.filter((e) => e.type === 'CHI').reduce((s, e) => s + e.amount, 0);
     return { from: f, to: t, income, expense, net: income - expense, entries };
+  }
+
+  // ───── Phiếu thu / phiếu chi ─────
+
+  /** Kiểm tra loại chi phí, xe, đối tác; xe đối tác thì tự gắn nhà xe của xe */
+  private async voucherRefs(dto: UpdateVoucherDto) {
+    const data: { categoryCode?: string | null; vehicleId?: number | null; partnerId?: number | null } = {};
+    if (dto.categoryCode !== undefined) {
+      const code = dto.categoryCode || null;
+      if (code && !(await this.prisma.costCategory.findUnique({ where: { code } }))) throw new BadRequestException('Loại chi phí không tồn tại');
+      data.categoryCode = code;
+    }
+    if (dto.vehicleId !== undefined) {
+      data.vehicleId = dto.vehicleId || null;
+      if (data.vehicleId) {
+        const v = await this.prisma.vehicle.findUnique({ where: { id: data.vehicleId }, select: { partnerId: true, ownership: true } });
+        if (!v) throw new BadRequestException('Xe không tồn tại');
+        data.partnerId = v.ownership === Ownership.DOI_TAC ? v.partnerId : null;
+      }
+    }
+    if (data.partnerId === undefined && dto.partnerId !== undefined) data.partnerId = dto.partnerId || null;
+    if (data.partnerId && !(await this.prisma.partner.findUnique({ where: { id: data.partnerId } }))) throw new BadRequestException('Đối tác không tồn tại');
+    return data;
+  }
+
+  private async nextVoucherCode(type: VoucherType, date: Date) {
+    const ymd = date.toISOString().slice(0, 10);
+    const prefix = `${type === VoucherType.THU ? 'PT' : 'PC'}${ymd.slice(2, 4)}${ymd.slice(5, 7)}-`;
+    const last = await this.prisma.cashVoucher.findFirst({ where: { code: { startsWith: prefix } }, orderBy: { code: 'desc' } });
+    return `${prefix}${String(last ? Number(last.code.slice(prefix.length)) + 1 : 1).padStart(4, '0')}`;
+  }
+
+  async createVoucher(dto: CreateVoucherDto, user: AuthUser) {
+    const refs = await this.voucherRefs(dto);
+    const date = dateOnly(dto.date);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.prisma.cashVoucher.create({
+          data: {
+            ...refs,
+            code: await this.nextVoucherCode(dto.type, date),
+            type: dto.type,
+            date,
+            amount: dto.amount,
+            title: dto.title?.trim() || null,
+            counterparty: dto.counterparty?.trim() || null,
+            method: dto.method,
+            reference: dto.reference || null,
+            note: dto.note || null,
+            createdById: user.id,
+          },
+          include: VOUCHER_INCLUDE,
+        });
+      } catch (e) {
+        if (attempt < 3 && e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') continue;
+        throw e;
+      }
+    }
+  }
+
+  /** Không đổi loại phiếu (thu ↔ chi) vì mã phiếu theo loại */
+  async updateVoucher(id: number, { type: _t, ...dto }: UpdateVoucherDto) {
+    const refs = await this.voucherRefs(dto);
+    return this.prisma.cashVoucher.update({
+      where: { id },
+      data: {
+        ...refs,
+        ...(dto.date && { date: dateOnly(dto.date) }),
+        ...(dto.amount !== undefined && { amount: dto.amount }),
+        ...(dto.title !== undefined && { title: dto.title?.trim() || null }),
+        ...(dto.counterparty !== undefined && { counterparty: dto.counterparty?.trim() || null }),
+        ...(dto.method && { method: dto.method }),
+        ...(dto.reference !== undefined && { reference: dto.reference || null }),
+        ...(dto.note !== undefined && { note: dto.note || null }),
+      },
+      include: VOUCHER_INCLUDE,
+    });
+  }
+
+  voucher(id: number) {
+    return this.prisma.cashVoucher.findUniqueOrThrow({ where: { id }, include: VOUCHER_INCLUDE });
   }
 }

@@ -7,8 +7,10 @@ import {
   CreatePartnerPaymentDto,
   CreatePaymentDto,
   CreateTripCostDto,
+  CreateVoucherDto,
   RangeQueryDto,
   UpdateCostCategoryDto,
+  UpdateVoucherDto,
 } from './finance.dto';
 import { FinanceService } from './finance.service';
 
@@ -113,5 +115,31 @@ export class FinanceController {
   @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
   ledger(@Query() q: RangeQueryDto) {
     return this.finance.ledger(q.from, q.to);
+  }
+
+  // ───── Phiếu thu / phiếu chi (gắn xe công ty hoặc đối tác) ─────
+
+  @Get('vouchers/:id')
+  @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
+  voucher(@Param('id', ParseIntPipe) id: number) {
+    return this.finance.voucher(id);
+  }
+
+  @Post('vouchers')
+  @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
+  createVoucher(@Body() dto: CreateVoucherDto, @CurrentUser() user: AuthUser) {
+    return this.finance.createVoucher(dto, user);
+  }
+
+  @Patch('vouchers/:id')
+  @Roles(...ACCOUNTING)
+  updateVoucher(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateVoucherDto) {
+    return this.finance.updateVoucher(id, dto);
+  }
+
+  @Delete('vouchers/:id')
+  @Roles(...ACCOUNTING)
+  removeVoucher(@Param('id', ParseIntPipe) id: number) {
+    return this.prisma.cashVoucher.delete({ where: { id } });
   }
 }

@@ -35,7 +35,8 @@ model User {
   tripCosts       TripCost[]       @relation("CostCreator")
   payments        Payment[]        @relation("PaymentCreator")
   partnerPayments PartnerPayment[] @relation("PartnerPaymentCreator")
-  tripEvents      TripEvent[]
+  cashVouchers    CashVoucher[]    @relation("VoucherCreator")
+  tripEvents     TripEvent[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -89,6 +90,7 @@ model Vehicle {
   defaultDriverId    Int?
   defaultDriver      Driver?       @relation(fields: [defaultDriverId], references: [id])
   trips              BookingTrip[]
+  vouchers           CashVoucher[]
   notes              String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
@@ -160,6 +162,7 @@ model Partner {
   drivers          Driver[]
   trips            BookingTrip[]
   payments         PartnerPayment[]
+  vouchers         CashVoucher[]
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 }
@@ -498,6 +501,7 @@ model CostCategory {
   sortOrder Int        @default(0)
   isActive  Boolean    @default(true)
   costs     TripCost[]
+  vouchers  CashVoucher[]
 }
 
 /// Chi phí thực tế phát sinh của chuyến
@@ -553,4 +557,36 @@ model PartnerPayment {
 
   @@index([partnerId])
   @@index([paidAt])
+}
+
+enum VoucherType {
+  THU
+  CHI
+}
+
+/// Phiếu thu / phiếu chi lập tay trong sổ thu chi, gắn với xe (công ty hoặc đối tác)
+model CashVoucher {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique // PT2610-0001 / PC2610-0001
+  type         VoucherType
+  date         DateTime      @db.Date
+  categoryCode String?
+  category     CostCategory? @relation(fields: [categoryCode], references: [code], onUpdate: Cascade)
+  title        String? // Khoản mục tự ghi (khi không chọn loại chi phí)
+  vehicleId    Int?
+  vehicle      Vehicle?      @relation(fields: [vehicleId], references: [id])
+  partnerId    Int?
+  partner      Partner?      @relation(fields: [partnerId], references: [id])
+  counterparty String? // Người nộp / người nhận
+  amount       Decimal       @db.Decimal(15, 0)
+  method       PaymentMethod @default(TIEN_MAT)
+  reference    String?
+  note         String?
+  createdById  Int
+  createdBy    User          @relation("VoucherCreator", fields: [createdById], references: [id])
+  createdAt    DateTime      @default(now())
+
+  @@index([date])
+  @@index([vehicleId])
+  @@index([partnerId])
 }
