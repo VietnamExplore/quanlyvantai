@@ -110,7 +110,6 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
     );
   }
 
-  const phone = trip.booking.contactPhone;
   const b = trip.booking;
   const pax = b.passengers ?? [];
   return (
@@ -142,16 +141,10 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
         </Card>
 
         <Card>
-          <Text style={s.section}>Khách hàng</Text>
-          <Row label="Liên hệ">{trip.booking.contactName}</Row>
-          {trip.booking.customer && <Row label="Đơn vị">{trip.booking.customer.name}</Row>}
+          <Text style={s.section}>Thông tin chuyến</Text>
           <Row label="Số khách">{`${trip.passengers} khách`}</Row>
           {trip.flightNumber && <Row label="Chuyến bay đón">{trip.flightNumber}</Row>}
           {trip.departureFlight && <Row label="Chuyến bay tiễn">{trip.departureFlight}</Row>}
-          <View style={s.contactRow}>
-            <Button title={`📞 Gọi ${phone}`} onPress={() => Linking.openURL(`tel:${phone}`)} style={{ flex: 1 }} />
-            <Button title="💬 Nhắn tin" variant="outline" onPress={() => Linking.openURL(`sms:${phone}`)} style={{ flex: 0.6 }} />
-          </View>
         </Card>
 
         {(b.leaderName || pax.length > 0) && (
@@ -227,7 +220,6 @@ const s = StyleSheet.create({
   sub: { fontSize: 14, color: colors.text2, marginTop: 2 },
   section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginBottom: 4 },
   address: { fontSize: 17, color: colors.text, lineHeight: 23 },
-  contactRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
   dispatchNote: { backgroundColor: '#fffbe6', borderRadius: 8, padding: 10, marginTop: 10 },
   leader: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#eef5ff', borderRadius: 10, padding: 10, marginTop: 6, marginBottom: 6 },
   leaderRole: { fontSize: 12, color: colors.primary, fontWeight: '700', textTransform: 'uppercase' },

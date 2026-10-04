@@ -45,7 +45,7 @@ function TripCard({ trip, onPress, now }: { trip: Trip; onPress: () => void; now
       <Text style={s.place} numberOfLines={2}>📍 {trip.pickupAddress}</Text>
       {trip.dropoffAddress && <Text style={s.place} numberOfLines={2}>🏁 {trip.dropoffAddress}</Text>}
       <Text style={s.meta}>
-        👤 {trip.booking.contactName} · {trip.passengers} khách{trip.vehicle ? ` · 🚐 ${trip.vehicle.plateNumber}` : ''}
+        👥 {trip.passengers} khách{trip.vehicle ? ` · 🚐 ${trip.vehicle.plateNumber}` : ''}
       </Text>
     </Card>
   );
