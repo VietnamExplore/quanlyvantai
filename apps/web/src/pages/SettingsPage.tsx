@@ -274,6 +274,7 @@ export default function SettingsPage() {
             value={provider}
             onChange={setProvider}
             options={[
+              { value: 'gemini', label: 'Google Gemini' },
               { value: 'claude', label: 'Claude (Anthropic)' },
               { value: 'google', label: 'Google Translate' },
               { value: 'deepl', label: 'DeepL' },
@@ -304,7 +305,7 @@ export default function SettingsPage() {
         </Col>
       </Row>
       <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8 }}>
-        Lấy khóa: Claude – console.anthropic.com (mục API Keys) · Google – console.cloud.google.com (bật Cloud Translation API, tạo API key) · DeepL –
+        Lấy khóa: Gemini – aistudio.google.com (bấm Get API key, có gói miễn phí) · Claude – console.anthropic.com (mục API Keys) · Google – console.cloud.google.com (bật Cloud Translation API, tạo API key) · DeepL –
         deepl.com/pro-api (gói Free có 500.000 ký tự/tháng).
         {settings.translateKeySet && (
           <>

@@ -3,7 +3,10 @@ import { BadRequestException, Injectable, ServiceUnavailableException } from '@n
 import { PrismaService } from '../prisma/prisma.service';
 
 export type TargetLang = 'en' | 'ko' | 'zh' | 'ja';
-export type TranslateProvider = 'claude' | 'google' | 'deepl';
+export type TranslateProvider = 'claude' | 'gemini' | 'google' | 'deepl';
+
+/** Model Gemini thử lần lượt: mới nhất trước, model chưa mở cho khóa (404) thì chuyển model kế tiếp */
+const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 
 /** Khóa cài đặt: dịch vụ dịch đang dùng và khóa API (khóa không bao giờ trả về cho trình duyệt) */
 export const PROVIDER_KEY = 'translateProvider';
@@ -50,7 +53,9 @@ export class TranslateService {
     let out: string[];
     try {
       out =
-        provider === 'google'
+        provider === 'gemini'
+          ? await this.gemini(input, target, apiKey)
+          : provider === 'google'
           ? await this.google(input, target, apiKey)
           : provider === 'deepl'
             ? await this.deepl(input, target, apiKey)
@@ -98,6 +103,51 @@ export class TranslateService {
       /* xử lý bên dưới */
     }
     throw new ServiceUnavailableException('Claude trả về kết quả không đúng định dạng, hãy thử lại');
+  }
+
+  private async gemini(texts: string[], target: TargetLang, apiKey: string) {
+    const body = JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: [{ role: 'user', parts: [{ text: `Target language: ${LANG_NAME[target]}\n\nTexts (JSON array):\n${JSON.stringify(texts)}` }] }],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+        responseSchema: { type: 'OBJECT', properties: { translations: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['translations'] },
+      },
+    });
+    let lastError = '';
+    for (const model of GEMINI_MODELS) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+        body,
+      });
+      const data = (await res.json().catch(() => null)) as {
+        candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+        error?: { message?: string; status?: string };
+      } | null;
+      if (res.status === 404 || res.status >= 500) {
+        lastError = data?.error?.message ?? `HTTP ${res.status}`;
+        continue; // model chưa có với khóa này hoặc đang quá tải: thử model kế tiếp
+      }
+      if (!res.ok) {
+        const msg = data?.error?.message ?? String(res.status);
+        if (res.status === 400 && /API key/i.test(msg)) throw new BadRequestException('Khóa API Gemini không hợp lệ');
+        if (res.status === 403) throw new BadRequestException(`Khóa API Gemini không có quyền: ${msg}`);
+        if (res.status === 429) throw new ServiceUnavailableException('Đã vượt hạn mức Gemini (quá nhiều yêu cầu hoặc hết hạn mức miễn phí), thử lại sau');
+        throw new ServiceUnavailableException(`Lỗi Gemini (${res.status}): ${msg}`);
+      }
+      const text = (data?.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
+      try {
+        const parsed = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)) as { translations?: unknown };
+        if (Array.isArray(parsed.translations) && parsed.translations.every((t) => typeof t === 'string')) return parsed.translations as string[];
+      } catch {
+        /* xử lý bên dưới */
+      }
+      const reason = data?.candidates?.[0]?.finishReason;
+      throw new ServiceUnavailableException(reason === 'SAFETY' ? 'Gemini từ chối dịch nội dung này' : 'Gemini trả về kết quả không đúng định dạng, hãy thử lại');
+    }
+    throw new ServiceUnavailableException(`Gemini chưa dịch được (đã thử các model ${GEMINI_MODELS.join(', ')}): ${lastError}`);
   }
 
   private async google(texts: string[], target: TargetLang, apiKey: string) {
