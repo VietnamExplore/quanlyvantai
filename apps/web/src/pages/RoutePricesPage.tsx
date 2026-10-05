@@ -1,9 +1,10 @@
 import { QuickSelect } from '../components/QuickCreate';
-import { Col, Divider, Form, Input, InputNumber, Row, Select, Switch, Table, Tag, Typography } from 'antd';
+import { Col, Divider, Form, Input, InputNumber, Row, Select, Switch, Tag, Typography } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
 import { Money, MoneyInput, ServiceTag, useLocations, useServices, useVehicleTypeOptions } from '../components/common';
 import type { RoutePrice } from '../types';
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 type PriceMap = Record<string, { price?: number | null; partnerCost?: number | null }>;
 
@@ -94,7 +95,7 @@ export default function RoutePricesPage() {
           <Divider titlePlacement="start" style={{ marginTop: 0 }}>
             Giá theo loại xe <Typography.Text type="secondary">(để trống loại xe không chạy tuyến này)</Typography.Text>
           </Divider>
-          <Table
+          <ResponsiveTable
             size="small"
             pagination={false}
             rowKey="id"

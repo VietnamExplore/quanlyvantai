@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, DatePicker, Flex, Form, Input, Modal, Segmented, Space, Table, Tag, Typography } from 'antd';
+import { App, Button, Card, DatePicker, Flex, Form, Input, Modal, Segmented, Space, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { api } from '../api';
 import { DATE_FORMAT, formatVnd, MoneyInput, paged } from '../components/common';
 import { PAYMENT_METHOD } from '../labels';
 import type { PaymentMethod } from '../types';
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 type AdvanceStatus = 'CHO_DUYET' | 'DA_CHI' | 'TU_CHOI' | 'DA_HUY';
 
@@ -111,7 +112,7 @@ export default function AdvancesPage() {
           {data.length} đề nghị chờ duyệt · tổng {formatVnd(pendingTotal)}. Khi chi, phần mềm tự lập phiếu chi "Tạm ứng" và trừ vào lương tháng của lái xe.
         </Typography.Paragraph>
       )}
-      <Table<AdvanceRequest>
+      <ResponsiveTable<AdvanceRequest>
         rowKey="id"
         size="middle"
         loading={isLoading}

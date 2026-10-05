@@ -1,10 +1,11 @@
 import { TranslationOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Flex, Input, Modal, Segmented, Space, Table, Tag, Typography } from 'antd';
+import { Alert, App, Button, Flex, Input, Modal, Segmented, Space, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { toDocLang } from '../doc-i18n';
+import { ResponsiveTable } from './ResponsiveTable';
 
 type Lang = 'en' | 'ko' | 'zh' | 'ja';
 const LANGS: { value: Lang; label: string }[] = [
@@ -155,7 +156,7 @@ export function DocTranslationsModal({ bookingId, open, onClose, docLanguage }: 
       {!rows.length && !isFetching ? (
         <Alert type="info" showIcon title="Booking chưa có nội dung tiếng Việt cần dịch (điểm đón / trả, lịch trình, phụ thu, ghi chú)." />
       ) : (
-        <Table<Row>
+        <ResponsiveTable<Row>
           rowKey="key"
           size="small"
           loading={isFetching}

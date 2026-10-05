@@ -1,6 +1,6 @@
 import { DollarOutlined, DownloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Checkbox, Col, Flex, Input, Row, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
+import { App, Button, Card, Checkbox, Col, Flex, Input, Row, Statistic, Tag, Tooltip, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { PaymentModal } from '../components/finance';
 import { downloadExcel } from '../excel';
 import { BOOKING_STATUS, CUSTOMER_TYPE } from '../labels';
 import type { BookingStatus, CustomerType } from '../types';
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 interface RecBooking {
   id: number;
@@ -148,7 +149,7 @@ export default function ReceivablesPage() {
           </Flex>
         </Flex>
 
-        <Table<RecCustomer>
+        <ResponsiveTable<RecCustomer>
           rowKey="key"
           loading={isLoading}
           dataSource={customers}
@@ -157,7 +158,7 @@ export default function ReceivablesPage() {
           expandable={{
             expandRowByClick: true,
             expandedRowRender: (c) => (
-              <Table<RecBooking>
+              <ResponsiveTable<RecBooking>
                 rowKey="id"
                 size="small"
                 pagination={false}

@@ -1,6 +1,6 @@
 import { DeleteOutlined, DollarOutlined, DownloadOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Col, Flex, Popconfirm, Row, Statistic, Table, Tabs, Typography } from 'antd';
+import { App, Button, Card, Col, Flex, Popconfirm, Row, Statistic, Tabs, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -12,6 +12,7 @@ import { PaymentModal } from '../components/finance';
 import { downloadExcel } from '../excel';
 import { PAYMENT_METHOD, TRIP_STATUS } from '../labels';
 import type { Payment, TripStatus } from '../types';
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 interface PayTrip {
   id: number;
@@ -112,7 +113,7 @@ export default function PayablesPage() {
             Xuất Excel đối soát
           </Button>
         </Flex>
-        <Table<PayPartner>
+        <ResponsiveTable<PayPartner>
           rowKey="id"
           loading={isLoading}
           dataSource={data?.partners ?? []}
@@ -128,7 +129,7 @@ export default function PayablesPage() {
                     key: 'trips',
                     label: `Chuyến (${p.trips.length})`,
                     children: (
-                      <Table<PayTrip>
+                      <ResponsiveTable<PayTrip>
                         rowKey="id"
                         size="small"
                         pagination={paged('chuyến')}
@@ -148,7 +149,7 @@ export default function PayablesPage() {
                     key: 'payments',
                     label: `Đã thanh toán (${p.payments.length})`,
                     children: (
-                      <Table<Payment>
+                      <ResponsiveTable<Payment>
                         rowKey="id"
                         size="small"
                         pagination={false}

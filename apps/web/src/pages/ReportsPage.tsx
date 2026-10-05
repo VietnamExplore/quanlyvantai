@@ -13,6 +13,7 @@ import { DriverSalaryModal } from '../components/DriverSalary';
 import { downloadExcel, type ExcelSheet } from '../excel';
 import { DRIVER_STATUS, TRIP_STATUS, VEHICLE_STATUS } from '../labels';
 import type { DriverStatus, TripStatus, VehicleStatus } from '../types';
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 // ───── Dữ liệu từ API /reports/trips ─────
 
@@ -618,7 +619,7 @@ function TripDetail({ trips, loading }: { trips: ReportTrip[]; loading: boolean 
           ]}
         />
       </Flex>
-      <Table<ReportTrip>
+      <ResponsiveTable<ReportTrip>
         rowKey="id"
         size="small"
         loading={loading}
@@ -737,7 +738,7 @@ function GroupTable({
           {note}
         </Typography.Paragraph>
       )}
-      <Table<Group>
+      <ResponsiveTable<Group>
         rowKey="key"
         size="small"
         loading={loading}
@@ -836,7 +837,7 @@ function DriverPayTable({ pay, loading, trips }: { pay?: DriverPayReport; loadin
           title={`${pendingCount} chuyến đã qua giờ đón nhưng chưa bấm "Hoàn thành" nên chưa được tính % doanh số. Bấm vào lái xe để xem và cập nhật trạng thái chuyến.`}
         />
       )}
-      <Table<DriverPay>
+      <ResponsiveTable<DriverPay>
         rowKey="driverId"
         size="small"
         loading={loading}
@@ -981,7 +982,7 @@ function DriverPayDetail({ pay, trips, multiMonth }: { pay: DriverPay; trips: Re
   return (
     <Flex vertical gap={12}>
       {multiMonth && (
-        <Table<PayMonth>
+        <ResponsiveTable<PayMonth>
           rowKey="month"
           size="small"
           pagination={false}
@@ -1001,7 +1002,7 @@ function DriverPayDetail({ pay, trips, multiMonth }: { pay: DriverPay; trips: Re
         />
       )}
       {rows.length > 0 && (
-        <Table
+        <ResponsiveTable
           rowKey={(r) => r.trip.id}
           size="small"
           pagination={false}
@@ -1021,7 +1022,7 @@ function DriverPayDetail({ pay, trips, multiMonth }: { pay: DriverPay; trips: Re
       {pay.advances.length > 0 && (
         <>
           <Typography.Text strong>Khoản lái xe tự ứng (hoàn ứng)</Typography.Text>
-          <Table<DriverAdvance>
+          <ResponsiveTable<DriverAdvance>
             rowKey="id"
             size="small"
             pagination={false}

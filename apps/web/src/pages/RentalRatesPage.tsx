@@ -1,11 +1,12 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Card, Col, Divider, Form, Input, InputNumber, Modal, Row, Table, Typography } from 'antd';
+import { Alert, App, Button, Card, Col, Divider, Form, Input, InputNumber, Modal, Row, Typography } from 'antd';
 import { useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { Money, MoneyInput, paged } from '../components/common';
 import type { RentalRateRow } from '../types';
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 export default function RentalRatesPage() {
   const { hasRole } = useAuth();
@@ -61,7 +62,7 @@ export default function RentalRatesPage() {
         style={{ marginBottom: 16 }}
         title="Dùng cho dịch vụ Thuê xe theo ngày, Tour nhiều ngày và City tour khi không chọn tuyến cố định. Giá hiện tại là GIÁ MẪU, hãy sửa lại theo giá của công ty."
       />
-      <Table<RentalRateRow>
+      <ResponsiveTable<RentalRateRow>
         rowKey="id"
         loading={isLoading}
         dataSource={data}

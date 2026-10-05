@@ -1,6 +1,6 @@
 import { DeleteOutlined, DollarOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Card, Image, Col, DatePicker, Descriptions, Empty, Flex, Form, Input, Modal, Popconfirm, Radio, Row, Space, Table, Tag, Typography } from 'antd';
+import { Alert, App, Button, Card, Image, Col, DatePicker, Descriptions, Empty, Flex, Form, Input, Modal, Popconfirm, Radio, Row, Space, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, apiBlob } from '../api';
@@ -9,6 +9,7 @@ import { PAYMENT_METHOD, toOptions } from '../labels';
 import type { Booking, PaymentMethod, TripCostRow } from '../types';
 import { DATE_FORMAT, EnumTag, Money, MoneyInput } from './common';
 import { QuickSelect } from './QuickCreate';
+import { ResponsiveTable } from './ResponsiveTable';
 
 /** Nhãn tình trạng thanh toán của booking */
 export function PaidTag({ total, paid }: { total: number; paid: number }) {
@@ -232,7 +233,7 @@ export function PaymentsCard({ bookingId }: { bookingId: number }) {
           </Typography.Text>
         </Descriptions.Item>
       </Descriptions>
-      <Table
+      <ResponsiveTable
         size="small"
         rowKey="id"
         pagination={false}
@@ -377,7 +378,7 @@ export function TripCostsSection({ tripId, amount, partnerCost, estimatedCost }:
           }}
         />
       )}
-      <Table<TripCostRow>
+      <ResponsiveTable<TripCostRow>
         size="small"
         rowKey="id"
         pagination={false}

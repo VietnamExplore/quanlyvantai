@@ -76,6 +76,7 @@ import { QuickSelect } from "../components/QuickCreate";
 import { DocTranslationsModal } from "../components/DocTranslationsModal";
 import { DOC_LANGS, toDocLang, type DocLang } from "../doc-i18n";
 import type { Booking, BookingStatus, Customer, Passenger } from "../types";
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 // Booking đã hoàn thành vẫn sửa được; chỉ khóa booking đã hủy
 const LOCKED: BookingStatus[] = ["HUY"];
@@ -601,7 +602,7 @@ export default function BookingEditPage() {
               </Form.Item>
             </Col>
             {!isNew && booking && (
-              <Col xs={12} md={6}>
+              <Col xs={24} md={6}>
                 <Descriptions size="small" column={1} style={{ marginTop: 4 }}>
                   <Descriptions.Item label="Người tạo">
                     {booking.createdBy.fullName}
@@ -634,7 +635,7 @@ export default function BookingEditPage() {
             )
           }
         >
-          <Table<TripDraft>
+          <ResponsiveTable<TripDraft>
             rowKey="key"
             size="middle"
             dataSource={trips}

@@ -10,12 +10,13 @@ import {
   SwapOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Typography, Upload, type FormInstance } from 'antd';
+import { Alert, App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Typography, Upload, type FormInstance } from 'antd';
 import { useEffect, useState } from 'react';
 import { api, apiBlob, apiUpload } from '../api';
 import { useAuth } from '../auth';
 import { CONTACT_APP, guessContactApp, type ContactApp } from '../contact-apps';
 import type { Booking, Passenger } from '../types';
+import { ResponsiveTable } from './ResponsiveTable';
 
 const GENDER_OPTIONS = [
   { value: 'NAM', label: 'Nam' },
@@ -124,7 +125,7 @@ export function PassengersCard({ form, readOnly, tripPassengers, canPrint, booki
       <Form.List name="passengers">
         {(fields, { add, remove }) => (
           <>
-            <Table
+            <ResponsiveTable
               size="small"
               pagination={false}
               rowKey="key"
@@ -234,7 +235,7 @@ export function PassengersCard({ form, readOnly, tripPassengers, canPrint, booki
         </Typography.Paragraph>
         <Input.TextArea rows={8} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder={'Nguyễn Văn An\tNam\t1985\t079085001234\tViệt Nam\t0901234567\nTrần Thị Bình\tNữ\t1990'} />
         {preview.length > 0 && (
-          <Table
+          <ResponsiveTable
             size="small"
             style={{ marginTop: 12 }}
             pagination={false}

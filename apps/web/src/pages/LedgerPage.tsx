@@ -11,6 +11,7 @@ import { DATE_FORMAT, EnumTag, formatVnd, paged } from '../components/common';
 import { downloadExcel } from '../excel';
 import { PAYMENT_METHOD } from '../labels';
 import type { PaymentMethod } from '../types';
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 interface Entry {
   key: string;
@@ -220,7 +221,7 @@ export default function LedgerPage() {
       </Row>
 
       <Card>
-        <Table<Entry>
+        <ResponsiveTable<Entry>
           rowKey="key"
           size="middle"
           loading={isLoading}
@@ -287,7 +288,7 @@ export default function LedgerPage() {
       </Card>
 
       <Card title="Thu chi theo xe" extra={<Typography.Text type="secondary">Gồm phiếu thu chi, chi phí chuyến và tiền trả nhà xe · bấm một dòng để lọc</Typography.Text>}>
-        <Table<VehicleRow>
+        <ResponsiveTable<VehicleRow>
           rowKey="key"
           size="small"
           loading={isLoading}

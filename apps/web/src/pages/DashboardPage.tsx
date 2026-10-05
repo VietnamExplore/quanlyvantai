@@ -12,7 +12,7 @@ import {
   WalletOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Card, Col, DatePicker, Empty, Flex, Row, Segmented, Statistic, Table, Tag, Typography } from 'antd';
+import { Alert, Card, Col, DatePicker, Empty, Flex, Row, Segmented, Statistic, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -30,6 +30,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { ExpiryCell, formatVnd } from '../components/common';
 import type { ExpiryAlert } from '../types';
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 // Bảng màu đã kiểm tra bằng công cụ dataviz (đủ tương phản, an toàn với người mù màu)
 const COLOR = {
@@ -384,7 +385,7 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card title="Theo nhân viên kinh doanh" loading={isLoading} style={{ height: '100%' }}>
-            <Table
+            <ResponsiveTable
               size="small"
               rowKey="name"
               pagination={false}
@@ -401,7 +402,7 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={12}>
           <Card title="Khách hàng doanh thu cao nhất" loading={isLoading} style={{ height: '100%' }}>
-            <Table
+            <ResponsiveTable
               size="small"
               rowKey="name"
               pagination={false}
@@ -452,7 +453,7 @@ export default function DashboardPage() {
 
       {hasRole('ADMIN', 'DIEU_HANH', 'KE_TOAN') && (
         <Card title="Giấy tờ hết hạn hoặc sắp hết hạn (30 ngày tới)">
-          <Table<ExpiryAlert>
+          <ResponsiveTable<ExpiryAlert>
             rowKey={(x) => `${x.kind}-${x.id}-${x.document}`}
             size="small"
             loading={alerts.isLoading}

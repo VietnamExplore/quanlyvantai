@@ -1,11 +1,12 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Flex, Form, Input, Modal, Popconfirm, Space, Table, Typography, type FormInstance } from 'antd';
+import { App, Button, Card, Flex, Form, Input, Modal, Popconfirm, Space, Typography, type FormInstance } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { paged } from './common';
+import { ResponsiveTable } from './ResponsiveTable';
 
 type Filters = Record<string, string | number | undefined>;
 
@@ -150,7 +151,7 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
         </Flex>
       </Flex>
 
-      <Table<T>
+      <ResponsiveTable<T>
         rowKey={(row) => keyOf(row)}
         size="middle"
         loading={isFetching}

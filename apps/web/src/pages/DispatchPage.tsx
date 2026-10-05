@@ -38,6 +38,7 @@ import { TripDispatchDrawer } from "../components/TripDispatchDrawer";
 import { assignmentText, BLOCK_COLOR } from "../dispatch-utils";
 import { TRIP_STATUS, toOptions } from "../labels";
 import type { Booking, DispatchTrip, Schedule, TripStatus } from "../types";
+import { ResponsiveTable } from '../components/ResponsiveTable';
 
 const DAY_MS = 86_400_000;
 const LABEL_W = 190;
@@ -373,7 +374,7 @@ function TripList({
           onSearch={(v) => setQ(v || undefined)}
         />
       </Flex>
-      <Table<DispatchTrip>
+      <ResponsiveTable<DispatchTrip>
         rowKey="id"
         size="middle"
         loading={isFetching}
@@ -533,7 +534,7 @@ export default function DispatchPage() {
               style={{ marginTop: wide ? 0 : 16 }}
               loading={isLoading}
             >
-              <Table<DispatchTrip>
+              <ResponsiveTable<DispatchTrip>
                 rowKey="id"
                 size="small"
                 pagination={paged()}

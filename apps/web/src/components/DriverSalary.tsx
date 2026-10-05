@@ -1,9 +1,10 @@
 import { DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Table, Typography } from 'antd';
+import { App, Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { api } from '../api';
 import { formatVnd, MoneyInput } from './common';
+import { ResponsiveTable } from './ResponsiveTable';
 
 export interface DriverSalaryRow {
   id: number;
@@ -115,7 +116,7 @@ export function DriverSalaryModal({ driver, onClose }: { driver: { id: number; f
       <Typography.Title level={5} style={{ marginTop: 20 }}>
         Lịch sử mức lương
       </Typography.Title>
-      <Table<DriverSalaryRow>
+      <ResponsiveTable<DriverSalaryRow>
         rowKey="id"
         size="small"
         loading={isFetching}
