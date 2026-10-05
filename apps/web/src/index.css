@@ -226,3 +226,27 @@ body {
   padding: 8px 12px;
   margin-bottom: 12px;
 }
+
+/* Điện thoại: thanh tiêu đề booking nhiều nút xuống nhiều dòng, cố định sẽ che nửa màn hình → để cuộn bình thường */
+@media (max-width: 767px) {
+  .app-content .ant-card.sticky-page-head {
+    position: static;
+  }
+}
+
+/* Điện thoại: thanh chọn kỳ / chế độ xem (Segmented) và tiêu đề phân mục dài tự xuống dòng, không đẩy cả trang tràn ngang */
+@media (max-width: 767px) {
+  .app-content .ant-segmented {
+    max-width: 100%;
+  }
+  .app-content .ant-segmented-group {
+    flex-wrap: wrap;
+  }
+  .app-content .ant-divider-inner-text {
+    white-space: normal;
+  }
+  .app-content .ant-space-horizontal {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+}
