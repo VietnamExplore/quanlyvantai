@@ -21,6 +21,9 @@ export interface PartnerTrip {
   partnerDriverName: string | null;
   partnerDriverPhone: string | null;
   partnerCost: string | null;
+  /** Văn phòng yêu cầu nhà xe xuất hóa đơn cho công ty */
+  partnerInvoice: boolean;
+  partnerInvoiceNote: string | null;
   vehicleType: { name: string; seats: number };
   service: { name: string } | null;
   booking: {

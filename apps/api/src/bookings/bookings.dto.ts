@@ -56,6 +56,9 @@ export class TripDto {
   /** Nhờ lái xe thu tiền khách giúp (đ) */
   @IsOptional() @IsNumber({}, { message: 'Số tiền thu hộ không hợp lệ' }) @Min(0) collectAmount?: number | null;
   @IsOptional() @IsString() collectNote?: string | null;
+  /** Nhà xe đối tác phải xuất hóa đơn cho công ty */
+  @IsOptional() @IsBoolean() partnerInvoice?: boolean;
+  @IsOptional() @IsString() partnerInvoiceNote?: string | null;
 
   @IsInt() @Min(1, { message: 'Số khách phải từ 1 trở lên' }) passengers: number;
   @IsInt() vehicleTypeId: number;

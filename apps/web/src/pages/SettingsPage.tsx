@@ -199,6 +199,16 @@ export default function SettingsPage() {
           </Col>
           <Col xs={24} md={8}>
             <Form.Item
+              name="invoiceEmail"
+              label="Email nhận hóa đơn"
+              tooltip="Nhà xe đối tác xuất hóa đơn cho công ty sẽ thấy email này (cùng tên công ty, MST, địa chỉ). Bỏ trống = email công ty."
+              rules={[{ type: 'email', message: 'Email không hợp lệ' }]}
+            >
+              <Input placeholder="Email công ty" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item
               name="fuelPrice"
               label="Giá xăng dầu (đ/lít)"
               tooltip="Dùng tính chi phí xăng từng chuyến = số km × định mức (cài ở Loại xe / Xe) × giá. Bỏ trống = giá bình quân các lần đổ xăng 60 ngày gần đây."

@@ -56,6 +56,8 @@ const tripSelect = {
   partnerDriverName: true,
   partnerDriverPhone: true,
   partnerCost: true,
+  partnerInvoice: true,
+  partnerInvoiceNote: true,
   assignedAt: true,
   vehicleType: { select: { name: true, seats: true } },
   service: { select: { name: true } },
@@ -123,6 +125,21 @@ export class PartnerPortalController {
   /** Báo Điều hành khi nhà xe thao tác trên chuyến */
   private notifyOffice(type: string, title: string, body: string, trip: { id: number; booking: { id: number } }) {
     return this.push.notifyRoles([Role.ADMIN, Role.DIEU_HANH], { type, title, body, link: `/bookings/${trip.booking.id}`, tripId: trip.id });
+  }
+
+  /** Thông tin công ty để nhà xe xuất hóa đơn (tên, MST, địa chỉ, email nhận hóa đơn) */
+  @Get('invoice-info')
+  async invoiceInfo(@CurrentUser() user: AuthUser) {
+    this.partnerId(user);
+    const rows = await this.prisma.setting.findMany({ where: { key: { in: ['companyName', 'companyTaxCode', 'companyAddress', 'companyEmail', 'companyPhone', 'invoiceEmail'] } } });
+    const get = (k: string) => rows.find((r) => r.key === k)?.value?.trim() || null;
+    return {
+      companyName: get('companyName'),
+      taxCode: get('companyTaxCode'),
+      address: get('companyAddress'),
+      email: get('invoiceEmail') ?? get('companyEmail'),
+      phone: get('companyPhone'),
+    };
   }
 
   @Get('me')

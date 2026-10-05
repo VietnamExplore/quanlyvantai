@@ -417,6 +417,8 @@ export class BookingsService {
         departureFlight: t.departureFlight?.trim().toUpperCase() || null,
         collectAmount: t.collectAmount ? t.collectAmount : null,
         collectNote: t.collectNote?.trim() || null,
+        partnerInvoice: !!t.partnerInvoice,
+        partnerInvoiceNote: t.partnerInvoice ? t.partnerInvoiceNote?.trim() || null : null,
         passengers: t.passengers,
         vehicleTypeId: t.vehicleTypeId,
         routePriceId: t.routePriceId ?? null,

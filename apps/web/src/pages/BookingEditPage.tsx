@@ -687,6 +687,11 @@ export default function BookingEditPage() {
                       const km = saved && odometerText(saved);
                       return km ? <Tag color="cyan" style={{ marginLeft: 4 }}>🛣 {km}</Tag> : null;
                     })()}
+                    {t.partnerInvoice && (
+                      <Tag color="purple" style={{ marginLeft: 4 }}>
+                        🧾 Nhà xe xuất HĐ
+                      </Tag>
+                    )}
                     {!!t.collectAmount && (() => {
                       const saved = booking?.trips.find((x) => x.id === t.id);
                       return (

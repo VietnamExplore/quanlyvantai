@@ -5,6 +5,7 @@ import {
   App,
   Button,
   Card,
+  Checkbox,
   Descriptions,
   Divider,
   Drawer,
@@ -105,6 +106,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
         partnerDriverName: trip.partnerDriverName,
         partnerDriverPhone: trip.partnerDriverPhone,
         partnerCost: trip.partnerCost === null ? undefined : Number(trip.partnerCost),
+        partnerInvoice: !!trip.partnerInvoice,
+        partnerInvoiceNote: trip.partnerInvoiceNote,
         dispatchNote: trip.dispatchNote,
       });
     } else {
@@ -282,9 +285,12 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
           partnerDriverName: v.partnerDriverName || null,
           partnerDriverPhone: v.partnerDriverPhone || null,
           partnerCost: v.partnerCost,
+          partnerInvoice: !!v.partnerInvoice,
+          partnerInvoiceNote: v.partnerInvoice ? v.partnerInvoiceNote || null : null,
           dispatchNote: v.dispatchNote || null,
         })
       }
+      initialValues={{ partnerInvoice: !!trip?.partnerInvoice, partnerInvoiceNote: trip?.partnerInvoiceNote }}
     >
       <Form.Item name="partnerId" label="Nhà xe đối tác" rules={[{ required: true, message: 'Chọn nhà xe' }]}>
         <QuickSelect
@@ -331,6 +337,22 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
           title={`Giá bán ${amount.toLocaleString('vi-VN')}đ − giá thuê ${Number(partnerCost).toLocaleString('vi-VN')}đ = lãi ${(amount - partnerCost).toLocaleString('vi-VN')}đ`}
         />
       )}
+      <Form.Item name="partnerInvoice" valuePropName="checked" style={{ marginBottom: 8 }}>
+        <Checkbox>🧾 Yêu cầu nhà xe xuất hóa đơn cho công ty</Checkbox>
+      </Form.Item>
+      <Form.Item noStyle dependencies={['partnerInvoice']}>
+        {({ getFieldValue }) =>
+          getFieldValue('partnerInvoice') ? (
+            <Form.Item
+              name="partnerInvoiceNote"
+              label="Ghi chú xuất hóa đơn"
+              extra="Nhà xe thấy kèm tên công ty, MST, địa chỉ và email nhận hóa đơn (sửa ở Thông tin công ty)"
+            >
+              <Input placeholder="VD: nội dung 'Cước vận chuyển khách', VAT 8%" />
+            </Form.Item>
+          ) : null
+        }
+      </Form.Item>
       <Form.Item name="dispatchNote" label="Ghi chú cho nhà xe">
         <Input.TextArea rows={2} />
       </Form.Item>
@@ -447,6 +469,12 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                     <b>{trip.partner!.name}</b> {trip.partner!.phone && `– ${trip.partner!.phone}`}
                   </Descriptions.Item>
                   <Descriptions.Item label="Xe / tài xế">{[trip.partnerPlate, trip.partnerDriverName, trip.partnerDriverPhone].filter(Boolean).join(' · ') || '—'}</Descriptions.Item>
+                  {trip.partnerInvoice && (
+                    <Descriptions.Item label="Hóa đơn">
+                      <Tag color="purple">🧾 Nhà xe xuất hóa đơn</Tag>
+                      {trip.partnerInvoiceNote}
+                    </Descriptions.Item>
+                  )}
                   <Descriptions.Item label="Giá thuê">
                     <Money value={trip.partnerCost} /> · lãi <Money value={amount - Number(trip.partnerCost ?? 0)} strong />
                   </Descriptions.Item>

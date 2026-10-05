@@ -18,6 +18,8 @@ export interface TripDraft {
   departureFlight: string | null;
   collectAmount?: number | null;
   collectNote?: string | null;
+  partnerInvoice?: boolean;
+  partnerInvoiceNote?: string | null;
   passengers: number;
   vehicleTypeId: number;
   vehicleTypeName?: string;
@@ -55,6 +57,8 @@ export function fromTrip(t: BookingTrip): TripDraft {
     departureFlight: t.departureFlight,
     collectAmount: t.collectAmount ? Number(t.collectAmount) : null,
     collectNote: t.collectNote ?? null,
+    partnerInvoice: !!t.partnerInvoice,
+    partnerInvoiceNote: t.partnerInvoiceNote ?? null,
     passengers: t.passengers,
     vehicleTypeId: t.vehicleTypeId,
     vehicleTypeName: t.vehicleType.name,

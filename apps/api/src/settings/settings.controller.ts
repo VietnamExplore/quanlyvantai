@@ -42,6 +42,8 @@ export const SETTING_KEYS = [
   PROVIDER_KEY,
   // Giá xăng dầu (đ/lít) để tính chi phí xăng từng chuyến (định mức cài ở Loại xe / Xe)
   'fuelPrice',
+  // Email nhận hóa đơn do nhà xe đối tác xuất cho công ty (trống = email công ty)
+  'invoiceEmail',
 ] as const;
 
 /** Logo công ty: apps/api/uploads/logo (đổi bằng biến môi trường UPLOAD_DIR); tên file lưu ở cài đặt "companyLogo" */

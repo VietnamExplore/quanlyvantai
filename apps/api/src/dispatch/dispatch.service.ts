@@ -337,6 +337,10 @@ export class DispatchService {
         partnerCost: dto.partnerCost,
         // Giá thuê đối tác là chi phí thực của chuyến
         estimatedCost: dto.partnerCost,
+        ...(dto.partnerInvoice !== undefined && {
+          partnerInvoice: dto.partnerInvoice,
+          partnerInvoiceNote: dto.partnerInvoice ? dto.partnerInvoiceNote?.trim() || null : null,
+        }),
       };
       note = `Giao nhà xe ${partner.name}${dto.partnerPlate ? ` (${dto.partnerPlate})` : ''}, giá thuê ${dto.partnerCost.toLocaleString('vi-VN')}đ`;
     }
@@ -363,7 +367,7 @@ export class DispatchService {
   private async notifyPartnerChange(tripId: number, previous: number | null, next: number | null) {
     const trip = await this.prisma.bookingTrip.findUnique({
       where: { id: tripId },
-      select: { pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerCost: true, passengers: true, vehicleType: { select: { name: true } }, booking: { select: { code: true } } },
+      select: { pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerCost: true, partnerInvoice: true, passengers: true, vehicleType: { select: { name: true } }, booking: { select: { code: true } } },
     });
     if (!trip) return;
     const when = fmt(trip.pickupTime);
@@ -374,7 +378,7 @@ export class DispatchService {
       await this.push.notifyPartner(next, {
         type: 'PARTNER_TRIP_NEW',
         title: previous === next ? `Cập nhật chuyến ${trip.booking.code}` : `Chuyến mới ${trip.booking.code} – chờ nhà xe nhận`,
-        body: [when, `${trip.pickupAddress}${trip.dropoffAddress ? ` → ${trip.dropoffAddress}` : ''}`, `${trip.vehicleType.name} · ${trip.passengers} khách`, trip.partnerCost && `giá thuê ${Number(trip.partnerCost).toLocaleString('vi-VN')}đ`].filter(Boolean).join(' · '),
+        body: [when, `${trip.pickupAddress}${trip.dropoffAddress ? ` → ${trip.dropoffAddress}` : ''}`, `${trip.vehicleType.name} · ${trip.passengers} khách`, trip.partnerCost && `giá thuê ${Number(trip.partnerCost).toLocaleString('vi-VN')}đ`, trip.partnerInvoice && '🧾 yêu cầu xuất hóa đơn'].filter(Boolean).join(' · '),
         tripId,
       });
     }

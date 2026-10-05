@@ -770,3 +770,8 @@ body {
   display: inline-block;
   white-space: nowrap;
 }
+
+.pt-invoice {
+  border: 1.5px solid #ddd6fe;
+  background: #faf8ff;
+}

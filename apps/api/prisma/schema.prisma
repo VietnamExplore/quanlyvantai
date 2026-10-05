@@ -458,6 +458,9 @@ model BookingTrip {
   partnerDriverName  String?
   partnerDriverPhone String?
   partnerCost        Decimal? @db.Decimal(15, 0) // Giá thuê đối tác thực tế
+  /// Nhà xe đối tác phải xuất hóa đơn cho công ty (thông tin công ty + email nhận hóa đơn hiện trên cổng nhà xe)
+  partnerInvoice     Boolean  @default(false)
+  partnerInvoiceNote String?
   dispatchNote       String? // Ghi chú cho tài xế / nhà xe
 
   /// Văn phòng nhờ lái xe thu tiền khách giúp

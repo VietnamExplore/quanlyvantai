@@ -252,6 +252,9 @@ export interface BookingTrip extends Ref {
   collectedAmount?: string | null;
   collectMethod?: 'TIEN_MAT' | 'CHUYEN_KHOAN' | null;
   collectSettledAt?: string | null;
+  /** Nhà xe đối tác phải xuất hóa đơn cho công ty */
+  partnerInvoice?: boolean;
+  partnerInvoiceNote?: string | null;
   /** Km đồng hồ và xăng theo định mức (xe công ty) */
   startKm?: number | null;
   endKm?: number | null;

@@ -158,6 +158,8 @@ export const FIELD_LABEL: Record<string, string> = {
   fuelLiters: 'Lít xăng định mức',
   fuelCost: 'Chi phí xăng định mức',
   collectSettledAt: 'Văn phòng nhận tiền thu hộ',
+  partnerInvoice: 'Nhà xe xuất hóa đơn',
+  partnerInvoiceNote: 'Ghi chú xuất hóa đơn',
   plateNumber: 'Biển số',
   vehicleTypeId: 'Loại xe',
   ownership: 'Sở hữu',

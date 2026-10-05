@@ -306,6 +306,7 @@ function TripRow({ trip: t, onOpen }: { trip: PartnerTrip; onOpen: () => void })
         <Tag>🚐 {t.vehicleType.name}</Tag>
         {t.flightNumber && <Tag color="blue">✈ Đón {t.flightNumber}</Tag>}
         {t.departureFlight && <Tag color="blue">✈ Tiễn {t.departureFlight}</Tag>}
+        {t.partnerInvoice && <Tag color="purple">🧾 Xuất HĐ</Tag>}
         {(t.partnerPlate || t.partnerDriverName) && <Tag color="geekblue">{[t.partnerPlate, t.partnerDriverName].filter(Boolean).join(' · ')}</Tag>}
       </Flex>
     </div>

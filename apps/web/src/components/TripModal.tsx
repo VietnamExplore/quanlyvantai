@@ -334,6 +334,8 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
       departureFlight: v.departureFlight?.trim().toUpperCase() || null,
       collectAmount: v.collectAmount || null,
       collectNote: v.collectNote?.trim() || null,
+      partnerInvoice: !!v.partnerInvoice,
+      partnerInvoiceNote: v.partnerInvoice ? v.partnerInvoiceNote?.trim() || null : null,
       itinerary: v.itinerary || null,
       notes: v.notes || null,
       days: !rentalOption || rentalOption === "DAY" ? v.days || 1 : 1,
@@ -813,6 +815,32 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
           <Col xs={24} md={14}>
             <Form.Item name="collectNote" label="Ghi chú thu tiền">
               <Input placeholder="VD: thu đủ tiền xe trước khi trả khách, khách trả USD quy đổi…" allowClear />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Divider titlePlacement="start" style={{ margin: "8px 0 12px" }}>
+          Hóa đơn từ nhà xe đối tác
+        </Divider>
+        <Row gutter={16}>
+          <Col xs={24} md={10}>
+            <Form.Item
+              name="partnerInvoice"
+              valuePropName="checked"
+              tooltip="Khi chuyến giao cho nhà xe đối tác: cổng nhà xe hiện thông tin công ty (tên, MST, địa chỉ, email nhận hóa đơn) để nhà xe xuất hóa đơn."
+            >
+              <Checkbox>Nhà xe đối tác xuất hóa đơn cho công ty</Checkbox>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={14}>
+            <Form.Item noStyle dependencies={["partnerInvoice"]}>
+              {({ getFieldValue }) =>
+                getFieldValue("partnerInvoice") ? (
+                  <Form.Item name="partnerInvoiceNote" label="Ghi chú xuất hóa đơn">
+                    <Input placeholder="VD: ghi nội dung 'Cước vận chuyển khách 06/10', VAT 8%, gửi trong 3 ngày" allowClear />
+                  </Form.Item>
+                ) : null
+              }
             </Form.Item>
           </Col>
         </Row>

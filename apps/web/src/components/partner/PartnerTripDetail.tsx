@@ -1,8 +1,10 @@
-import { AimOutlined, CheckOutlined, CloseOutlined, EditOutlined, IdcardOutlined, MessageOutlined, PhoneOutlined, PictureOutlined } from '@ant-design/icons';
+import { AimOutlined, CheckOutlined, CloseOutlined, CopyOutlined, EditOutlined, IdcardOutlined, MessageOutlined, PhoneOutlined, PictureOutlined } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
 import { App, Button, Drawer, Flex, Grid, Tag, Typography } from 'antd';
+import { api } from '../../api';
 import dayjs from 'dayjs';
 import { useState } from 'react';
-import { copyText } from '../../clipboard';
+import { copyText, useCopyText } from '../../clipboard';
 import { formatVnd } from '../common';
 import { APP_LABEL, chatUrl, guessApp, type ContactApp } from './contact';
 import { SignBoard } from './SignBoard';
@@ -54,6 +56,13 @@ export function PartnerTripDetail({
   const mobile = Grid.useBreakpoint().md === false;
   const [signOpen, setSignOpen] = useState(false);
   const [allPax, setAllPax] = useState(false);
+  const copy = useCopyText();
+  const { data: inv } = useQuery({
+    queryKey: ['/partner/invoice-info'],
+    queryFn: () => api<{ companyName: string | null; taxCode: string | null; address: string | null; email: string | null; phone: string | null }>('/partner/invoice-info'),
+    enabled: !!t?.partnerInvoice,
+    staleTime: 10 * 60_000,
+  });
   if (!t) return null;
 
   const b = t.booking;
@@ -271,6 +280,71 @@ export function PartnerTripDetail({
           </div>
         )}
       </div>
+
+      {/* Yêu cầu nhà xe xuất hóa đơn cho công ty */}
+      {t.partnerInvoice && (
+        <div className="pt-card pt-invoice">
+          <Flex justify="space-between" align="center" style={{ marginBottom: 6 }}>
+            <div className="pt-section" style={{ marginBottom: 0, color: '#7c3aed' }}>
+              🧾 Yêu cầu xuất hóa đơn
+            </div>
+            {inv && (
+              <Button
+                size="small"
+                icon={<CopyOutlined />}
+                onClick={() =>
+                  copy(
+                    [
+                      inv.companyName && `Tên đơn vị: ${inv.companyName}`,
+                      inv.taxCode && `Mã số thuế: ${inv.taxCode}`,
+                      inv.address && `Địa chỉ: ${inv.address}`,
+                      inv.email && `Email nhận hóa đơn: ${inv.email}`,
+                      t.partnerInvoiceNote && `Ghi chú: ${t.partnerInvoiceNote}`,
+                      `Chuyến: ${b.code} · ${dayjs(t.pickupTime).format('DD/MM/YYYY')}`,
+                    ]
+                      .filter(Boolean)
+                      .join('\n'),
+                    'Đã sao chép thông tin xuất hóa đơn',
+                  )
+                }
+              >
+                Sao chép
+              </Button>
+            )}
+          </Flex>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 6 }}>
+            Nhà xe xuất hóa đơn cho chuyến này theo thông tin dưới đây.
+          </Typography.Paragraph>
+          {inv ? (
+            <>
+              <div className="pt-row">
+                <span>Tên đơn vị</span>
+                <b>{inv.companyName ?? '—'}</b>
+              </div>
+              <div className="pt-row">
+                <span>Mã số thuế</span>
+                <b>{inv.taxCode ?? '—'}</b>
+              </div>
+              <div className="pt-row">
+                <span>Địa chỉ</span>
+                <span>{inv.address ?? '—'}</span>
+              </div>
+              <div className="pt-row pt-row-strong">
+                <span>Email nhận HĐ</span>
+                {inv.email ? <a href={`mailto:${inv.email}`}>{inv.email}</a> : <span>—</span>}
+              </div>
+            </>
+          ) : (
+            <Typography.Text type="secondary">Đang tải thông tin công ty…</Typography.Text>
+          )}
+          {t.partnerInvoiceNote && (
+            <div className="pt-row">
+              <span>Ghi chú</span>
+              <b>{t.partnerInvoiceNote}</b>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Đoàn khách: chỉ họ tên, quốc tịch */}
       {b.passengers.length > 0 && (

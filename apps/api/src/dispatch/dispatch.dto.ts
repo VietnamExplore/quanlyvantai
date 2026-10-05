@@ -29,6 +29,9 @@ export class AssignDto {
   @IsOptional() @IsNumber() @Min(0) partnerCost?: number;
 
   @IsOptional() @IsString() dispatchNote?: string | null;
+  /** Giao nhà xe: yêu cầu nhà xe xuất hóa đơn cho công ty */
+  @IsOptional() @IsBoolean() partnerInvoice?: boolean;
+  @IsOptional() @IsString() partnerInvoiceNote?: string | null;
 
   /** Đã xem cảnh báo và vẫn muốn gán */
   @IsOptional() @IsBoolean() force?: boolean;
