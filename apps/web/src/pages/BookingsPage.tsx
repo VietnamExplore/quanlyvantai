@@ -8,13 +8,11 @@ import { useAuth } from '../auth';
 import { flightText, fmtTime, routeText } from '../booking-utils';
 import { BookingFilterBar, useBookingFilters } from '../components/BookingFilters';
 import { BookingStatusMenu } from '../components/BookingStatusMenu';
-import { EnumTag, Money, ServiceTag, formatVnd, paged } from '../components/common';
+import { EnumTag, Money, ServiceTag, formatVnd, paged, byText } from '../components/common';
 import { PaidTag } from '../components/finance';
 import { BOOKING_STATUS } from '../labels';
 import type { Booking } from '../types';
 
-/** So sánh chữ tiếng Việt (có dấu) */
-const byText = (a: string, b: string) => a.localeCompare(b, 'vi');
 /** Giờ đón chuyến đầu tiên (booking chưa có chuyến xếp cuối) */
 const firstPickup = (b: Booking) => (b.trips[0] ? new Date(b.trips[0].pickupTime).getTime() : Number.MAX_SAFE_INTEGER);
 const liveTrips = (b: Booking) => b.trips.filter((t) => t.status !== 'HUY');

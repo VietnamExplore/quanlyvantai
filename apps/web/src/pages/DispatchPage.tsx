@@ -32,7 +32,7 @@ import { api } from "../api";
 import { fmtTime, routeText, toTripPayload, type TripDraft } from "../booking-utils";
 import { useAuth } from "../auth";
 import { TripModal, type QuickContact } from "../components/TripModal";
-import { EnumTag, paged } from "../components/common";
+import { EnumTag, paged, byText } from "../components/common";
 import { MonthGrid, WeekGrid, YearGrid } from "../components/ScheduleViews";
 import { TripDispatchDrawer } from "../components/TripDispatchDrawer";
 import { assignmentText, BLOCK_COLOR } from "../dispatch-utils";
@@ -386,15 +386,19 @@ function TripList({
         columns={[
           {
             title: "Giờ đón",
+            sorter: (a, b) => a.pickupTime.localeCompare(b.pickupTime),
+            defaultSortOrder: "ascend",
             render: (_, t) => <b>{fmtTime(t.pickupTime)}</b>,
           },
-          { title: "Booking", render: (_, t) => t.booking.code },
+          { title: "Booking", sorter: (a, b) => byText(a.booking.code, b.booking.code), render: (_, t) => t.booking.code },
           {
             title: "Khách",
+            sorter: (a, b) => byText(a.booking.customer?.name ?? a.booking.contactName, b.booking.customer?.name ?? b.booking.contactName),
             render: (_, t) => t.booking.customer?.name ?? t.booking.contactName,
           },
           {
             title: "Hành trình",
+            sorter: (a, b) => byText(routeText(a), routeText(b)),
             render: (_, t) => (
               <div style={{ maxWidth: 280, whiteSpace: "normal" }}>
                 {routeText(t)}
@@ -403,10 +407,13 @@ function TripList({
           },
           {
             title: "Yêu cầu",
+            sorter: (a, b) => byText(a.vehicleType.name, b.vehicleType.name) || a.passengers - b.passengers,
             render: (_, t) => `${t.vehicleType.name} · ${t.passengers} khách`,
           },
           {
             title: "Xe được gán",
+            // Chuyến chưa điều xếp đầu khi sắp tăng dần
+            sorter: (a, b) => byText(assignmentText(a), assignmentText(b)),
             render: (_, t) =>
               assignmentText(t) || (
                 <Typography.Text type="warning">Chưa điều</Typography.Text>
@@ -415,9 +422,11 @@ function TripList({
           {
             title: "Trạng thái",
             dataIndex: "status",
+            sorter: (a, b) => byText(TRIP_STATUS[a.status].label, TRIP_STATUS[b.status].label),
             render: (v) => <EnumTag labels={TRIP_STATUS} value={v} />,
           },
         ]}
+        showSorterTooltip={{ title: "Bấm để sắp xếp tăng / giảm / bỏ sắp xếp" }}
       />
     </>
   );
@@ -539,14 +548,17 @@ export default function DispatchPage() {
                 columns={[
                   {
                     title: "Giờ",
+                    sorter: (a, b) => a.pickupTime.localeCompare(b.pickupTime),
+                    defaultSortOrder: "ascend",
                     render: (_, t) => (
                       <b>{dayjs(t.pickupTime).format(view === "day" ? "HH:mm" : "HH:mm DD/MM")}</b>
                     ),
                   },
-                  { title: "Booking", render: (_, t) => t.booking.code },
-                  { title: "Nhà xe", render: (_, t) => t.partner?.name },
+                  { title: "Booking", sorter: (a, b) => byText(a.booking.code, b.booking.code), render: (_, t) => t.booking.code },
+                  { title: "Nhà xe", sorter: (a, b) => byText(a.partner?.name, b.partner?.name), render: (_, t) => t.partner?.name },
                   {
                     title: "Xe / tài xế",
+                    sorter: (a, b) => byText(a.partnerPlate, b.partnerPlate),
                     render: (_, t) =>
                       [
                         t.partnerPlate,
@@ -556,13 +568,15 @@ export default function DispatchPage() {
                         .filter(Boolean)
                         .join(" · "),
                   },
-                  { title: "Hành trình", render: (_, t) => routeText(t) },
+                  { title: "Hành trình", sorter: (a, b) => byText(routeText(a), routeText(b)), render: (_, t) => routeText(t) },
                   {
                     title: "Trạng thái",
                     dataIndex: "status",
+                    sorter: (a, b) => byText(TRIP_STATUS[a.status].label, TRIP_STATUS[b.status].label),
                     render: (v) => <EnumTag labels={TRIP_STATUS} value={v} />,
                   },
                 ]}
+                showSorterTooltip={{ title: "Bấm để sắp xếp tăng / giảm / bỏ sắp xếp" }}
               />
             </Card>
   );

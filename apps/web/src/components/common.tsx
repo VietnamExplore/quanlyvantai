@@ -6,12 +6,15 @@ import type { Customer, Driver, Location, Partner, Service, Settings, VehicleTyp
 
 export const DATE_FORMAT = 'DD/MM/YYYY';
 
+/** So sánh chữ tiếng Việt có dấu, dùng cho sắp xếp cột bảng */
+export const byText = (a?: string | null, b?: string | null) => (a ?? '').localeCompare(b ?? '', 'vi');
+
 /** Số dòng tối đa mỗi trang của mọi bảng danh sách */
 export const PAGE_SIZE = 100;
-/** Phân trang chung: 100 dòng/trang, hiện "1–100 / 245 <đơn vị>" (ẩn khi chỉ có 1 trang) */
+/** Phân trang chung: 100 dòng/trang, luôn hiện "1–100 / 245 <đơn vị>" */
 export const paged = (unit = 'dòng') => ({
   pageSize: PAGE_SIZE,
-  hideOnSinglePage: true,
+  hideOnSinglePage: false,
   showSizeChanger: false,
   showTotal: (total: number, [a, b]: [number, number]) => `${a}–${b} / ${total} ${unit}`,
 });
