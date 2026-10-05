@@ -298,7 +298,7 @@ export function SignCard({ form, defaultTitle, canPrint, bookingId, pendingFile,
         </Button>
       }
     >
-      <Row gutter={16}>
+      <Row gutter={[16, 16]}>
         <Col xs={24} md={12}>
           <Form.Item name="signTitle" label="Dòng chính (tên khách / đoàn)" extra="Bỏ trống sẽ dùng tên khách hàng">
             <Input placeholder={defaultTitle || 'MR. JOHN SMITH'} />
@@ -519,7 +519,7 @@ function SignFileBox({
 
   if (!canEdit) return null;
   return (
-    <Upload.Dragger accept={SIGN_ACCEPT} showUploadList={false} beforeUpload={(f) => (pick(f), false)} disabled={uploading}>
+    <Upload.Dragger className="sign-dragger" accept={SIGN_ACCEPT} showUploadList={false} beforeUpload={(f) => (pick(f), false)} disabled={uploading}>
       <p className="ant-upload-drag-icon" style={{ marginBottom: 4 }}>
         <InboxOutlined />
       </p>

@@ -284,3 +284,13 @@ body {
   padding: 6px 8px;
   font-size: 13px;
 }
+
+/* Ô tải bảng đón: cao theo nội dung (Safari iPhone tính height 100% theo cả hàng → đè lên khung Xem trước) */
+.sign-dragger,
+.sign-dragger .ant-upload,
+.sign-dragger .ant-upload-drag {
+  height: auto !important;
+}
+.sign-dragger .ant-upload-drag {
+  display: block;
+}
