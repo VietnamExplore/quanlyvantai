@@ -6,6 +6,7 @@ import {
   TagsOutlined,
   WalletOutlined,
   DollarOutlined,
+  HistoryOutlined,
   CalendarOutlined,
   CarOutlined,
   FileTextOutlined,
@@ -94,6 +95,7 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
     items: [
       { key: '/users', label: 'Người dùng', icon: <UserOutlined /> },
       { key: '/settings', label: 'Thông tin công ty', icon: <BankOutlined /> },
+      { key: '/audit-logs', label: 'Nhật ký thao tác', icon: <HistoryOutlined /> },
     ],
   },
 ];

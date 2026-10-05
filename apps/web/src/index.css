@@ -394,3 +394,41 @@ body {
   margin-top: 7px;
   flex-shrink: 0;
 }
+
+/* ───── Nhật ký thao tác ───── */
+.audit-changes {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.audit-changes li {
+  overflow-wrap: anywhere;
+}
+.audit-from {
+  color: #b91c1c;
+  text-decoration: line-through;
+  text-decoration-color: rgba(185, 28, 28, 0.4);
+}
+.audit-to {
+  color: #15803d;
+}
+.audit-timeline .audit-row {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+.audit-time {
+  flex: 0 0 120px;
+  color: #8a94a6;
+  font-size: 12.5px;
+}
+@media (max-width: 767px) {
+  .audit-timeline .audit-row {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .audit-time {
+    flex: none;
+  }
+}

@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { AdvancesModule } from './advances/advances.module';
+import { AuditModule } from './audit/audit.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
@@ -48,6 +49,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     LocationsModule,
     AlertsModule,
     AdvancesModule,
+    AuditModule,
     PricingModule,
     SettingsModule,
     BookingsModule,

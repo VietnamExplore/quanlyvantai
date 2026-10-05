@@ -687,3 +687,34 @@ model Notification {
   @@index([userId, createdAt])
   @@index([userId, readAt])
 }
+
+// ───────────── Nhật ký thao tác ─────────────
+
+/// Ghi lại mọi thao tác thêm / sửa / xóa / đổi trạng thái và đăng nhập (giữ tên người làm kể cả khi tài khoản đã xóa)
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  userId      Int?
+  userName    String?
+  /// Mô tả thao tác, vd. "Sửa booking", "Điều xe", "Đăng nhập"
+  action      String
+  method      String
+  path        String
+  /// Loại đối tượng: Booking, Trip, Payment, Vehicle, Driver, User…
+  entity      String?
+  entityId    String?
+  /// Tên dễ đọc của đối tượng: mã booking, biển số, họ tên…
+  entityLabel String?
+  /// Booking liên quan (để xem lịch sử trong từng booking)
+  bookingId   Int?
+  detail      String?
+  /// Chi tiết thay đổi: [{ field, from, to }]
+  changes     Json?
+  ip          String?
+  success     Boolean  @default(true)
+
+  @@index([createdAt])
+  @@index([bookingId])
+  @@index([userId])
+  @@index([entity, entityId])
+}

@@ -73,6 +73,7 @@ import { LeaderCard, PassengersCard, SignCard, uploadSignFile } from "../compone
 import { PaymentsCard } from "../components/finance";
 import { QuickSelect } from "../components/QuickCreate";
 import { DocTranslationsModal } from "../components/DocTranslationsModal";
+import { BookingHistoryCard } from "../components/AuditLog";
 import { DOC_LANGS, toDocLang, type DocLang } from "../doc-i18n";
 import type { Booking, BookingStatus, Customer, Passenger } from "../types";
 import { ResponsiveTable } from '../components/ResponsiveTable';
@@ -866,6 +867,11 @@ export default function BookingEditPage() {
         {!isNew && booking && (
           <ConfigProvider componentDisabled={false}>
             <PaymentsCard bookingId={booking.id} />
+          </ConfigProvider>
+        )}
+        {!isNew && booking && (
+          <ConfigProvider componentDisabled={false}>
+            <BookingHistoryCard bookingId={booking.id} />
           </ConfigProvider>
         )}
 

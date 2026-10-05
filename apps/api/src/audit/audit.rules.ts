@@ -1,0 +1,188 @@
+/**
+ * Mô tả các thao tác ghi dữ liệu để đưa vào nhật ký.
+ * model: bảng Prisma để chụp dữ liệu trước / sau khi sửa (so sánh thay đổi); idField: khóa của bảng (mặc định id).
+ * skip: không ghi (thao tác chỉ đọc / không quan trọng).
+ */
+export interface AuditRule {
+  method: string;
+  path: string;
+  action: string;
+  entity?: string;
+  model?: string;
+  idField?: 'id' | 'code';
+  skip?: boolean;
+}
+
+const r = (method: string, path: string, action: string, entity?: string, model?: string, idField?: 'id' | 'code'): AuditRule => ({ method, path, action, entity, model, idField });
+
+export const AUDIT_RULES: AuditRule[] = [
+  // Đăng nhập
+  r('POST', '/auth/login', 'Đăng nhập', 'User'),
+  r('POST', '/auth/change-password', 'Đổi mật khẩu', 'User'),
+
+  // Booking
+  r('POST', '/bookings', 'Tạo booking', 'Booking', 'booking'),
+  r('POST', '/bookings/quick-dispatch', 'Tạo lệnh điều xe nhanh', 'Booking', 'booking'),
+  r('PATCH', '/bookings/:id', 'Sửa booking', 'Booking', 'booking'),
+  r('POST', '/bookings/:id/status', 'Đổi trạng thái booking', 'Booking', 'booking'),
+  r('POST', '/bookings/:id/sign-file', 'Tải lên bảng đón khách gửi', 'Booking', 'booking'),
+  r('DELETE', '/bookings/:id/sign-file', 'Xóa bảng đón khách gửi', 'Booking', 'booking'),
+  r('PUT', '/bookings/:id/translations', 'Sửa bản dịch giấy tờ', 'Booking', 'booking'),
+  r('POST', '/bookings/:id/translations/auto', 'Dịch tự động giấy tờ', 'Booking', 'booking'),
+  r('POST', '/bookings/:id/payments', 'Thu tiền khách', 'Booking', 'booking'),
+  r('DELETE', '/payments/:id', 'Xóa lần thu tiền khách', 'Payment', 'payment'),
+
+  // Điều xe
+  r('POST', '/dispatch/trips/:id/assign', 'Điều xe', 'Trip', 'bookingTrip'),
+  r('POST', '/dispatch/trips/:id/unassign', 'Hủy điều xe', 'Trip', 'bookingTrip'),
+  r('POST', '/dispatch/trips/:id/status', 'Đổi trạng thái chuyến', 'Trip', 'bookingTrip'),
+  { method: 'POST', path: '/dispatch/trips/:id/check', action: '', skip: true },
+
+  // Tài chính
+  r('POST', '/trips/:id/costs', 'Thêm chi phí chuyến', 'Trip', 'bookingTrip'),
+  r('DELETE', '/trip-costs/:id', 'Xóa chi phí chuyến', 'TripCost', 'tripCost'),
+  r('POST', '/trips/:id/odometer', 'Sửa km / định mức xăng chuyến', 'Trip', 'bookingTrip'),
+  r('POST', '/trips/:id/collect-settle', 'Xác nhận đã nhận tiền thu hộ', 'Trip', 'bookingTrip'),
+  r('POST', '/vouchers', 'Lập phiếu thu chi', 'Voucher', 'cashVoucher'),
+  r('PATCH', '/vouchers/:id', 'Sửa phiếu thu chi', 'Voucher', 'cashVoucher'),
+  r('DELETE', '/vouchers/:id', 'Xóa phiếu thu chi', 'Voucher', 'cashVoucher'),
+  r('POST', '/partners/:id/payments', 'Thanh toán nhà xe', 'Partner', 'partner'),
+  r('DELETE', '/partner-payments/:id', 'Xóa lần thanh toán nhà xe', 'PartnerPayment', 'partnerPayment'),
+  r('POST', '/advance-requests/:id/approve', 'Duyệt & chi tạm ứng', 'Advance', 'advanceRequest'),
+  r('POST', '/advance-requests/:id/reject', 'Từ chối tạm ứng', 'Advance', 'advanceRequest'),
+
+  // Danh mục
+  r('POST', '/vehicles', 'Thêm xe', 'Vehicle', 'vehicle'),
+  r('PATCH', '/vehicles/:id', 'Sửa xe', 'Vehicle', 'vehicle'),
+  r('DELETE', '/vehicles/:id', 'Xóa xe', 'Vehicle', 'vehicle'),
+  r('POST', '/drivers', 'Thêm lái xe', 'Driver', 'driver'),
+  r('PATCH', '/drivers/:id', 'Sửa lái xe', 'Driver', 'driver'),
+  r('DELETE', '/drivers/:id', 'Xóa lái xe', 'Driver', 'driver'),
+  r('PUT', '/drivers/:id/salaries', 'Cài mức lương lái xe', 'Driver', 'driver'),
+  r('DELETE', '/drivers/salaries/:salaryId', 'Xóa mức lương lái xe', 'Driver'),
+  r('POST', '/partners', 'Thêm nhà xe đối tác', 'Partner', 'partner'),
+  r('PATCH', '/partners/:id', 'Sửa nhà xe đối tác', 'Partner', 'partner'),
+  r('POST', '/customers', 'Thêm khách hàng', 'Customer', 'customer'),
+  r('PATCH', '/customers/:id', 'Sửa khách hàng', 'Customer', 'customer'),
+  r('POST', '/locations', 'Thêm địa điểm', 'Location', 'location'),
+  r('PATCH', '/locations/:id', 'Sửa địa điểm', 'Location', 'location'),
+  r('POST', '/vehicle-types', 'Thêm loại xe', 'VehicleType', 'vehicleType'),
+  r('PATCH', '/vehicle-types/:id', 'Sửa loại xe', 'VehicleType', 'vehicleType'),
+  r('POST', '/services', 'Thêm dịch vụ', 'Service', 'service', 'code'),
+  r('PATCH', '/services/:code', 'Sửa dịch vụ', 'Service', 'service', 'code'),
+  r('POST', '/cost-categories', 'Thêm loại chi phí', 'CostCategory', 'costCategory', 'code'),
+  r('PATCH', '/cost-categories/:code', 'Sửa loại chi phí', 'CostCategory', 'costCategory', 'code'),
+  r('POST', '/customer-sources', 'Thêm nguồn khách', 'CustomerSource', 'customerSource', 'code'),
+  r('PATCH', '/customer-sources/:code', 'Sửa nguồn khách', 'CustomerSource', 'customerSource', 'code'),
+  r('POST', '/route-prices', 'Thêm giá tuyến', 'RoutePrice', 'routePrice'),
+  r('PATCH', '/route-prices/:id', 'Sửa giá tuyến', 'RoutePrice', 'routePrice'),
+  r('DELETE', '/route-prices/:id', 'Xóa giá tuyến', 'RoutePrice', 'routePrice'),
+  r('PUT', '/rental-rates/:vehicleTypeId', 'Sửa giá thuê theo ngày', 'VehicleType'),
+  r('POST', '/surcharges', 'Thêm phụ thu', 'Surcharge', 'surcharge'),
+  r('PATCH', '/surcharges/:id', 'Sửa phụ thu', 'Surcharge', 'surcharge'),
+  r('DELETE', '/surcharges/:id', 'Xóa phụ thu', 'Surcharge', 'surcharge'),
+  r('POST', '/holidays', 'Thêm ngày lễ', 'Holiday', 'holiday'),
+  r('PATCH', '/holidays/:id', 'Sửa ngày lễ', 'Holiday', 'holiday'),
+  r('DELETE', '/holidays/:id', 'Xóa ngày lễ', 'Holiday', 'holiday'),
+
+  // Hệ thống
+  r('POST', '/users', 'Thêm người dùng', 'User', 'user'),
+  r('PATCH', '/users/:id', 'Sửa người dùng', 'User', 'user'),
+  r('DELETE', '/users/:id', 'Xóa người dùng', 'User', 'user'),
+  r('PUT', '/settings', 'Sửa thông tin công ty', 'Settings'),
+  r('POST', '/settings/logo', 'Đổi logo công ty', 'Settings'),
+  r('DELETE', '/settings/logo', 'Xóa logo công ty', 'Settings'),
+  r('PUT', '/settings/translate-key', 'Đổi khóa dịch tự động', 'Settings'),
+
+  // App lái xe
+  r('POST', '/driver/trips/:id/status', 'Lái xe cập nhật trạng thái chuyến', 'Trip', 'bookingTrip'),
+  r('POST', '/driver/trips/:id/reject', 'Lái xe từ chối chuyến', 'Trip', 'bookingTrip'),
+  r('POST', '/driver/trips/:id/collect', 'Lái xe xác nhận đã thu tiền', 'Trip', 'bookingTrip'),
+  r('POST', '/driver/trips/:id/odometer', 'Lái xe sửa km chuyến', 'Trip', 'bookingTrip'),
+  r('POST', '/driver/trips/:id/costs', 'Lái xe nhập chi phí chuyến', 'Trip', 'bookingTrip'),
+  r('POST', '/driver/trip-costs/:id/delete', 'Lái xe xóa chi phí chuyến', 'TripCost', 'tripCost'),
+  r('POST', '/driver/trip-costs/:id/receipt', 'Lái xe gửi ảnh hóa đơn', 'TripCost'),
+  r('POST', '/driver/fuel', 'Lái xe ghi đổ xăng', 'Voucher', 'cashVoucher'),
+  r('POST', '/driver/fuel/:id/delete', 'Lái xe xóa lần đổ xăng', 'Voucher', 'cashVoucher'),
+  r('POST', '/driver/fuel/:id/receipt', 'Lái xe gửi ảnh hóa đơn xăng', 'Voucher'),
+  r('POST', '/driver/advances', 'Lái xe đề nghị tạm ứng', 'Advance', 'advanceRequest'),
+  r('POST', '/driver/advances/:id/cancel', 'Lái xe hủy đề nghị tạm ứng', 'Advance', 'advanceRequest'),
+
+  // Không ghi
+  { method: 'POST', path: '/driver/push-token', action: '', skip: true },
+  { method: 'POST', path: '/notifications/:id/read', action: '', skip: true },
+  { method: 'POST', path: '/notifications/read-all', action: '', skip: true },
+  { method: 'POST', path: '/pricing/calculate', action: '', skip: true },
+  { method: 'POST', path: '/translate', action: '', skip: true },
+];
+
+/** Tên tiếng Việt của các trường hay sửa (để hiện "Giá chuyến: 1.000.000 → 1.200.000") */
+export const FIELD_LABEL: Record<string, string> = {
+  status: 'Trạng thái',
+  contactName: 'Người liên hệ',
+  contactPhone: 'SĐT liên hệ',
+  customerId: 'Khách hàng',
+  customerRef: 'Mã booking của khách',
+  salesUserId: 'NV kinh doanh',
+  source: 'Nguồn khách',
+  discountAmount: 'Giảm giá',
+  vatPercent: 'VAT %',
+  depositAmount: 'Đặt cọc',
+  quoteValidUntil: 'Báo giá hiệu lực đến',
+  notes: 'Ghi chú',
+  internalNotes: 'Ghi chú nội bộ',
+  cancelReason: 'Lý do hủy',
+  leaderRole: 'Vai trò người liên hệ chuyến',
+  leaderName: 'Tên HDV / trưởng đoàn',
+  leaderPhone: 'SĐT HDV / trưởng đoàn',
+  docLanguage: 'Ngôn ngữ giấy tờ',
+  signTitle: 'Bảng đón – dòng chính',
+  signSubtitle: 'Bảng đón – dòng phụ',
+  signFileName: 'File bảng đón',
+  vehicleId: 'Xe',
+  driverId: 'Lái xe',
+  partnerId: 'Nhà xe đối tác',
+  partnerCost: 'Giá thuê đối tác',
+  partnerPlate: 'Biển số xe đối tác',
+  partnerDriverName: 'Tài xế đối tác',
+  dispatchNote: 'Ghi chú điều xe',
+  startKm: 'Km bắt đầu',
+  endKm: 'Km kết thúc',
+  fuelNorm: 'Định mức xăng',
+  fuelLiters: 'Lít xăng định mức',
+  fuelCost: 'Chi phí xăng định mức',
+  collectSettledAt: 'Văn phòng nhận tiền thu hộ',
+  plateNumber: 'Biển số',
+  vehicleTypeId: 'Loại xe',
+  ownership: 'Sở hữu',
+  defaultDriverId: 'Lái xe mặc định',
+  odometerKm: 'Số km hiện tại',
+  registrationExpiry: 'Hạn đăng kiểm',
+  insuranceExpiry: 'Hạn bảo hiểm',
+  badgeExpiry: 'Hạn phù hiệu',
+  fullName: 'Họ tên',
+  phone: 'SĐT',
+  email: 'Email',
+  username: 'Tên đăng nhập',
+  roles: 'Vai trò',
+  isActive: 'Đang hoạt động',
+  licenseClass: 'Hạng bằng',
+  licenseNumber: 'Số bằng lái',
+  licenseExpiry: 'Hạn bằng lái',
+  healthCheckExpiry: 'Hạn khám sức khỏe',
+  name: 'Tên',
+  address: 'Địa chỉ',
+  taxCode: 'Mã số thuế',
+  amount: 'Số tiền',
+  date: 'Ngày',
+  method: 'Hình thức',
+  title: 'Khoản mục',
+  categoryCode: 'Loại chi phí',
+  counterparty: 'Người nộp / nhận',
+  reason: 'Lý do',
+  decisionNote: 'Ghi chú duyệt',
+  seats: 'Số chỗ',
+  maxPassengers: 'Số khách tối đa',
+  price: 'Giá',
+  value: 'Giá trị',
+};
