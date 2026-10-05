@@ -1,8 +1,8 @@
-import { DeleteOutlined, DollarOutlined, DownloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DollarOutlined, DownloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Col, Flex, Popconfirm, Row, Statistic, Tabs, Typography, Tag } from 'antd';
+import { App, Button, Card, Col, Flex, Popconfirm, Row, Statistic, Tabs, Typography, Tag, Tooltip } from 'antd';
 import dayjs from 'dayjs';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
@@ -14,6 +14,7 @@ import { PAYMENT_METHOD, TRIP_STATUS } from '../labels';
 import type { Payment, TripStatus } from '../types';
 import { ResponsiveTable } from '../components/ResponsiveTable';
 import { PARTNER_ISSUE } from '../components/PartnerCostAdjust';
+import { describeFilter, EMPTY_FILTER, FinanceFilterBar, fileSlug, inRange, isFiltered, rangeSuffix, type DebtFilter, type FinanceFilterValue } from '../components/FinanceFilter';
 import { EXTRA_STATUS, ExtraStatusTag, PartnerExtraReviewModal, type ExtraReviewValues } from '../components/PartnerExtraReview';
 
 interface PayTrip {
@@ -36,6 +37,9 @@ interface PayTrip {
   partnerNet: number;
   partnerVat: number;
   partnerTotal: number;
+  /** Tiền đã trả phân bổ cho chuyến (chuyến cũ trả trước) và số còn lại */
+  partnerPaid: number;
+  partnerRemain: number;
   status: TripStatus;
   booking: { id: number; code: string };
   vehicleType: { name: string };
@@ -47,6 +51,10 @@ interface PayPartner {
   phone: string | null;
   bankName: string | null;
   bankAccount: string | null;
+  taxCode: string | null;
+  address: string | null;
+  /** Tiền đã trả vượt công nợ, chưa phân bổ vào chuyến nào */
+  prepaid: number;
   tripCount: number;
   totalNet: number;
   totalVat: number;
@@ -55,6 +63,100 @@ interface PayPartner {
   balance: number;
   trips: PayTrip[];
   payments: Payment[];
+}
+
+const DEBT_LABELS: Partial<Record<DebtFilter, string>> = { all: 'Tất cả', owe: 'Còn phải trả', paid: 'Đã trả đủ' };
+
+/** Lọc từng chuyến theo bộ lọc rồi tính lại tổng của nhà xe; nhà xe không còn chuyến nào sau lọc thì ẩn */
+function applyFilter(list: PayPartner[], f: FinanceFilterValue): PayPartner[] {
+  if (!isFiltered(f)) return list;
+  const q = f.q.trim().toLowerCase();
+  return list
+    .filter((p) => !f.ids.length || f.ids.includes(String(p.id)))
+    .map((p) => {
+      const nameHit = !q || `${p.name} ${p.phone ?? ''}`.toLowerCase().includes(q);
+      const trips = p.trips.filter(
+        (t) =>
+          inRange(f, t.pickupTime) &&
+          (nameHit || `${t.booking.code} ${t.partnerPlate ?? ''} ${t.pickupAddress} ${t.dropoffAddress ?? ''}`.toLowerCase().includes(q)) &&
+          (f.debt === 'all' || (f.debt === 'owe' ? Math.round(t.partnerRemain) > 0 : Math.round(t.partnerRemain) <= 0)) &&
+          (f.invoice === 'all' || (f.invoice === 'yes') === t.partnerInvoice) &&
+          (!f.pendingExtra || t.partnerExtraStatus === 'CHO_DUYET'),
+      );
+      const sum = (k: 'partnerNet' | 'partnerVat' | 'partnerTotal' | 'partnerPaid' | 'partnerRemain') => trips.reduce((s, t) => s + t[k], 0);
+      return {
+        ...p,
+        trips,
+        payments: p.payments.filter((x) => inRange(f, x.paidAt)),
+        tripCount: trips.length,
+        totalNet: sum('partnerNet'),
+        totalVat: sum('partnerVat'),
+        totalCost: sum('partnerTotal'),
+        totalPaid: sum('partnerPaid'),
+        balance: sum('partnerRemain'),
+      };
+    })
+    .filter((p) => p.trips.length > 0);
+}
+
+const TRIP_HEADERS = ['Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê', 'Phát sinh tăng', 'Phát sinh giảm', 'Lý do phát sinh', 'Duyệt phát sinh', 'Chưa thuế', 'Thuế suất', 'Thuế GTGT', 'Phải trả', 'Đã trả', 'Còn lại', 'Trạng thái'];
+const TRIP_SUMS = [4, 5, 6, 9, 11, 12, 13, 14];
+const tripRow = (t: PayTrip) => [
+  dayjs(t.pickupTime).format('DD/MM/YYYY HH:mm'),
+  t.booking.code,
+  [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → '),
+  t.partnerPlate,
+  Number(t.partnerCost ?? 0),
+  Number(t.partnerExtraUp),
+  Number(t.partnerExtraDown),
+  t.partnerExtraNote ?? '',
+  t.partnerExtraStatus ? (EXTRA_STATUS[t.partnerExtraStatus]?.label ?? '') : '',
+  t.partnerNet,
+  t.partnerInvoice ? `${Number(t.partnerVatPercent)}%` : 'Không HĐ',
+  t.partnerVat,
+  t.partnerTotal,
+  t.partnerPaid,
+  t.partnerRemain,
+  TRIP_STATUS[t.status].label,
+];
+
+/** File Excel đối chiếu công nợ của một nhà xe (theo bộ lọc hiện tại) */
+function exportPartner(p: PayPartner, f: FinanceFilterValue, filtered: boolean) {
+  const summary: [string, number][] = [
+    ['Tổng phải trả', p.totalCost],
+    ['Đã trả', p.totalPaid],
+    ['Còn phải trả', filtered ? p.balance : p.totalCost - p.totalPaid],
+  ];
+  if (!filtered && p.prepaid > 0) summary.splice(2, 0, ['Trong đó trả trước (chưa phân bổ)', p.prepaid]);
+  return downloadExcel(`doi-chieu-cong-no_${fileSlug(p.name)}${rangeSuffix(f)}.xlsx`, [
+    {
+      name: 'Đối chiếu công nợ',
+      title: `BẢNG ĐỐI CHIẾU CÔNG NỢ NHÀ XE – ${p.name.toUpperCase()}`,
+      info: [
+        [p.phone && `SĐT: ${p.phone}`, p.taxCode && `MST: ${p.taxCode}`, p.bankAccount && `TK: ${p.bankName ?? ''} ${p.bankAccount}`].filter(Boolean).join(' · '),
+        p.address ? `Địa chỉ: ${p.address}` : '',
+        describeFilter(f, DEBT_LABELS),
+        'Tiền đã trả được phân bổ cho các chuyến theo thứ tự ngày chạy (chuyến cũ trước)',
+        `Ngày lập: ${dayjs().format('DD/MM/YYYY HH:mm')}`,
+      ].filter(Boolean),
+      headers: TRIP_HEADERS,
+      sumColumns: TRIP_SUMS,
+      totalLabel: 'Tổng cộng',
+      rows: [...p.trips].sort((a, b) => dayjs(a.pickupTime).valueOf() - dayjs(b.pickupTime).valueOf()).map(tripRow),
+      summary,
+    },
+    {
+      name: 'Lịch sử thanh toán',
+      title: `LỊCH SỬ THANH TOÁN – ${p.name.toUpperCase()}`,
+      info: [f.range ? `Các lần thanh toán từ ${f.range[0].format(DATE_FORMAT)} đến ${f.range[1].format(DATE_FORMAT)}` : 'Tất cả các lần thanh toán'],
+      headers: ['Ngày', 'Số tiền', 'Hình thức', 'Chứng từ', 'Ghi chú', 'Người ghi'],
+      sumColumns: [1],
+      totalLabel: 'Tổng đã thanh toán',
+      rows: [...p.payments]
+        .sort((a, b) => dayjs(a.paidAt).valueOf() - dayjs(b.paidAt).valueOf())
+        .map((x) => [dayjs(x.paidAt).format(DATE_FORMAT), Number(x.amount), PAYMENT_METHOD[x.method]?.label ?? x.method, x.reference, x.note, x.createdBy?.fullName]),
+    },
+  ]);
 }
 
 export default function PayablesPage() {
@@ -71,6 +173,11 @@ export default function PayablesPage() {
     queryKey: ['/finance', 'payables'],
     queryFn: () => api<{ totalBalance: number; partners: PayPartner[] }>('/finance/payables'),
   });
+  const [filter, setFilter] = useState<FinanceFilterValue>(EMPTY_FILTER);
+  const filtered = isFiltered(filter);
+  const partners = useMemo(() => applyFilter(data?.partners ?? [], filter), [data, filter]);
+  const entities = useMemo(() => (data?.partners ?? []).map((p) => ({ value: String(p.id), label: p.name })), [data]);
+  const totalBalance = filtered ? partners.reduce((s, p) => s + p.balance, 0) : (data?.totalBalance ?? 0);
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['/finance'] });
     queryClient.invalidateQueries({ queryKey: ['/reports/summary'] });
@@ -102,32 +209,15 @@ export default function PayablesPage() {
   }
 
   function exportCsv() {
-    downloadExcel(`cong-no-nha-xe-${dayjs().format('YYYYMMDD')}.xlsx`, [
+    downloadExcel(`cong-no-nha-xe${rangeSuffix(filter)}.xlsx`, [
       {
         name: 'Công nợ nhà xe',
         title: `CÔNG NỢ NHÀ XE ĐỐI TÁC – ngày ${dayjs().format('DD/MM/YYYY')}`,
-        headers: ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê', 'Phát sinh tăng', 'Phát sinh giảm', 'Lý do phát sinh', 'Duyệt phát sinh', 'Chưa thuế', 'Thuế suất', 'Thuế GTGT', 'Phải trả', 'Trạng thái'],
-        sumColumns: [5, 6, 7, 10, 12, 13],
+        info: [describeFilter(filter, DEBT_LABELS)],
+        headers: ['Nhà xe', ...TRIP_HEADERS],
+        sumColumns: TRIP_SUMS.map((i) => i + 1),
         totalLabel: 'Tổng cộng',
-        rows: (data?.partners ?? []).flatMap((p) =>
-          p.trips.map((t) => [
-            p.name,
-            dayjs(t.pickupTime).format('DD/MM/YYYY HH:mm'),
-            t.booking.code,
-            [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → '),
-            t.partnerPlate,
-            Number(t.partnerCost ?? 0),
-            Number(t.partnerExtraUp),
-            Number(t.partnerExtraDown),
-            t.partnerExtraNote ?? '',
-            t.partnerExtraStatus ? (EXTRA_STATUS[t.partnerExtraStatus]?.label ?? '') : '',
-            t.partnerNet,
-            t.partnerInvoice ? `${Number(t.partnerVatPercent)}%` : 'Không HĐ',
-            t.partnerVat,
-            t.partnerTotal,
-            TRIP_STATUS[t.status].label,
-          ]),
-        ),
+        rows: partners.flatMap((p) => p.trips.map((t) => [p.name, ...tripRow(t)])),
       },
     ]);
   }
@@ -137,12 +227,12 @@ export default function PayablesPage() {
       <Row gutter={[16, 16]}>
         <Col xs={12} md={8}>
           <Card>
-            <Statistic title="Tổng còn phải trả nhà xe" value={data?.totalBalance ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} />
+            <Statistic title={filtered ? 'Còn phải trả (theo bộ lọc)' : 'Tổng còn phải trả nhà xe'} value={totalBalance} formatter={(v) => `${formatVnd(Number(v))} đ`} />
           </Card>
         </Col>
         <Col xs={12} md={8}>
           <Card>
-            <Statistic title="Số nhà xe còn nợ" value={(data?.partners ?? []).filter((p) => p.balance > 0).length} />
+            <Statistic title="Số nhà xe còn nợ" value={(filtered ? partners : (data?.partners ?? [])).filter((p) => p.balance > 0).length} />
           </Card>
         </Col>
       </Row>
@@ -152,14 +242,23 @@ export default function PayablesPage() {
           <Typography.Title level={4} style={{ margin: 0 }}>
             Công nợ nhà xe đối tác
           </Typography.Title>
-          <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={!data?.partners.length}>
-            Xuất Excel đối soát
+          <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={!partners.length}>
+            Xuất Excel {filtered ? 'theo bộ lọc' : 'tất cả'}
           </Button>
         </Flex>
+        <FinanceFilterBar
+          value={filter}
+          onChange={setFilter}
+          entityLabel="nhà xe"
+          entities={entities}
+          searchPlaceholder="Mã booking, biển số, địa điểm"
+          debtLabels={DEBT_LABELS}
+          showPendingExtra
+        />
         <ResponsiveTable<PayPartner>
           rowKey="id"
           loading={isLoading}
-          dataSource={data?.partners ?? []}
+          dataSource={partners}
           pagination={paged('nhà xe')}
           locale={{ emptyText: 'Chưa có chuyến nào giao cho nhà xe đối tác' }}
           expandable={{
@@ -230,6 +329,12 @@ export default function PayablesPage() {
                             render: (v, t) => (t.partnerInvoice ? <>{formatVnd(v)} ({Number(t.partnerVatPercent)}%)</> : <span style={{ color: '#999' }}>Không HĐ</span>),
                           },
                           { title: 'Phải trả', dataIndex: 'partnerTotal', align: 'right', render: (v) => <Money value={v} strong /> },
+                          {
+                            title: 'Còn lại',
+                            dataIndex: 'partnerRemain',
+                            align: 'right',
+                            render: (v, t) => (Math.round(v) > 0 ? <span title={`Đã trả ${formatVnd(t.partnerPaid)} đ`}>{formatVnd(v)}</span> : <Tag color="green">Đã trả đủ</Tag>),
+                          },
                         ]}
                       />
                     ),
@@ -294,6 +399,24 @@ export default function PayablesPage() {
               dataIndex: 'balance',
               align: 'right',
               render: (v) => <Typography.Text strong type={v > 0 ? 'danger' : undefined}>{formatVnd(v)} đ</Typography.Text>,
+            },
+            {
+              key: 'excel',
+              width: 60,
+              render: (_: unknown, p: PayPartner) => (
+                <Tooltip title={`Xuất Excel đối chiếu công nợ của ${p.name}${filtered ? ' (theo bộ lọc)' : ''}`}>
+                  <Button
+                    size="small"
+                    icon={<FileExcelOutlined style={{ color: '#15803d' }} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      exportPartner(p, filter, filtered);
+                    }}
+                  >
+                    Excel
+                  </Button>
+                </Tooltip>
+              ),
             },
             ...(canPay
               ? [

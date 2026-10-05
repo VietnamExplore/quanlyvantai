@@ -5,6 +5,10 @@ export interface ExcelSheet {
   name: string;
   /** Dòng tiêu đề in đậm phía trên bảng, ví dụ "BÁO CÁO DOANH THU 01/10/2026 – 31/10/2026" */
   title?: string;
+  /** Các dòng thông tin dưới tiêu đề (đối tượng, MST, kỳ đối chiếu…) */
+  info?: string[];
+  /** Bảng tóm tắt dưới dòng tổng: [nhãn, số tiền] (ví dụ Tổng phải thu / Đã thu / Còn nợ) */
+  summary?: [string, number][];
   headers: string[];
   rows: Cell[][];
   /** Chỉ số các cột tiền / số lượng: định dạng 1.000.000 và cộng tổng ở dòng cuối */
@@ -31,8 +35,13 @@ export async function downloadExcel(filename: string, sheets: ExcelSheet[]) {
     if (s.title) {
       ws.addRow([s.title]).font = { bold: true, size: 13 };
       ws.mergeCells(1, 1, 1, Math.max(1, s.headers.length));
+      headerRow = 2;
+      for (const line of s.info ?? []) {
+        ws.addRow([line]).font = { italic: true };
+        headerRow++;
+      }
       ws.addRow([]);
-      headerRow = 3;
+      headerRow++;
     }
     const head = ws.addRow(s.headers);
     head.font = { bold: true };
@@ -68,6 +77,19 @@ export async function downloadExcel(filename: string, sheets: ExcelSheet[]) {
         total.getCell(i + 1).value = { formula: `SUM(${letter}${firstData}:${letter}${lastData})`, result: sum };
       }
       total.eachCell((c) => (c.border = { top: { style: 'thin' } }));
+    }
+
+    if (s.summary?.length) {
+      ws.addRow([]);
+      // Đặt nhãn ở cột kế cuối cột tiền cuối cùng để số tiền thẳng hàng với bảng
+      const valueCol = Math.max(2, ...(s.sumColumns ?? [1]).map((i) => i + 1));
+      for (const [label, value] of s.summary) {
+        const r = ws.addRow([]);
+        r.getCell(valueCol - 1).value = label;
+        r.getCell(valueCol).value = value;
+        r.getCell(valueCol).numFmt = '#,##0';
+        r.font = { bold: true };
+      }
     }
 
     ws.views = [{ state: 'frozen', ySplit: headerRow }];

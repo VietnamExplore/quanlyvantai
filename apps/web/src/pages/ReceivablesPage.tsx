@@ -1,15 +1,16 @@
-import { DollarOutlined, DownloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { DollarOutlined, DownloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Checkbox, Col, Flex, Input, Row, Statistic, Tag, Tooltip, Typography } from 'antd';
+import { App, Button, Card, Col, Flex, Row, Statistic, Tag, Tooltip, Typography } from 'antd';
 import dayjs from 'dayjs';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { DATE_FORMAT, EnumTag, formatVnd, Money, paged } from '../components/common';
 import { PaymentModal } from '../components/finance';
 import { downloadExcel } from '../excel';
-import { BOOKING_STATUS, CUSTOMER_TYPE } from '../labels';
+import { BOOKING_STATUS, CUSTOMER_TYPE, PAYMENT_METHOD } from '../labels';
+import { describeFilter, EMPTY_FILTER, FinanceFilterBar, fileSlug, inRange, isFiltered, rangeSuffix, type DebtFilter, type FinanceFilterValue } from '../components/FinanceFilter';
 import type { BookingStatus, CustomerType } from '../types';
 import { ResponsiveTable } from '../components/ResponsiveTable';
 
@@ -33,6 +34,7 @@ interface RecBooking {
   balance: number;
   /** Booking chưa nhập giá (tổng 0 đ, chưa thu) – vẫn coi là còn nợ */
   unpriced: boolean;
+  payments: { id: number; amount: number; paidAt: string; method: string; reference: string | null; note: string | null }[];
 }
 
 interface RecCustomer {
@@ -40,6 +42,9 @@ interface RecCustomer {
   customerId: number | null;
   name: string;
   phone: string | null;
+  taxCode: string | null;
+  address: string | null;
+  email: string | null;
   customerType: CustomerType;
   creditLimit: number | null;
   totalNet: number;
@@ -64,6 +69,93 @@ const UNPRICED_TAG = (
   </Tooltip>
 );
 
+const DEBT_LABELS: Record<DebtFilter, string> = { all: 'Tất cả', owe: 'Còn nợ', overdue: 'Quá hạn', paid: 'Đã thu đủ' };
+
+/** Lọc từng booking theo bộ lọc rồi tính lại tổng của khách; khách không còn booking nào sau lọc thì ẩn */
+function applyFilter(list: RecCustomer[], f: FinanceFilterValue): RecCustomer[] {
+  const q = f.q.trim().toLowerCase();
+  return list
+    .filter((c) => !f.ids.length || f.ids.includes(c.key))
+    .map((c) => {
+      const nameHit = !q || `${c.name} ${c.phone ?? ''}`.toLowerCase().includes(q);
+      const bookings = c.bookings.filter(
+        (b) =>
+          inRange(f, b.firstPickup) &&
+          (nameHit || `${b.code} ${b.customerRef ?? ''}`.toLowerCase().includes(q)) &&
+          (f.debt === 'all' || (f.debt === 'owe' ? bookingOwes(b) : f.debt === 'paid' ? !bookingOwes(b) : b.overdueDays > 0 && Math.round(b.balance) > 0)) &&
+          (f.invoice === 'all' || (f.invoice === 'yes') === b.invoice) &&
+          (!f.sales || b.salesUser === f.sales),
+      );
+      const sum = (k: 'net' | 'vat' | 'total' | 'paid' | 'balance') => bookings.reduce((s, b) => s + b[k], 0);
+      const overdueList = bookings.filter((b) => b.overdueDays > 0 && b.balance > 0);
+      return {
+        ...c,
+        bookings,
+        totalNet: sum('net'),
+        totalVat: sum('vat'),
+        totalBilled: sum('total'),
+        totalPaid: sum('paid'),
+        balance: sum('balance'),
+        overdue: overdueList.reduce((s, b) => s + b.balance, 0),
+        maxOverdueDays: overdueList.reduce((m, b) => Math.max(m, b.overdueDays), 0),
+        unpriced: bookings.filter((b) => b.unpriced).length,
+      };
+    })
+    .filter((c) => c.bookings.length > 0);
+}
+
+const BOOKING_HEADERS = ['Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Chưa thuế', 'Thuế suất', 'Thuế GTGT', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)', 'Ghi chú'];
+const bookingRow = (b: RecBooking) => [
+  b.code,
+  b.customerRef,
+  b.firstPickup ? dayjs(b.firstPickup).format(DATE_FORMAT) : '',
+  b.salesUser,
+  b.net,
+  b.invoice ? `${b.vatPercent}%` : 'Không HĐ',
+  b.vat,
+  b.total,
+  b.paid,
+  b.balance,
+  dayjs(b.dueDate).format(DATE_FORMAT),
+  b.overdueDays && Math.round(b.balance) > 0 ? b.overdueDays : null,
+  b.unpriced ? 'Chưa nhập giá' : Math.round(b.balance) <= 0 ? 'Đã thu đủ' : '',
+];
+
+/** File Excel đối chiếu công nợ của một khách hàng (theo bộ lọc hiện tại) */
+function exportCustomer(c: RecCustomer, f: FinanceFilterValue) {
+  const payments = c.bookings.flatMap((b) => b.payments.map((p) => ({ ...p, code: b.code }))).sort((a, b) => dayjs(a.paidAt).valueOf() - dayjs(b.paidAt).valueOf());
+  return downloadExcel(`doi-chieu-cong-no_${fileSlug(c.name)}${rangeSuffix(f)}.xlsx`, [
+    {
+      name: 'Đối chiếu công nợ',
+      title: `BẢNG ĐỐI CHIẾU CÔNG NỢ – ${c.name.toUpperCase()}`,
+      info: [
+        [c.phone && `SĐT: ${c.phone}`, c.taxCode && `MST: ${c.taxCode}`, c.email && `Email: ${c.email}`].filter(Boolean).join(' · '),
+        c.address ? `Địa chỉ: ${c.address}` : '',
+        describeFilter(f, DEBT_LABELS),
+        `Ngày lập: ${dayjs().format('DD/MM/YYYY HH:mm')}`,
+      ].filter(Boolean),
+      headers: BOOKING_HEADERS,
+      sumColumns: [4, 6, 7, 8, 9],
+      totalLabel: 'Tổng cộng',
+      rows: [...c.bookings].sort((a, b) => dayjs(a.firstPickup ?? 0).valueOf() - dayjs(b.firstPickup ?? 0).valueOf()).map(bookingRow),
+      summary: [
+        ['Tổng phải thu', c.totalBilled],
+        ['Đã thu', c.totalPaid],
+        ['Còn nợ', c.balance],
+      ],
+    },
+    {
+      name: 'Lịch sử thu tiền',
+      title: `LỊCH SỬ THU TIỀN – ${c.name.toUpperCase()}`,
+      info: ['Các lần thu của những booking trong bảng đối chiếu'],
+      headers: ['Ngày thu', 'Booking', 'Số tiền', 'Hình thức', 'Chứng từ', 'Ghi chú'],
+      sumColumns: [2],
+      totalLabel: 'Tổng đã thu',
+      rows: payments.map((p) => [dayjs(p.paidAt).format(DATE_FORMAT), p.code, p.amount, PAYMENT_METHOD[p.method as keyof typeof PAYMENT_METHOD]?.label ?? p.method, p.reference, p.note]),
+    },
+  ]);
+}
+
 interface Receivables {
   totalBalance: number;
   totalOverdue: number;
@@ -75,45 +167,28 @@ export default function ReceivablesPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const canCollect = hasRole('ADMIN', 'KE_TOAN', 'KINH_DOANH');
-  const [q, setQ] = useState('');
-  const [onlyOverdue, setOnlyOverdue] = useState(false);
-  const [onlyDebt, setOnlyDebt] = useState(false);
+  const [filter, setFilter] = useState<FinanceFilterValue>(EMPTY_FILTER);
+  const filtered = isFiltered(filter);
   const [collect, setCollect] = useState<RecBooking | null>(null);
 
   const { data, isLoading } = useQuery({ queryKey: ['/finance', 'receivables'], queryFn: () => api<Receivables>('/finance/receivables') });
 
-  const customers = (data?.customers ?? []).filter(
-    (c) =>
-      (!q || `${c.name} ${c.phone ?? ''}`.toLowerCase().includes(q.toLowerCase())) && (!onlyOverdue || c.overdue > 0) && (!onlyDebt || owes(c)),
-  );
+  const customers = useMemo(() => applyFilter(data?.customers ?? [], filter), [data, filter]);
+  const entities = useMemo(() => (data?.customers ?? []).map((c) => ({ value: c.key, label: c.phone ? `${c.name} · ${c.phone}` : c.name })), [data]);
+  const salesOptions = useMemo(() => [...new Set((data?.customers ?? []).flatMap((c) => c.bookings.map((b) => b.salesUser)).filter((s): s is string => !!s))].sort((a, b) => a.localeCompare(b, 'vi')), [data]);
+  const totalBalance = filtered ? customers.reduce((s, c) => s + c.balance, 0) : (data?.totalBalance ?? 0);
+  const totalOverdue = filtered ? customers.reduce((s, c) => s + c.overdue, 0) : (data?.totalOverdue ?? 0);
 
   function exportCsv() {
-    downloadExcel(`cong-no-khach-hang-${dayjs().format('YYYYMMDD')}.xlsx`, [
+    downloadExcel(`cong-no-khach-hang${rangeSuffix(filter)}.xlsx`, [
       {
         name: 'Công nợ khách hàng',
         title: `CÔNG NỢ KHÁCH HÀNG – ngày ${dayjs().format('DD/MM/YYYY')}`,
-        headers: ['Khách hàng', 'SĐT', 'Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Chưa thuế', 'Thuế suất', 'Thuế GTGT', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)', 'Ghi chú'],
+        info: [describeFilter(filter, DEBT_LABELS)],
+        headers: ['Khách hàng', 'SĐT', ...BOOKING_HEADERS],
         sumColumns: [6, 8, 9, 10, 11],
         totalLabel: 'Tổng cộng',
-        rows: customers.flatMap((c) =>
-          c.bookings.map((b) => [
-            c.name,
-            c.phone,
-            b.code,
-            b.customerRef,
-            b.firstPickup ? dayjs(b.firstPickup).format(DATE_FORMAT) : '',
-            b.salesUser,
-            b.net,
-            b.invoice ? `${b.vatPercent}%` : 'Không HĐ',
-            b.vat,
-            b.total,
-            b.paid,
-            b.balance,
-            dayjs(b.dueDate).format(DATE_FORMAT),
-            b.overdueDays || null,
-            b.unpriced ? 'Chưa nhập giá' : Math.round(b.balance) <= 0 ? 'Đã thu đủ' : '',
-          ]),
-        ),
+        rows: customers.flatMap((c) => c.bookings.map((b) => [c.name, c.phone, ...bookingRow(b)])),
       },
     ]);
   }
@@ -123,17 +198,17 @@ export default function ReceivablesPage() {
       <Row gutter={[16, 16]}>
         <Col xs={12} md={8}>
           <Card>
-            <Statistic title="Tổng khách còn nợ" value={data?.totalBalance ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} />
+            <Statistic title={filtered ? 'Còn nợ (theo bộ lọc)' : 'Tổng khách còn nợ'} value={totalBalance} formatter={(v) => `${formatVnd(Number(v))} đ`} />
           </Card>
         </Col>
         <Col xs={12} md={8}>
           <Card>
-            <Statistic title="Trong đó quá hạn" value={data?.totalOverdue ?? 0} formatter={(v) => `${formatVnd(Number(v))} đ`} styles={{ content: { color: data?.totalOverdue ? '#cf1322' : undefined } }} />
+            <Statistic title="Trong đó quá hạn" value={totalOverdue} formatter={(v) => `${formatVnd(Number(v))} đ`} styles={{ content: { color: totalOverdue ? '#cf1322' : undefined } }} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="Số khách còn nợ" value={(data?.customers ?? []).filter(owes).length} />
+            <Statistic title="Số khách còn nợ" value={(filtered ? customers : (data?.customers ?? [])).filter(owes).length} />
           </Card>
         </Col>
       </Row>
@@ -146,19 +221,19 @@ export default function ReceivablesPage() {
               ({customers.length} khách)
             </Typography.Text>
           </Typography.Title>
-          <Flex gap={8} wrap align="center">
-            <Input allowClear prefix={<SearchOutlined />} placeholder="Tên, SĐT khách" style={{ width: 220 }} onChange={(e) => setQ(e.target.value)} />
-            <Checkbox checked={onlyDebt} onChange={(e) => setOnlyDebt(e.target.checked)}>
-              Chỉ khách còn nợ
-            </Checkbox>
-            <Checkbox checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)}>
-              Chỉ khách quá hạn
-            </Checkbox>
-            <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={!customers.length}>
-              Xuất Excel
-            </Button>
-          </Flex>
+          <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={!customers.length}>
+            Xuất Excel {filtered ? 'theo bộ lọc' : 'tất cả'}
+          </Button>
         </Flex>
+        <FinanceFilterBar
+          value={filter}
+          onChange={setFilter}
+          entityLabel="khách hàng"
+          entities={entities}
+          searchPlaceholder="Tên, SĐT, mã booking"
+          debtLabels={DEBT_LABELS}
+          salesOptions={salesOptions}
+        />
 
         <ResponsiveTable<RecCustomer>
           rowKey="key"
@@ -299,6 +374,24 @@ export default function ReceivablesPage() {
                 ) : (
                   ''
                 ),
+            },
+            {
+              key: 'excel',
+              width: 60,
+              render: (_, c) => (
+                <Tooltip title={`Xuất Excel đối chiếu công nợ của ${c.name}${filtered ? ' (theo bộ lọc)' : ''}`}>
+                  <Button
+                    size="small"
+                    icon={<FileExcelOutlined style={{ color: '#15803d' }} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      exportCustomer(c, filter);
+                    }}
+                  >
+                    Excel
+                  </Button>
+                </Tooltip>
+              ),
             },
           ]}
         />

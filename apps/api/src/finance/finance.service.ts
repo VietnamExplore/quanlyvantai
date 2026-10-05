@@ -140,9 +140,9 @@ export class FinanceService implements OnModuleInit {
     const bookings = await this.prisma.booking.findMany({
       where: { status: { in: BILLABLE }, ...(salesUserId && { salesUserId }) },
       include: {
-        customer: { select: { id: true, name: true, phone: true, type: true, creditLimit: true, paymentTermDays: true } },
+        customer: { select: { id: true, name: true, phone: true, type: true, creditLimit: true, paymentTermDays: true, taxCode: true, address: true, email: true } },
         trips: { select: { amount: true, status: true, endTime: true, pickupTime: true } },
-        payments: { select: { amount: true } },
+        payments: { select: { id: true, amount: true, paidAt: true, method: true, reference: true, note: true }, orderBy: { paidAt: 'asc' } },
         salesUser: { select: { fullName: true } },
       },
     });
@@ -153,6 +153,9 @@ export class FinanceService implements OnModuleInit {
       customerId: number | null;
       name: string;
       phone: string | null;
+      taxCode: string | null;
+      address: string | null;
+      email: string | null;
       customerType: string;
       creditLimit: number | null;
       totalNet: number;
@@ -184,6 +187,9 @@ export class FinanceService implements OnModuleInit {
           customerId: b.customerId,
           name: b.customer?.name ?? `${b.contactName} (khách lẻ)`,
           phone: b.customer?.phone ?? b.contactPhone,
+          taxCode: b.customer?.taxCode ?? null,
+          address: b.customer?.address ?? null,
+          email: b.customer?.email ?? null,
           customerType: b.customer?.type ?? 'KHACH_LE',
           creditLimit: b.customer?.creditLimit === null || b.customer?.creditLimit === undefined ? null : Number(b.customer.creditLimit),
           totalNet: 0,
@@ -227,6 +233,8 @@ export class FinanceService implements OnModuleInit {
         paid: t.paid,
         balance: t.balance,
         unpriced,
+        // Các lần thu của booking (dùng cho bảng đối chiếu công nợ theo kỳ)
+        payments: b.payments.map((x) => ({ id: x.id, amount: Number(x.amount), paidAt: x.paidAt, method: x.method, reference: x.reference, note: x.note })),
       });
     }
 
@@ -279,10 +287,19 @@ export class FinanceService implements OnModuleInit {
 
     const list = partners
       .map((p) => {
-        const trips = p.trips.map((t) => {
-          const x = partnerPayable(t);
-          return { ...t, partnerNet: x.net, partnerVat: x.vat, partnerTotal: x.total };
-        });
+        // Phân bổ tiền đã trả cho các chuyến theo thứ tự ngày chạy (chuyến cũ trả trước) để lọc / đối chiếu theo từng chuyến
+        let pool = p.payments.reduce((s, x) => s + Number(x.amount), 0);
+        const trips = [...p.trips]
+          .sort((a, b) => a.pickupTime.getTime() - b.pickupTime.getTime())
+          .map((t) => {
+            const x = partnerPayable(t);
+            const paid = Math.min(Math.max(pool, 0), x.total);
+            pool -= paid;
+            return { ...t, partnerNet: x.net, partnerVat: x.vat, partnerTotal: x.total, partnerPaid: paid, partnerRemain: x.total - paid };
+          })
+          .reverse();
+        // Tiền đã trả vượt quá công nợ (trả trước), chưa phân bổ vào chuyến nào
+        const prepaid = Math.max(0, pool);
         const totalNet = trips.reduce((s, t) => s + t.partnerNet, 0);
         const totalVat = trips.reduce((s, t) => s + t.partnerVat, 0);
         const totalCost = totalNet + totalVat;
@@ -293,6 +310,9 @@ export class FinanceService implements OnModuleInit {
           phone: p.phone,
           bankName: p.bankName,
           bankAccount: p.bankAccount,
+          taxCode: p.taxCode,
+          address: p.address,
+          prepaid,
           tripCount: p.trips.length,
           totalNet,
           totalVat,
