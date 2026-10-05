@@ -26,13 +26,17 @@ export interface VehicleType extends Ref {
   isActive: boolean;
   /** Tên trên giấy tờ gửi khách nước ngoài */
   names?: Partial<Record<'en' | 'ko' | 'zh' | 'ja', string>>;
+  /** Định mức xăng dầu (lít/100km), null = 11 */
+  fuelNorm: string | null;
   _count?: { vehicles: number };
 }
 
 export interface Vehicle extends Ref {
   plateNumber: string;
   vehicleTypeId: number;
-  vehicleType: { id: number; code: string; name: string; seats: number };
+  vehicleType: { id: number; code: string; name: string; seats: number; fuelNorm: string | null };
+  /** Định mức xăng dầu riêng (lít/100km), null = theo loại xe */
+  fuelNorm: string | null;
   brand: string | null;
   model: string | null;
   year: number | null;
@@ -64,8 +68,6 @@ export interface Driver extends Ref {
   user: { id: number; username: string; isActive: boolean } | null;
   defaultVehicles: { id: number; plateNumber: string }[];
   notes: string | null;
-  /** Định mức xăng riêng (lít/100km), null = định mức chung */
-  fuelNorm: string | null;
 }
 
 export interface Partner extends Ref {

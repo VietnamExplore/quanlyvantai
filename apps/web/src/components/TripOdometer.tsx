@@ -75,7 +75,7 @@ export function TripOdometer({ trip, canEdit }: { trip: OdometerTrip; canEdit: b
             </div>
             <div>
               <div>Định mức (L/100km)</div>
-              <InputNumber min={1} max={100} step={0.5} value={v.fuelNorm} onChange={(x) => setV({ ...v, fuelNorm: x })} placeholder="Theo lái xe" style={{ width: 150 }} />
+              <InputNumber min={1} max={100} step={0.5} value={v.fuelNorm} onChange={(x) => setV({ ...v, fuelNorm: x })} placeholder="Theo xe" style={{ width: 150 }} />
             </div>
           </Space>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>

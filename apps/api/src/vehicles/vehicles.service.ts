@@ -7,7 +7,7 @@ import { CreateVehicleDto, UpdateVehicleDto, VehicleQueryDto } from './vehicles.
 const DATE_FIELDS = ['registrationExpiry', 'insuranceExpiry', 'badgeExpiry'] as const;
 
 const vehicleInclude = {
-  vehicleType: { select: { id: true, code: true, name: true, seats: true } },
+  vehicleType: { select: { id: true, code: true, name: true, seats: true, fuelNorm: true } },
   partner: { select: { id: true, name: true } },
   defaultDriver: { select: { id: true, fullName: true, phone: true } },
 } satisfies Prisma.VehicleInclude;

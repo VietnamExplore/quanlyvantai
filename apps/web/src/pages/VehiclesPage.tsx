@@ -49,6 +49,16 @@ export default function VehiclesPage() {
           ),
         },
         { title: 'Lái xe mặc định', render: (_, r) => r.defaultDriver?.fullName },
+        {
+          title: 'Định mức xăng',
+          align: 'right',
+          render: (_, r) =>
+            r.ownership !== 'CONG_TY' ? null : r.fuelNorm ? (
+              <b>{Number(r.fuelNorm)} L/100km</b>
+            ) : (
+              <span style={{ color: '#888' }}>{r.vehicleType.fuelNorm ? Number(r.vehicleType.fuelNorm) : 11} L/100km (theo loại)</span>
+            ),
+        },
         { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={VEHICLE_STATUS} value={v} /> },
         { title: 'Đăng kiểm', dataIndex: 'registrationExpiry', render: (v) => <ExpiryCell value={v} /> },
         { title: 'Bảo hiểm', dataIndex: 'insuranceExpiry', render: (v) => <ExpiryCell value={v} /> },
@@ -127,8 +137,17 @@ export default function VehiclesPage() {
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="odometerKm" label="Số km hiện tại">
+            <Form.Item name="odometerKm" label="Số km hiện tại" extra="Tự cập nhật khi lái xe ghi km kết thúc chuyến">
               <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="fuelNorm"
+              label="Định mức xăng dầu riêng (lít/100km)"
+              tooltip="Bỏ trống = theo định mức của loại xe. Áp dụng cho các chuyến ghi km từ lúc lưu; chuyến cũ giữ định mức đã chốt (sửa từng chuyến trong ngăn Điều xe)."
+            >
+              <InputNumber min={1} max={100} step={0.5} placeholder="Theo loại xe" style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col span={24}>

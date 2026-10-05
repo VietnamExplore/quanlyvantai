@@ -1,7 +1,7 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { Ownership, VehicleStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateVehicleDto {
   // Chuẩn hóa biển số: bỏ khoảng trắng thừa, viết hoa (ví dụ "51b-123.45" → "51B-123.45")
@@ -47,6 +47,14 @@ export class CreateVehicleDto {
   @IsOptional()
   @IsInt()
   defaultDriverId?: number | null;
+
+  /** Định mức xăng dầu riêng của xe (lít/100km), null = theo loại xe */
+  @Transform(({ value }) => (value === '' ? null : typeof value === 'string' ? Number(value) : value))
+  @IsOptional()
+  @IsNumber({}, { message: 'Định mức xăng không hợp lệ' })
+  @Min(1, { message: 'Định mức xăng phải từ 1 lít/100km' })
+  @Max(100, { message: 'Định mức xăng tối đa 100 lít/100km' })
+  fuelNorm?: number | null;
 
   @IsOptional()
   @IsString()

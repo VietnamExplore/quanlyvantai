@@ -86,25 +86,18 @@ export function KmModal({
   );
 }
 
-/** Km chuyến và xăng theo định mức (văn phòng thấy cùng số liệu trên web) */
+/** Km chuyến (văn phòng thấy cùng số liệu trên web và tính xăng theo định mức) */
 export function OdometerCard({ trip, onEditEnd }: { trip: Trip; onEditEnd?: () => void }) {
   if (!trip.trackKm || (trip.startKm == null && trip.endKm == null)) return null;
   const km = trip.startKm != null && trip.endKm != null ? trip.endKm - trip.startKm : null;
   return (
     <Card>
-      <Section icon="🛣" title="Km & xăng định mức" right={onEditEnd ? <Text style={s.edit} onPress={onEditEnd}>Sửa km</Text> : undefined} />
+      <Section icon="🛣" title="Km đồng hồ xe" right={onEditEnd ? <Text style={s.edit} onPress={onEditEnd}>Sửa km</Text> : undefined} />
       <View style={s.grid}>
         <Cell label="Km bắt đầu" value={trip.startKm != null ? num(trip.startKm) : '—'} />
         <Cell label="Km kết thúc" value={trip.endKm != null ? num(trip.endKm) : 'Chưa ghi'} />
         <Cell label="Quãng đường" value={km != null ? `${num(km)} km` : '—'} strong />
       </View>
-      {trip.fuelLiters != null && (
-        <View style={[s.grid, { marginTop: 10 }]}>
-          <Cell label="Định mức" value={`${Number(trip.fuelNorm)} L/100km`} />
-          <Cell label="Xăng định mức" value={`${Number(trip.fuelLiters).toLocaleString('vi-VN')} L`} strong />
-          <Cell label="Chi phí xăng" value={trip.fuelCost != null ? `${num(Number(trip.fuelCost))}đ` : '—'} />
-        </View>
-      )}
     </Card>
   );
 }

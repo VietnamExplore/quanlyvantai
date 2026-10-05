@@ -54,6 +54,8 @@ model VehicleType {
   /// Tên trên giấy tờ gửi khách nước ngoài: { "en": "...", "ko": "...", "zh": "...", "ja": "..." }
   names          Json             @default("{}")
   isActive       Boolean          @default(true)
+  /// Định mức xăng dầu của loại xe (lít/100km); trống = 11
+  fuelNorm       Decimal?         @db.Decimal(5, 2)
   vehicles       Vehicle[]
   routePrices    RoutePriceItem[]
   rentalRate     RentalRate?
@@ -88,6 +90,8 @@ model Vehicle {
   insuranceExpiry    DateTime?     @db.Date // Hạn bảo hiểm
   badgeExpiry        DateTime?     @db.Date // Hạn phù hiệu
   odometerKm         Int?
+  /// Định mức xăng dầu riêng của xe (lít/100km); trống = theo loại xe
+  fuelNorm           Decimal?      @db.Decimal(5, 2)
   defaultDriverId    Int?
   defaultDriver      Driver?       @relation(fields: [defaultDriverId], references: [id])
   trips              BookingTrip[]
@@ -122,8 +126,6 @@ model Driver {
   defaultVehicles   Vehicle[]
   trips             BookingTrip[]
   salaries          DriverSalary[]
-  /// Định mức xăng dầu riêng (lít/100km); trống = dùng định mức chung trong cài đặt
-  fuelNorm          Decimal?         @db.Decimal(5, 2)
   fuelVouchers      CashVoucher[]
   advanceRequests   AdvanceRequest[]
   notes             String?

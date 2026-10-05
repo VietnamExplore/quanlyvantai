@@ -36,9 +36,6 @@ export interface Trip {
   suggestStartKm?: number | null;
   startKm?: number | null;
   endKm?: number | null;
-  fuelNorm?: string | null;
-  fuelLiters?: string | null;
-  fuelCost?: string | null;
   vehicleType: { name: string };
   service?: { name: string };
   vehicle: { plateNumber: string } | null;

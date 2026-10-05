@@ -22,15 +22,10 @@ interface FuelItem {
 
 interface FuelData {
   month: string;
-  /** Định mức áp dụng cho lái xe (lít/100km) */
-  norm: number;
-  price: number | null;
-  /** Km chạy các chuyến hoàn thành trong tháng và lít / tiền xăng theo định mức */
-  kmTotal: number;
-  normLiters: number;
-  normCost: number;
   items: FuelItem[];
+  /** Xe được phân công (hoặc toàn bộ xe công ty nếu chưa được phân công) */
   vehicles: { id: number; plateNumber: string }[];
+  assigned: boolean;
   defaultVehicleId: number | null;
 }
 
@@ -165,39 +160,17 @@ export function FuelScreen() {
         </View>
       </View>
 
-      {data && (
-        <Card>
-          <Section icon="📏" title={`Định mức của bạn: ${data.norm} L/100km`} />
-          <View style={s.stats}>
-            <View style={s.normCell}>
-              <Text style={s.statLabel}>Km chạy (chuyến)</Text>
-              <Text style={s.statValue}>{data.kmTotal.toLocaleString('vi-VN')} km</Text>
-            </View>
-            <View style={s.normCell}>
-              <Text style={s.statLabel}>Lít theo định mức</Text>
-              <Text style={s.statValue}>{data.normLiters.toLocaleString('vi-VN')} L</Text>
-            </View>
-            <View style={s.normCell}>
-              <Text style={s.statLabel}>Lít thực đổ</Text>
-              <Text style={[s.statValue, totalLiters > data.normLiters && data.normLiters > 0 && { color: colors.danger }]}>{totalLiters ? `${totalLiters.toLocaleString('vi-VN')} L` : '—'}</Text>
-            </View>
-          </View>
-          {data.normLiters > 0 && totalLiters > 0 && (
-            <Text style={[s.normNote, { color: totalLiters > data.normLiters ? colors.danger : colors.success }]}>
-              {totalLiters > data.normLiters
-                ? `Vượt định mức ${(Math.round((totalLiters - data.normLiters) * 100) / 100).toLocaleString('vi-VN')} L`
-                : `Tiết kiệm ${(Math.round((data.normLiters - totalLiters) * 100) / 100).toLocaleString('vi-VN')} L so với định mức`}
-            </Text>
-          )}
-        </Card>
-      )}
-
       {!adding && <Button title="GHI ĐỔ XĂNG" icon="⛽" size="lg" onPress={openForm} style={{ marginBottom: 12 }} />}
 
       {adding && (
         <Card>
           <Section icon="⛽" title="Ghi đổ xăng hôm nay" />
-          <Text style={ui.label}>Xe</Text>
+          <Text style={ui.label}>{data?.assigned ? 'Xe được phân công' : 'Xe (bạn chưa được phân công xe, chọn xe đã đổ)'}</Text>
+          {data?.assigned && data.vehicles.length === 1 ? (
+            <View style={s.assignedCar}>
+              <Text style={s.assignedText}>🚐 {data.vehicles[0].plateNumber}</Text>
+            </View>
+          ) : (
           <View style={s.chips}>
             {(data?.vehicles ?? []).map((v) => (
               <Pressable key={v.id} onPress={() => setVehicleId(v.id)} style={[s.chip, vehicleId === v.id && s.chipActive]}>
@@ -206,6 +179,7 @@ export function FuelScreen() {
             ))}
             {!data?.vehicles.length && <Text style={{ color: colors.muted }}>Chưa có xe công ty nào</Text>}
           </View>
+          )}
           <Text style={ui.label}>Số tiền (đồng)</Text>
           <TextInput
             style={[ui.input, { fontSize: 20, fontWeight: '800' }]}
@@ -292,8 +266,8 @@ export function FuelScreen() {
 const s = StyleSheet.create({
   stats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   stat: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12 },
-  normCell: { flex: 1, backgroundColor: '#f4f7fc', borderRadius: 12, padding: 10 },
-  normNote: { fontSize: 13.5, fontWeight: '700', marginTop: -4 },
+  assignedCar: { alignSelf: 'flex-start', backgroundColor: colors.primarySoft, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, marginBottom: 12 },
+  assignedText: { fontSize: 16, fontWeight: '800', color: colors.primary },
   statLabel: { fontSize: 12, color: colors.muted, fontWeight: '600' },
   statValue: { fontSize: 16, color: colors.text, fontWeight: '800', marginTop: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },

@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-/** Định mức xăng dầu mặc định (lít/100km) khi chưa cài trong Thông tin công ty */
+/** Định mức xăng dầu mặc định (lít/100km) khi xe và loại xe đều chưa cài */
 export const DEFAULT_FUEL_NORM = 11;
 /** Quãng đường tối đa hợp lý mỗi ngày của chuyến (chặn gõ nhầm số km) */
 const MAX_KM_PER_DAY = 1500;
@@ -13,7 +13,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  * Km đồng hồ từng chuyến và chi phí xăng theo định mức:
  * - Km bắt đầu = km kết thúc của chuyến trước của cùng xe (chưa có thì lấy số km hiện tại của xe / lái xe nhập).
  * - Lít = số km × định mức / 100; chi phí = lít × giá xăng dầu.
- * - Định mức: riêng của lái xe (nếu văn phòng cài) hoặc định mức chung; giá: cài đặt "Giá xăng dầu",
+ * - Định mức: sửa riêng cho chuyến → định mức của xe → của loại xe → 11 lít/100km; giá: cài đặt "Giá xăng dầu",
  *   chưa cài thì lấy giá bình quân các lần đổ xăng 60 ngày gần đây. Định mức + giá được chốt vào chuyến.
  */
 @Injectable()
@@ -21,10 +21,9 @@ export class OdometerService {
   constructor(private readonly prisma: PrismaService) {}
 
   async config() {
-    const rows = await this.prisma.setting.findMany({ where: { key: { in: ['fuelNormPer100km', 'fuelPrice'] } } });
-    const get = (k: string) => Number(rows.find((r) => r.key === k)?.value?.replace(',', '.') || 0);
-    const defaultNorm = get('fuelNormPer100km') > 0 ? get('fuelNormPer100km') : DEFAULT_FUEL_NORM;
-    let price = get('fuelPrice') > 0 ? Math.round(get('fuelPrice')) : null;
+    const row = await this.prisma.setting.findUnique({ where: { key: 'fuelPrice' } });
+    const set = Number(row?.value?.replace(/[^\d]/g, '') || 0);
+    let price = set > 0 ? set : null;
     let priceSource: 'setting' | 'average' | null = price ? 'setting' : null;
     if (!price) {
       const since = new Date(Date.now() - 60 * 86_400_000);
@@ -35,7 +34,7 @@ export class OdometerService {
         priceSource = 'average';
       }
     }
-    return { defaultNorm, price, priceSource };
+    return { price, priceSource };
   }
 
   /** Km kết thúc gần nhất của xe trước chuyến này (chuyến trước / ngày hôm trước); chưa có thì km hiện tại của xe */
@@ -58,7 +57,7 @@ export class OdometerService {
   async record(tripId: number, input: { startKm?: number | null; endKm?: number | null; fuelNorm?: number | null }) {
     const trip = await this.prisma.bookingTrip.findUnique({
       where: { id: tripId },
-      select: { id: true, vehicleId: true, pickupTime: true, days: true, startKm: true, endKm: true, fuelNorm: true, driver: { select: { fuelNorm: true } } },
+      select: { id: true, vehicleId: true, pickupTime: true, days: true, startKm: true, endKm: true, fuelNorm: true, vehicle: { select: { fuelNorm: true, vehicleType: { select: { fuelNorm: true } } } } },
     });
     if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
     let startKm = input.startKm !== undefined ? input.startKm : trip.startKm;
@@ -73,7 +72,11 @@ export class OdometerService {
     const data: Prisma.BookingTripUncheckedUpdateInput = { startKm: startKm ?? null, endKm: endKm ?? null };
     if (startKm != null && endKm != null) {
       const cfg = await this.config();
-      const norm = input.fuelNorm ?? (trip.fuelNorm ? Number(trip.fuelNorm) : null) ?? (trip.driver?.fuelNorm ? Number(trip.driver.fuelNorm) : cfg.defaultNorm);
+      const norm =
+        input.fuelNorm ??
+        (trip.fuelNorm ? Number(trip.fuelNorm) : null) ??
+        (trip.vehicle?.fuelNorm ? Number(trip.vehicle.fuelNorm) : null) ??
+        (trip.vehicle?.vehicleType.fuelNorm ? Number(trip.vehicle.vehicleType.fuelNorm) : DEFAULT_FUEL_NORM);
       const liters = round2(((endKm - startKm) * norm) / 100);
       Object.assign(data, { fuelNorm: norm, fuelPrice: cfg.price, fuelLiters: liters, fuelCost: cfg.price ? Math.round(liters * cfg.price) : null });
     } else {

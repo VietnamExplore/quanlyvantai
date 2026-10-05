@@ -21,6 +21,7 @@ export default function VehicleTypesPage() {
         { title: 'Tên ngoại ngữ', render: (_, r) => <span style={{ fontSize: 12, color: '#666' }}>{Object.values(r.names ?? {}).filter(Boolean).join(' · ')}</span> },
         { title: 'Số chỗ', dataIndex: 'seats', align: 'right' },
         { title: 'Khách tối đa', dataIndex: 'maxPassengers', align: 'right' },
+        { title: 'Định mức xăng', dataIndex: 'fuelNorm', align: 'right', render: (v) => `${v ? Number(v) : 11} L/100km` },
         { title: 'Hạng bằng phù hợp', dataIndex: 'licenseClasses', render: (v: string[]) => v.map((c) => <Tag key={c}>{c}</Tag>) },
         { title: 'Số xe', render: (_, r) => r._count?.vehicles ?? 0, align: 'right' },
         { title: 'Sử dụng', dataIndex: 'isActive', render: (v) => (v ? null : <Tag>Ngừng</Tag>) },
@@ -45,6 +46,15 @@ export default function VehicleTypesPage() {
           <Col xs={12} md={8}>
             <Form.Item name="maxPassengers" label="Số khách tối đa" rules={[{ required: true, message: 'Nhập số khách' }]}>
               <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="fuelNorm"
+              label="Định mức xăng dầu (lít/100km)"
+              tooltip="Áp dụng cho các xe thuộc loại này (xe nào cài định mức riêng thì theo xe). Bỏ trống = 11 lít/100km. Chuyến đã ghi km giữ định mức cũ."
+            >
+              <InputNumber min={1} max={100} step={0.5} placeholder="11" style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>

@@ -121,9 +121,6 @@ const driverTripSelect = {
   collectMethod: true,
   startKm: true,
   endKm: true,
-  fuelNorm: true,
-  fuelLiters: true,
-  fuelCost: true,
   vehicleId: true,
   vehicleType: { select: { name: true } },
   service: { select: { name: true } },
@@ -453,22 +450,30 @@ export class DriverAppController {
       this.prisma.vehicle.findMany({ where: { ownership: 'CONG_TY', status: { not: 'NGUNG_HOAT_DONG' } }, select: { id: true, plateNumber: true }, orderBy: { plateNumber: 'asc' } }),
       this.prisma.driver.findUnique({ where: { id: driverId }, select: { defaultVehicles: { select: { id: true } } } }),
     ]);
-    const run = await this.prisma.bookingTrip.findMany({
-      where: { driverId, status: TripStatus.HOAN_THANH, endKm: { not: null }, pickupTime: { gte: new Date(`${month}-01T00:00:00+07:00`), lt: new Date(Date.UTC(y, m, 1) - 7 * 3600_000) } },
-      select: { startKm: true, endKm: true, fuelLiters: true, fuelCost: true },
+    // Xe được phân công: xe mặc định của lái xe + xe của các chuyến đang chạy / hôm qua – ngày mai
+    const now = Date.now();
+    const recent = await this.prisma.bookingTrip.findMany({
+      where: {
+        driverId,
+        vehicleId: { not: null },
+        vehicle: { ownership: 'CONG_TY' },
+        OR: [{ status: { in: ACTIVE } }, { pickupTime: { gte: new Date(now - 36 * 3600_000), lte: new Date(now + 36 * 3600_000) } }],
+        status: { not: TripStatus.HUY },
+      },
+      select: { vehicleId: true, status: true, pickupTime: true },
     });
-    const cfg = await this.odometer.config();
-    const myNorm = await this.prisma.driver.findUnique({ where: { id: driverId }, select: { fuelNorm: true } });
+    // Ưu tiên: xe của chuyến đang chạy → chuyến gần giờ hiện tại nhất → xe mặc định
+    const running = recent.find((t) => t.status === TripStatus.DANG_DEN_DON || t.status === TripStatus.DA_DON_KHACH);
+    const nearest = [...recent].sort((a, b) => Math.abs(a.pickupTime.getTime() - now) - Math.abs(b.pickupTime.getTime() - now))[0];
+    const assignedIds = [...new Set([running?.vehicleId, nearest?.vehicleId, ...(me?.defaultVehicles.map((v) => v.id) ?? []), ...recent.map((t) => t.vehicleId)].filter((x): x is number => !!x))];
+    const assigned = assignedIds.map((id) => vehicles.find((v) => v.id === id)).filter((v): v is (typeof vehicles)[number] => !!v);
     return {
       month,
-      norm: myNorm?.fuelNorm ? Number(myNorm.fuelNorm) : cfg.defaultNorm,
-      price: cfg.price,
-      kmTotal: run.reduce((s, t) => s + (t.endKm! - (t.startKm ?? t.endKm!)), 0),
-      normLiters: Math.round(run.reduce((s, t) => s + Number(t.fuelLiters ?? 0), 0) * 100) / 100,
-      normCost: run.reduce((s, t) => s + Number(t.fuelCost ?? 0), 0),
       items: items.map((v) => ({ ...v, amount: Number(v.amount), liters: v.liters === null ? null : Number(v.liters), hasReceipt: !!v.receiptFile, receiptFile: undefined })),
-      vehicles,
-      defaultVehicleId: me?.defaultVehicles[0]?.id ?? null,
+      // Có xe được phân công thì chỉ cho chọn các xe đó; chưa có thì chọn trong toàn bộ xe công ty
+      vehicles: assigned.length ? assigned : vehicles,
+      assigned: assigned.length > 0,
+      defaultVehicleId: assigned[0]?.id ?? null,
     };
   }
 
