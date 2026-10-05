@@ -899,7 +899,7 @@ function DriverPayTable({ pay, loading, trips }: { pay?: DriverPayReport; loadin
               </>
             ),
           },
-          { title: 'Doanh thu tính lương', dataIndex: 'revenue', align: 'right', render: money, sorter: (a, b) => a.revenue - b.revenue },
+          { title: 'Doanh thu tính lương (chưa thuế)', dataIndex: 'revenue', align: 'right', render: money, sorter: (a, b) => a.revenue - b.revenue },
           { title: 'Lương cứng', dataIndex: 'baseAmount', align: 'right', render: money },
           { title: 'Tiền % doanh số', dataIndex: 'commission', align: 'right', render: money, sorter: (a, b) => a.commission - b.commission },
           { title: 'Tổng lương', dataIndex: 'total', align: 'right', render: (v) => <b>{money(v)}</b>, sorter: (a, b) => a.total - b.total },

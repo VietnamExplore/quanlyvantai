@@ -263,8 +263,15 @@ export function PartnerTripDetail({
         )}
         {t.partnerCost && (
           <div className="pt-row">
-            <span>Giá thuê</span>
-            <b style={{ color: '#15803d' }}>{formatVnd(t.partnerCost)}đ</b>
+            <span>Giá thuê{t.partnerInvoice ? ' (chưa thuế)' : ''}</span>
+            <span>
+              <b style={{ color: '#15803d' }}>{formatVnd(t.partnerCost)}đ</b>
+              {t.partnerInvoice && Number(t.partnerVatPercent) > 0 && (
+                <div style={{ fontSize: 13, color: '#475569' }}>
+                  + VAT {Number(t.partnerVatPercent)}% = <b>{formatVnd(Math.round(Number(t.partnerCost) * (1 + Number(t.partnerVatPercent) / 100)))}đ</b>
+                </div>
+              )}
+            </span>
           </div>
         )}
         {t.notes && (
@@ -299,6 +306,8 @@ export function PartnerTripDetail({
                       inv.taxCode && `Mã số thuế: ${inv.taxCode}`,
                       inv.address && `Địa chỉ: ${inv.address}`,
                       inv.email && `Email nhận hóa đơn: ${inv.email}`,
+                      `Thuế suất: ${Number(t.partnerVatPercent)}%`,
+                      t.partnerCost && `Giá chưa thuế: ${formatVnd(t.partnerCost)}đ`,
                       t.partnerInvoiceNote && `Ghi chú: ${t.partnerInvoiceNote}`,
                       `Chuyến: ${b.code} · ${dayjs(t.pickupTime).format('DD/MM/YYYY')}`,
                     ]
@@ -328,6 +337,10 @@ export function PartnerTripDetail({
               <div className="pt-row">
                 <span>Địa chỉ</span>
                 <span>{inv.address ?? '—'}</span>
+              </div>
+              <div className="pt-row">
+                <span>Thuế suất</span>
+                <b>{Number(t.partnerVatPercent)}%</b>
               </div>
               <div className="pt-row pt-row-strong">
                 <span>Email nhận HĐ</span>

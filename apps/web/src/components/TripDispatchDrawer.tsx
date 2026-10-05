@@ -108,6 +108,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
         partnerCost: trip.partnerCost === null ? undefined : Number(trip.partnerCost),
         partnerInvoice: !!trip.partnerInvoice,
         partnerInvoiceNote: trip.partnerInvoiceNote,
+        partnerVatPercent: Number(trip.partnerVatPercent ?? 0),
         dispatchNote: trip.dispatchNote,
       });
     } else {
@@ -287,10 +288,11 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
           partnerCost: v.partnerCost,
           partnerInvoice: !!v.partnerInvoice,
           partnerInvoiceNote: v.partnerInvoice ? v.partnerInvoiceNote || null : null,
+          partnerVatPercent: v.partnerInvoice ? Number(v.partnerVatPercent ?? 0) : 0,
           dispatchNote: v.dispatchNote || null,
         })
       }
-      initialValues={{ partnerInvoice: !!trip?.partnerInvoice, partnerInvoiceNote: trip?.partnerInvoiceNote }}
+      initialValues={{ partnerInvoice: !!trip?.partnerInvoice, partnerInvoiceNote: trip?.partnerInvoiceNote, partnerVatPercent: Number(trip?.partnerVatPercent ?? 0) }}
     >
       <Form.Item name="partnerId" label="Nhà xe đối tác" rules={[{ required: true, message: 'Chọn nhà xe' }]}>
         <QuickSelect
@@ -317,7 +319,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
         <Form.Item name="partnerPlate" label="Biển số xe" style={{ flex: 1 }}>
           <Input placeholder="51F-123.45" />
         </Form.Item>
-        <Form.Item name="partnerCost" label="Giá thuê đối tác" rules={[{ required: true, message: 'Nhập giá thuê' }]} style={{ flex: 1 }}>
+        <Form.Item name="partnerCost" label="Giá thuê (chưa thuế)" rules={[{ required: true, message: 'Nhập giá thuê' }]} style={{ flex: 1 }}>
           <MoneyInput />
         </Form.Item>
       </Flex>
@@ -343,13 +345,18 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       <Form.Item noStyle dependencies={['partnerInvoice']}>
         {({ getFieldValue }) =>
           getFieldValue('partnerInvoice') ? (
+            <>
+            <Form.Item name="partnerVatPercent" label="Thuế suất hóa đơn nhà xe" extra="Giá thuê nhập là giá chưa thuế; công nợ nhà xe = giá thuê + thuế">
+              <Select options={[0, 5, 8, 10].map((x) => ({ value: x, label: `${x}%` }))} style={{ width: 140 }} />
+            </Form.Item>
             <Form.Item
               name="partnerInvoiceNote"
               label="Ghi chú xuất hóa đơn"
               extra="Nhà xe thấy kèm tên công ty, MST, địa chỉ và email nhận hóa đơn (sửa ở Thông tin công ty)"
             >
-              <Input placeholder="VD: nội dung 'Cước vận chuyển khách', VAT 8%" />
+              <Input placeholder="VD: nội dung 'Cước vận chuyển khách'" />
             </Form.Item>
+            </>
           ) : null
         }
       </Form.Item>
@@ -471,7 +478,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                   <Descriptions.Item label="Xe / tài xế">{[trip.partnerPlate, trip.partnerDriverName, trip.partnerDriverPhone].filter(Boolean).join(' · ') || '—'}</Descriptions.Item>
                   {trip.partnerInvoice && (
                     <Descriptions.Item label="Hóa đơn">
-                      <Tag color="purple">🧾 Nhà xe xuất hóa đơn</Tag>
+                      <Tag color="purple">🧾 Nhà xe xuất hóa đơn · VAT {Number(trip.partnerVatPercent ?? 0)}%</Tag>
                       {trip.partnerInvoiceNote}
                     </Descriptions.Item>
                   )}

@@ -340,6 +340,7 @@ export class DispatchService {
         ...(dto.partnerInvoice !== undefined && {
           partnerInvoice: dto.partnerInvoice,
           partnerInvoiceNote: dto.partnerInvoice ? dto.partnerInvoiceNote?.trim() || null : null,
+          partnerVatPercent: dto.partnerInvoice ? (dto.partnerVatPercent ?? 0) : 0,
         }),
       };
       note = `Giao nhà xe ${partner.name}${dto.partnerPlate ? ` (${dto.partnerPlate})` : ''}, giá thuê ${dto.partnerCost.toLocaleString('vi-VN')}đ`;

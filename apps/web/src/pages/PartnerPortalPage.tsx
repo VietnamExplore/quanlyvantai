@@ -18,10 +18,12 @@ import type { PaymentMethod, TripStatus } from '../types';
 
 interface Summary {
   tripCount: number;
+  totalNet: number;
+  totalVat: number;
   totalCost: number;
   totalPaid: number;
   balance: number;
-  trips: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; partnerPlate: string | null; partnerCost: string | null; status: TripStatus; booking: { code: string }; vehicleType: { name: string } }[];
+  trips: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; partnerPlate: string | null; partnerCost: string | null; partnerInvoice: boolean; partnerVatPercent: string; partnerNet: number; partnerVat: number; partnerTotal: number; status: TripStatus; booking: { code: string }; vehicleType: { name: string } }[];
   payments: { id: number; amount: string; paidAt: string; method: PaymentMethod; reference: string | null; note: string | null }[];
 }
 
@@ -326,6 +328,11 @@ function MoneyView({ summary }: { summary?: Summary }) {
       <Flex gap={12} wrap style={{ marginBottom: 12 }}>
         <Card style={{ flex: '1 1 200px' }}>
           <Statistic title={`Tiền chuyến (${summary.tripCount} chuyến)`} value={summary.totalCost} suffix="đ" />
+          {summary.totalVat > 0 && (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Chưa thuế {formatVnd(summary.totalNet)}đ + thuế {formatVnd(summary.totalVat)}đ
+            </Typography.Text>
+          )}
         </Card>
         <Card style={{ flex: '1 1 200px' }}>
           <Statistic title="Đã được thanh toán" value={summary.totalPaid} suffix="đ" valueStyle={{ color: '#15803d' }} />
@@ -361,7 +368,9 @@ function MoneyView({ summary }: { summary?: Summary }) {
             { title: 'Hành trình', render: (_, t) => (t.dropoffAddress ? `${t.pickupAddress} → ${t.dropoffAddress}` : t.pickupAddress) },
             { title: 'Xe', render: (_, t) => [t.vehicleType.name, t.partnerPlate].filter(Boolean).join(' · ') },
             { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={TRIP_STATUS} value={v} /> },
-            { title: 'Giá thuê', dataIndex: 'partnerCost', align: 'right', render: (v) => (v ? `${formatVnd(v)}đ` : '—') },
+            { title: 'Giá thuê (chưa thuế)', dataIndex: 'partnerNet', align: 'right', render: (v) => `${formatVnd(v)}đ` },
+            { title: 'Thuế', dataIndex: 'partnerVat', align: 'right', render: (v, t) => (t.partnerInvoice ? `${formatVnd(v)}đ (${Number(t.partnerVatPercent)}%)` : '—') },
+            { title: 'Thành tiền', dataIndex: 'partnerTotal', align: 'right', render: (v) => <b>{formatVnd(v)}đ</b> },
           ]}
           summary={() => (
             <Table.Summary.Row>
@@ -369,6 +378,12 @@ function MoneyView({ summary }: { summary?: Summary }) {
                 <b>Tổng</b>
               </Table.Summary.Cell>
               <Table.Summary.Cell index={5} align="right">
+                <b>{formatVnd(summary.totalNet)}đ</b>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={6} align="right">
+                <b>{formatVnd(summary.totalVat)}đ</b>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={7} align="right">
                 <b>{formatVnd(summary.totalCost)}đ</b>
               </Table.Summary.Cell>
             </Table.Summary.Row>

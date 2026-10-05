@@ -3,7 +3,7 @@ import { BookingStatus, Ownership, Prisma, TripStatus, VoucherType } from '@pris
 import { AuthUser } from '../auth/auth.decorators';
 import { bookingTotals } from '../bookings/bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEFAULT_COST_CATEGORIES } from './cost.util';
+import { DEFAULT_COST_CATEGORIES, partnerPayable } from './cost.util';
 import { CreatePartnerPaymentDto, CreatePaymentDto, CreateTripCostDto, CreateVoucherDto, UpdateVoucherDto } from './finance.dto';
 
 const TZ = 'Asia/Ho_Chi_Minh';
@@ -155,6 +155,8 @@ export class FinanceService implements OnModuleInit {
       phone: string | null;
       customerType: string;
       creditLimit: number | null;
+      totalNet: number;
+      totalVat: number;
       totalBilled: number;
       totalPaid: number;
       balance: number;
@@ -184,6 +186,8 @@ export class FinanceService implements OnModuleInit {
           phone: b.customer?.phone ?? b.contactPhone,
           customerType: b.customer?.type ?? 'KHACH_LE',
           creditLimit: b.customer?.creditLimit === null || b.customer?.creditLimit === undefined ? null : Number(b.customer.creditLimit),
+          totalNet: 0,
+          totalVat: 0,
           totalBilled: 0,
           totalPaid: 0,
           balance: 0,
@@ -197,6 +201,8 @@ export class FinanceService implements OnModuleInit {
       // Chưa nhập giá: tổng 0 đ và chưa thu đồng nào → chưa thể coi là đã thanh toán
       const unpriced = Math.round(t.total) <= 0 && Math.round(t.paid) <= 0;
       if (unpriced) g.unpriced += 1;
+      g.totalNet += t.taxable;
+      g.totalVat += t.vatAmount;
       g.totalBilled += t.total;
       g.totalPaid += t.paid;
       g.balance += t.balance;
@@ -213,6 +219,10 @@ export class FinanceService implements OnModuleInit {
         firstPickup: activeTrips.length ? new Date(Math.min(...activeTrips.map((x) => x.pickupTime.getTime()))) : null,
         dueDate: vnYmd(new Date(due)),
         overdueDays,
+        invoice: b.invoiceRequired,
+        vatPercent: Number(b.vatPercent),
+        net: t.taxable,
+        vat: t.vatAmount,
         total: t.total,
         paid: t.paid,
         balance: t.balance,
@@ -245,6 +255,8 @@ export class FinanceService implements OnModuleInit {
             dropoffAddress: true,
             partnerPlate: true,
             partnerCost: true,
+            partnerInvoice: true,
+            partnerVatPercent: true,
             status: true,
             booking: { select: { id: true, code: true } },
             vehicleType: { select: { name: true } },
@@ -258,7 +270,13 @@ export class FinanceService implements OnModuleInit {
 
     const list = partners
       .map((p) => {
-        const totalCost = p.trips.reduce((s, t) => s + Number(t.partnerCost ?? 0), 0);
+        const trips = p.trips.map((t) => {
+          const x = partnerPayable(t);
+          return { ...t, partnerNet: x.net, partnerVat: x.vat, partnerTotal: x.total };
+        });
+        const totalNet = trips.reduce((s, t) => s + t.partnerNet, 0);
+        const totalVat = trips.reduce((s, t) => s + t.partnerVat, 0);
+        const totalCost = totalNet + totalVat;
         const totalPaid = p.payments.reduce((s, x) => s + Number(x.amount), 0);
         return {
           id: p.id,
@@ -267,10 +285,12 @@ export class FinanceService implements OnModuleInit {
           bankName: p.bankName,
           bankAccount: p.bankAccount,
           tripCount: p.trips.length,
+          totalNet,
+          totalVat,
           totalCost,
           totalPaid,
           balance: totalCost - totalPaid,
-          trips: p.trips,
+          trips,
           payments: p.payments,
         };
       })

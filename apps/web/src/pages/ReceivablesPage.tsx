@@ -22,6 +22,12 @@ interface RecBooking {
   firstPickup: string | null;
   dueDate: string;
   overdueDays: number;
+  /** Khách lấy hóa đơn VAT */
+  invoice: boolean;
+  vatPercent: number;
+  /** Thành tiền chưa thuế / thuế / tổng (gồm thuế) */
+  net: number;
+  vat: number;
   total: number;
   paid: number;
   balance: number;
@@ -36,6 +42,8 @@ interface RecCustomer {
   phone: string | null;
   customerType: CustomerType;
   creditLimit: number | null;
+  totalNet: number;
+  totalVat: number;
   totalBilled: number;
   totalPaid: number;
   balance: number;
@@ -84,8 +92,8 @@ export default function ReceivablesPage() {
       {
         name: 'Công nợ khách hàng',
         title: `CÔNG NỢ KHÁCH HÀNG – ngày ${dayjs().format('DD/MM/YYYY')}`,
-        headers: ['Khách hàng', 'SĐT', 'Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)', 'Ghi chú'],
-        sumColumns: [6, 7, 8],
+        headers: ['Khách hàng', 'SĐT', 'Booking', 'Mã của khách', 'Ngày đi', 'NV kinh doanh', 'Chưa thuế', 'Thuế suất', 'Thuế GTGT', 'Tổng tiền', 'Đã thu', 'Còn nợ', 'Hạn thanh toán', 'Quá hạn (ngày)', 'Ghi chú'],
+        sumColumns: [6, 8, 9, 10, 11],
         totalLabel: 'Tổng cộng',
         rows: customers.flatMap((c) =>
           c.bookings.map((b) => [
@@ -95,6 +103,9 @@ export default function ReceivablesPage() {
             b.customerRef,
             b.firstPickup ? dayjs(b.firstPickup).format(DATE_FORMAT) : '',
             b.salesUser,
+            b.net,
+            b.invoice ? `${b.vatPercent}%` : 'Không HĐ',
+            b.vat,
             b.total,
             b.paid,
             b.balance,
@@ -169,7 +180,14 @@ export default function ReceivablesPage() {
                   { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={BOOKING_STATUS} value={v} /> },
                   { title: 'Ngày đi', dataIndex: 'firstPickup', render: (v) => (v ? dayjs(v).format(DATE_FORMAT) : '') },
                   { title: 'NV kinh doanh', dataIndex: 'salesUser' },
-                  { title: 'Tổng tiền', dataIndex: 'total', align: 'right', render: (v) => formatVnd(v) },
+                  { title: 'Chưa thuế', dataIndex: 'net', align: 'right', render: (v) => formatVnd(v) },
+                  {
+                    title: 'Thuế',
+                    dataIndex: 'vat',
+                    align: 'right',
+                    render: (v, b) => (b.invoice ? <span title={`Thuế suất ${b.vatPercent}%`}>{formatVnd(v)} <Typography.Text type="secondary">({b.vatPercent}%)</Typography.Text></span> : <Typography.Text type="secondary">Không HĐ</Typography.Text>),
+                  },
+                  { title: 'Tổng tiền', dataIndex: 'total', align: 'right', render: (v) => <b>{formatVnd(v)}</b> },
                   { title: 'Đã thu', dataIndex: 'paid', align: 'right', render: (v) => formatVnd(v) },
                   {
                     title: 'Còn nợ',
@@ -223,7 +241,9 @@ export default function ReceivablesPage() {
               ),
             },
             { title: 'Số booking', align: 'center', render: (_, c) => c.bookings.length },
-            { title: 'Tổng tiền', dataIndex: 'totalBilled', align: 'right', render: (v) => formatVnd(v) },
+            { title: 'Chưa thuế', dataIndex: 'totalNet', align: 'right', render: (v) => formatVnd(v) },
+            { title: 'Thuế', dataIndex: 'totalVat', align: 'right', render: (v) => (v ? formatVnd(v) : '—') },
+            { title: 'Tổng tiền', dataIndex: 'totalBilled', align: 'right', render: (v) => <b>{formatVnd(v)}</b> },
             { title: 'Đã thu', dataIndex: 'totalPaid', align: 'right', render: (v) => formatVnd(v) },
             {
               title: 'Còn nợ',

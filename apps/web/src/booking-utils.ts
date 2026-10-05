@@ -20,6 +20,7 @@ export interface TripDraft {
   collectNote?: string | null;
   partnerInvoice?: boolean;
   partnerInvoiceNote?: string | null;
+  partnerVatPercent?: number;
   passengers: number;
   vehicleTypeId: number;
   vehicleTypeName?: string;
@@ -59,6 +60,7 @@ export function fromTrip(t: BookingTrip): TripDraft {
     collectNote: t.collectNote ?? null,
     partnerInvoice: !!t.partnerInvoice,
     partnerInvoiceNote: t.partnerInvoiceNote ?? null,
+    partnerVatPercent: Number(t.partnerVatPercent ?? 0),
     passengers: t.passengers,
     vehicleTypeId: t.vehicleTypeId,
     vehicleTypeName: t.vehicleType.name,
@@ -92,7 +94,7 @@ export function computeTotals(trips: TripDraft[], discount: number, vatPercent: 
   const cost = trips.filter((t) => t.status !== 'HUY').reduce((s, t) => s + (t.estimatedCost ?? 0), 0);
   const missingCost = trips.filter((t) => t.status !== 'HUY' && t.estimatedCost === null).length;
   // Lợi nhuận tính trên doanh thu chưa VAT
-  return { subtotal, vatAmount, total, remaining: total - (deposit || 0), cost, profit: taxable - cost, missingCost };
+  return { subtotal, taxable, vatAmount, total, remaining: total - (deposit || 0), cost, profit: taxable - cost, missingCost };
 }
 
 export const fmtTime = (iso: string) => dayjs(iso).format('HH:mm dd DD/MM/YYYY');

@@ -88,7 +88,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
                 <Text style={s.heroBoxValue}>{d.trips ?? 0}</Text>
               </View>
               <View style={s.heroBox}>
-                <Text style={s.heroBoxLabel}>Doanh số xe</Text>
+                <Text style={s.heroBoxLabel}>Doanh số xe (chưa thuế)</Text>
                 <Text style={s.heroBoxValue}>{vnd(d.revenue ?? 0)}</Text>
               </View>
             </View>

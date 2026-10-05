@@ -36,3 +36,10 @@ export const DEFAULT_COST_CATEGORIES = [
   { code: 'RUA_XE', name: 'Rửa xe', sortOrder: 6 },
   { code: 'KHAC', name: 'Khác', sortOrder: 99 },
 ];
+
+/** Số tiền phải trả nhà xe cho chuyến: giá thuê chưa thuế + thuế (khi nhà xe xuất hóa đơn) */
+export function partnerPayable(t: { partnerCost: Num; partnerInvoice?: boolean; partnerVatPercent?: Num }) {
+  const net = Number(t.partnerCost ?? 0);
+  const vat = t.partnerInvoice ? Math.round((net * Number(t.partnerVatPercent ?? 0)) / 100) : 0;
+  return { net, vat, total: net + vat };
+}

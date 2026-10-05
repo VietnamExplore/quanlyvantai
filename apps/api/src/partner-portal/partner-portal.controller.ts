@@ -6,6 +6,7 @@ import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
+import { partnerPayable } from '../finance/cost.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 
@@ -58,6 +59,7 @@ const tripSelect = {
   partnerCost: true,
   partnerInvoice: true,
   partnerInvoiceNote: true,
+  partnerVatPercent: true,
   assignedAt: true,
   vehicleType: { select: { name: true, seats: true } },
   service: { select: { name: true } },
@@ -281,13 +283,19 @@ export class PartnerPortalController {
     const [trips, payments] = await Promise.all([
       this.prisma.bookingTrip.findMany({
         where: { partnerId, status: { not: TripStatus.HUY }, booking: { status: { in: BILLABLE } } },
-        select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerPlate: true, partnerCost: true, status: true, booking: { select: { code: true } }, vehicleType: { select: { name: true } } },
+        select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerPlate: true, partnerCost: true, partnerInvoice: true, partnerVatPercent: true, status: true, booking: { select: { code: true } }, vehicleType: { select: { name: true } } },
         orderBy: { pickupTime: 'desc' },
       }),
       this.prisma.partnerPayment.findMany({ where: { partnerId }, orderBy: { paidAt: 'desc' }, select: { id: true, amount: true, paidAt: true, method: true, reference: true, note: true } }),
     ]);
-    const totalCost = trips.reduce((s, t) => s + Number(t.partnerCost ?? 0), 0);
+    const rows = trips.map((t) => {
+      const x = partnerPayable(t);
+      return { ...t, partnerNet: x.net, partnerVat: x.vat, partnerTotal: x.total };
+    });
+    const totalNet = rows.reduce((s, t) => s + t.partnerNet, 0);
+    const totalVat = rows.reduce((s, t) => s + t.partnerVat, 0);
+    const totalCost = totalNet + totalVat;
     const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
-    return { tripCount: trips.length, totalCost, totalPaid, balance: totalCost - totalPaid, trips, payments };
+    return { tripCount: trips.length, totalNet, totalVat, totalCost, totalPaid, balance: totalCost - totalPaid, trips: rows, payments };
   }
 }

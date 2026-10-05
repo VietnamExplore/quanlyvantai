@@ -21,6 +21,12 @@ interface PayTrip {
   dropoffAddress: string | null;
   partnerPlate: string | null;
   partnerCost: string | null;
+  partnerInvoice: boolean;
+  partnerVatPercent: string;
+  /** Giá thuê chưa thuế / thuế / phải trả */
+  partnerNet: number;
+  partnerVat: number;
+  partnerTotal: number;
   status: TripStatus;
   booking: { id: number; code: string };
   vehicleType: { name: string };
@@ -33,6 +39,8 @@ interface PayPartner {
   bankName: string | null;
   bankAccount: string | null;
   tripCount: number;
+  totalNet: number;
+  totalVat: number;
   totalCost: number;
   totalPaid: number;
   balance: number;
@@ -71,8 +79,8 @@ export default function PayablesPage() {
       {
         name: 'Công nợ nhà xe',
         title: `CÔNG NỢ NHÀ XE ĐỐI TÁC – ngày ${dayjs().format('DD/MM/YYYY')}`,
-        headers: ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê', 'Trạng thái'],
-        sumColumns: [5],
+        headers: ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê (chưa thuế)', 'Thuế suất', 'Thuế GTGT', 'Phải trả', 'Trạng thái'],
+        sumColumns: [5, 7, 8],
         totalLabel: 'Tổng cộng',
         rows: (data?.partners ?? []).flatMap((p) =>
           p.trips.map((t) => [
@@ -81,7 +89,10 @@ export default function PayablesPage() {
             t.booking.code,
             [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → '),
             t.partnerPlate,
-            Number(t.partnerCost ?? 0),
+            t.partnerNet,
+            t.partnerInvoice ? `${Number(t.partnerVatPercent)}%` : 'Không HĐ',
+            t.partnerVat,
+            t.partnerTotal,
             TRIP_STATUS[t.status].label,
           ]),
         ),
@@ -140,7 +151,14 @@ export default function PayablesPage() {
                           { title: 'Hành trình', render: (_, t) => [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → ') },
                           { title: 'Xe', render: (_, t) => t.partnerPlate ?? t.vehicleType.name },
                           { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={TRIP_STATUS} value={v} /> },
-                          { title: 'Giá thuê', dataIndex: 'partnerCost', align: 'right', render: (v) => <Money value={v} /> },
+                          { title: 'Giá thuê (chưa thuế)', dataIndex: 'partnerNet', align: 'right', render: (v) => <Money value={v} /> },
+                          {
+                            title: 'Thuế',
+                            dataIndex: 'partnerVat',
+                            align: 'right',
+                            render: (v, t) => (t.partnerInvoice ? <>{formatVnd(v)} ({Number(t.partnerVatPercent)}%)</> : <span style={{ color: '#999' }}>Không HĐ</span>),
+                          },
+                          { title: 'Phải trả', dataIndex: 'partnerTotal', align: 'right', render: (v) => <Money value={v} strong /> },
                         ]}
                       />
                     ),
@@ -196,7 +214,9 @@ export default function PayablesPage() {
               ),
             },
             { title: 'Số chuyến', dataIndex: 'tripCount', align: 'center' },
-            { title: 'Tổng tiền thuê', dataIndex: 'totalCost', align: 'right', render: (v) => formatVnd(v) },
+            { title: 'Tiền thuê (chưa thuế)', dataIndex: 'totalNet', align: 'right', render: (v) => formatVnd(v) },
+            { title: 'Thuế', dataIndex: 'totalVat', align: 'right', render: (v) => (v ? formatVnd(v) : '—') },
+            { title: 'Phải trả', dataIndex: 'totalCost', align: 'right', render: (v) => <b>{formatVnd(v)}</b> },
             { title: 'Đã trả', dataIndex: 'totalPaid', align: 'right', render: (v) => formatVnd(v) },
             {
               title: 'Còn phải trả',

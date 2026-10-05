@@ -54,10 +54,17 @@ export function bookingTotals(b: {
   const total = taxable + vatAmount;
   const paid = (b.payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
   // remaining: còn lại sau đặt cọc (in trên báo giá); balance: còn phải thu thực tế
-  return { subtotal, vatAmount, total, remaining: total - Number(b.depositAmount), paid, balance: total - paid };
+  // taxable: thành tiền chưa thuế (sau giảm giá) – dùng tính doanh thu, doanh số; total: khách phải trả (gồm thuế)
+  return { subtotal, taxable, vatAmount, total, remaining: total - Number(b.depositAmount), paid, balance: total - paid };
 }
 
 const withTotals = (b: BookingWithTrips) => ({ ...b, ...bookingTotals(b) });
+
+/** Không lấy hóa đơn: thuế suất 0 và bỏ thông tin xuất hóa đơn */
+function normalizeInvoice<T extends { invoiceRequired?: boolean; vatPercent?: number; invoiceCompany?: string | null; invoiceTaxCode?: string | null; invoiceAddress?: string | null; invoiceEmail?: string | null }>(dto: T): T {
+  if (dto.invoiceRequired !== false) return dto;
+  return { ...dto, vatPercent: 0, invoiceCompany: null, invoiceTaxCode: null, invoiceAddress: null, invoiceEmail: null };
+}
 
 /** Chuẩn hóa danh sách hành khách trước khi lưu */
 const passengerRows = (list: PassengerDto[]) =>
@@ -202,7 +209,7 @@ export class BookingsService {
   async create(dto: CreateBookingDto, user: AuthUser, status: BookingStatus = BookingStatus.NHAP) {
     await this.checkSource(dto.source);
     await this.checkCustomerRef(dto.customerRef);
-    const { trips, passengers, quoteValidUntil, ...data } = dto;
+    const { trips, passengers, quoteValidUntil, ...data } = normalizeInvoice(dto);
     const tripData = await this.buildTrips(trips);
 
     const datePart = bookingDatePart(tripData.map((t) => t.pickupTime));
@@ -258,7 +265,7 @@ export class BookingsService {
       throw new BadRequestException('Booking đã hủy, không sửa được');
     }
 
-    const { trips, passengers, quoteValidUntil, ...data } = dto;
+    const { trips, passengers, quoteValidUntil, ...data } = normalizeInvoice(dto);
     const ops: Prisma.PrismaPromise<unknown>[] = [
       this.prisma.booking.update({
         where: { id },
@@ -419,6 +426,7 @@ export class BookingsService {
         collectNote: t.collectNote?.trim() || null,
         partnerInvoice: !!t.partnerInvoice,
         partnerInvoiceNote: t.partnerInvoice ? t.partnerInvoiceNote?.trim() || null : null,
+        partnerVatPercent: t.partnerInvoice ? (t.partnerVatPercent ?? 0) : 0,
         passengers: t.passengers,
         vehicleTypeId: t.vehicleTypeId,
         routePriceId: t.routePriceId ?? null,

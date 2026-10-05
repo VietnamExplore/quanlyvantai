@@ -394,7 +394,14 @@ model Booking {
   salesUserId     Int?
   salesUser       User?              @relation("BookingSales", fields: [salesUserId], references: [id])
   discountAmount  Decimal            @default(0) @db.Decimal(15, 0)
+  /// Khách lấy hóa đơn VAT: giá chuyến là giá chưa thuế, tổng cộng = (tạm tính − giảm giá) × (1 + thuế suất)
+  invoiceRequired Boolean            @default(false)
   vatPercent      Decimal            @default(0) @db.Decimal(5, 2)
+  /// Thông tin xuất hóa đơn cho khách (mặc định lấy từ hồ sơ khách hàng)
+  invoiceCompany  String?
+  invoiceTaxCode  String?
+  invoiceAddress  String?
+  invoiceEmail    String?
   depositAmount   Decimal            @default(0) @db.Decimal(15, 0)
   quoteValidUntil DateTime?          @db.Date
   notes           String? // Ghi chú cho khách (in trên báo giá)
@@ -460,6 +467,8 @@ model BookingTrip {
   partnerCost        Decimal? @db.Decimal(15, 0) // Giá thuê đối tác thực tế
   /// Nhà xe đối tác phải xuất hóa đơn cho công ty (thông tin công ty + email nhận hóa đơn hiện trên cổng nhà xe)
   partnerInvoice     Boolean  @default(false)
+  /// Thuế suất trên hóa đơn nhà xe xuất: giá thuê là giá chưa thuế, công nợ nhà xe = giá thuê × (1 + thuế suất)
+  partnerVatPercent  Decimal  @default(0) @db.Decimal(5, 2)
   partnerInvoiceNote String?
   dispatchNote       String? // Ghi chú cho tài xế / nhà xe
 

@@ -336,6 +336,7 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
       collectNote: v.collectNote?.trim() || null,
       partnerInvoice: !!v.partnerInvoice,
       partnerInvoiceNote: v.partnerInvoice ? v.partnerInvoiceNote?.trim() || null : null,
+      partnerVatPercent: v.partnerInvoice ? Number(v.partnerVatPercent ?? 0) : 0,
       itinerary: v.itinerary || null,
       notes: v.notes || null,
       days: !rentalOption || rentalOption === "DAY" ? v.days || 1 : 1,
@@ -678,7 +679,7 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
           <Col xs={24} md={10}>
             <Form.Item
               name="unitPrice"
-              label="Giá chuyến"
+              label="Giá chuyến (chưa thuế)"
               rules={[{ required: true, message: "Nhập giá" }]}
               extra="Có thể sửa tay"
             >
@@ -836,9 +837,14 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
             <Form.Item noStyle dependencies={["partnerInvoice"]}>
               {({ getFieldValue }) =>
                 getFieldValue("partnerInvoice") ? (
-                  <Form.Item name="partnerInvoiceNote" label="Ghi chú xuất hóa đơn">
-                    <Input placeholder="VD: ghi nội dung 'Cước vận chuyển khách 06/10', VAT 8%, gửi trong 3 ngày" allowClear />
-                  </Form.Item>
+                  <Flex gap={8}>
+                    <Form.Item name="partnerVatPercent" label="Thuế suất HĐ nhà xe" style={{ width: 150 }} tooltip="Giá thuê nhà xe là giá chưa thuế; công nợ nhà xe = giá thuê + thuế">
+                      <Select options={[0, 5, 8, 10].map((x) => ({ value: x, label: `${x}%` }))} />
+                    </Form.Item>
+                    <Form.Item name="partnerInvoiceNote" label="Ghi chú xuất hóa đơn" style={{ flex: 1 }}>
+                      <Input placeholder="VD: nội dung 'Cước vận chuyển khách 06/10', gửi trong 3 ngày" allowClear />
+                    </Form.Item>
+                  </Flex>
                 ) : null
               }
             </Form.Item>

@@ -36,6 +36,7 @@ import {
   Dropdown,
   Tooltip,
   Typography,
+  Checkbox,
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
@@ -149,7 +150,10 @@ export default function BookingEditPage() {
   const readOnly = !canEdit || LOCKED.includes(status) || (status === "HOAN_THANH" && !editCompleted);
 
   const discount = Form.useWatch("discountAmount", form) ?? 0;
-  const vatPercent = Form.useWatch("vatPercent", form) ?? 0;
+  const invoiceRequired: boolean = Form.useWatch("invoiceRequired", form) ?? false;
+  // Không lấy hóa đơn: thuế suất 0 (giá chuyến luôn là giá chưa thuế)
+  const watchVat = Form.useWatch("vatPercent", form) ?? 0;
+  const vatPercent = invoiceRequired ? watchVat : 0;
   const deposit = Form.useWatch("depositAmount", form) ?? 0;
   const totals = computeTotals(trips, discount, vatPercent, deposit);
   const watchCustomerId = Form.useWatch("customerId", form);
@@ -183,7 +187,12 @@ export default function BookingEditPage() {
       source: v.source,
       salesUserId: v.salesUserId ?? null,
       discountAmount: v.discountAmount || 0,
-      vatPercent: v.vatPercent || 0,
+      invoiceRequired: !!v.invoiceRequired,
+      vatPercent: v.invoiceRequired ? v.vatPercent || 0 : 0,
+      invoiceCompany: v.invoiceRequired ? v.invoiceCompany?.trim() || null : null,
+      invoiceTaxCode: v.invoiceRequired ? v.invoiceTaxCode?.trim() || null : null,
+      invoiceAddress: v.invoiceRequired ? v.invoiceAddress?.trim() || null : null,
+      invoiceEmail: v.invoiceRequired ? v.invoiceEmail?.trim() || null : null,
       depositAmount: v.depositAmount || 0,
       quoteValidUntil: v.quoteValidUntil
         ? (v.quoteValidUntil as Dayjs).format("YYYY-MM-DD")
@@ -900,22 +909,66 @@ export default function BookingEditPage() {
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item
-                    name="vatPercent"
-                    label="VAT (%)"
-                    extra="0 nếu không xuất hóa đơn"
-                  >
-                    <InputNumber min={0} max={100} style={{ width: "100%" }} />
+                  <Form.Item name="invoiceRequired" valuePropName="checked" label="Hóa đơn" tooltip="Giá các chuyến là giá chưa gồm thuế. Khách lấy hóa đơn thì chọn thuế suất, tổng cộng tự cộng thuế.">
+                    <Checkbox
+                      onChange={(e) => {
+                        if (!e.target.checked) return;
+                        // Điền sẵn thông tin xuất hóa đơn từ hồ sơ khách hàng (ô nào còn trống)
+                        const c = customers.find((x) => x.id === form.getFieldValue("customerId"));
+                        const cur = form.getFieldsValue(["invoiceCompany", "invoiceTaxCode", "invoiceAddress", "invoiceEmail"]);
+                        form.setFieldsValue({
+                          invoiceCompany: cur.invoiceCompany || c?.name || undefined,
+                          invoiceTaxCode: cur.invoiceTaxCode || c?.taxCode || undefined,
+                          invoiceAddress: cur.invoiceAddress || c?.address || undefined,
+                          invoiceEmail: cur.invoiceEmail || c?.email || undefined,
+                        });
+                      }}
+                    >
+                      Khách lấy hóa đơn (VAT)
+                    </Checkbox>
                   </Form.Item>
                 </Col>
+                {invoiceRequired && (
+                  <Col span={12}>
+                    <Form.Item name="vatPercent" label="Thuế suất" rules={[{ required: true, message: "Chọn thuế suất" }]}>
+                      <Select
+                        options={[0, 5, 8, 10].map((x) => ({ value: x, label: `${x}%` }))}
+                        showSearch
+                        placeholder="Chọn %"
+                      />
+                    </Form.Item>
+                  </Col>
+                )}
                 <Col span={12}>
                   <Form.Item name="depositAmount" label="Đặt cọc">
                     <MoneyInput />
                   </Form.Item>
                 </Col>
               </Row>
+              {invoiceRequired && (
+                <Card size="small" title="Thông tin xuất hóa đơn cho khách" style={{ marginBottom: 12 }}>
+                  <Form.Item name="invoiceCompany" label="Tên đơn vị" style={{ marginBottom: 8 }}>
+                    <Input placeholder="Tên công ty / cá nhân trên hóa đơn" />
+                  </Form.Item>
+                  <Row gutter={8}>
+                    <Col xs={24} sm={10}>
+                      <Form.Item name="invoiceTaxCode" label="Mã số thuế" style={{ marginBottom: 8 }}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={14}>
+                      <Form.Item name="invoiceEmail" label="Email nhận hóa đơn" rules={[{ type: "email", message: "Email không hợp lệ" }]} style={{ marginBottom: 8 }}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Form.Item name="invoiceAddress" label="Địa chỉ" style={{ marginBottom: 0 }}>
+                    <Input />
+                  </Form.Item>
+                </Card>
+              )}
               <Descriptions column={1} size="small" bordered>
-                <Descriptions.Item label="Tạm tính">
+                <Descriptions.Item label={invoiceRequired ? "Tạm tính (chưa thuế)" : "Tạm tính"}>
                   <Money value={totals.subtotal} />
                 </Descriptions.Item>
                 {discount > 0 && (
@@ -923,12 +976,19 @@ export default function BookingEditPage() {
                     -<Money value={discount} />
                   </Descriptions.Item>
                 )}
-                {vatPercent > 0 && (
-                  <Descriptions.Item label={`VAT ${vatPercent}%`}>
-                    <Money value={totals.vatAmount} />
-                  </Descriptions.Item>
+                {invoiceRequired && (
+                  <>
+                    {discount > 0 && (
+                      <Descriptions.Item label="Thành tiền chưa thuế">
+                        <Money value={totals.taxable} />
+                      </Descriptions.Item>
+                    )}
+                    <Descriptions.Item label={`Thuế GTGT ${vatPercent}%`}>
+                      <Money value={totals.vatAmount} />
+                    </Descriptions.Item>
+                  </>
                 )}
-                <Descriptions.Item label={<b>TỔNG CỘNG</b>}>
+                <Descriptions.Item label={<b>{invoiceRequired ? "TỔNG CỘNG (gồm thuế)" : "TỔNG CỘNG"}</b>}>
                   <Typography.Text
                     strong
                     style={{ fontSize: 18, color: "var(--ant-color-primary)" }}

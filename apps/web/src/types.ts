@@ -255,6 +255,8 @@ export interface BookingTrip extends Ref {
   /** Nhà xe đối tác phải xuất hóa đơn cho công ty */
   partnerInvoice?: boolean;
   partnerInvoiceNote?: string | null;
+  /** Thuế suất trên hóa đơn nhà xe (%) */
+  partnerVatPercent?: string | number;
   /** Km đồng hồ và xăng theo định mức (xe công ty) */
   startKm?: number | null;
   endKm?: number | null;
@@ -365,7 +367,13 @@ export interface Booking extends Ref {
   salesUser: { id: number; fullName: string; phone?: string | null } | null;
   createdBy: { id: number; fullName: string; phone?: string | null };
   discountAmount: string;
+  /** Khách lấy hóa đơn VAT: giá chuyến là giá chưa thuế */
+  invoiceRequired?: boolean;
   vatPercent: string;
+  invoiceCompany?: string | null;
+  invoiceTaxCode?: string | null;
+  invoiceAddress?: string | null;
+  invoiceEmail?: string | null;
   depositAmount: string;
   quoteValidUntil: string | null;
   notes: string | null;
@@ -374,6 +382,8 @@ export interface Booking extends Ref {
   trips: BookingTrip[];
   createdAt: string;
   subtotal: number;
+  /** Thành tiền chưa thuế (sau giảm giá) */
+  taxable?: number;
   vatAmount: number;
   total: number;
   remaining: number;

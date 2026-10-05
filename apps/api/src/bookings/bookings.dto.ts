@@ -6,6 +6,7 @@ import {
   IsArray,
   IsBoolean,
   IsDateString,
+  IsEmail,
   IsEnum,
   IsIn,
   IsInt,
@@ -59,6 +60,8 @@ export class TripDto {
   /** Nhà xe đối tác phải xuất hóa đơn cho công ty */
   @IsOptional() @IsBoolean() partnerInvoice?: boolean;
   @IsOptional() @IsString() partnerInvoiceNote?: string | null;
+  /** Thuế suất trên hóa đơn nhà xe (%), giá thuê là giá chưa thuế */
+  @IsOptional() @IsNumber() @Min(0) @Max(100) partnerVatPercent?: number;
 
   @IsInt() @Min(1, { message: 'Số khách phải từ 1 trở lên' }) passengers: number;
   @IsInt() vehicleTypeId: number;
@@ -139,6 +142,24 @@ export class CreateBookingDto {
   @IsOptional() @IsInt() salesUserId?: number | null;
   @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) vatPercent?: number;
+  /** Khách lấy hóa đơn VAT (không tích: thuế suất = 0) */
+  @IsOptional() @IsBoolean() invoiceRequired?: boolean;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() || null : value))
+  @IsOptional()
+  @IsString()
+  invoiceCompany?: string | null;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() || null : value))
+  @IsOptional()
+  @IsString()
+  invoiceTaxCode?: string | null;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() || null : value))
+  @IsOptional()
+  @IsString()
+  invoiceAddress?: string | null;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() || null : value))
+  @IsOptional()
+  @IsEmail({}, { message: 'Email nhận hóa đơn không hợp lệ' })
+  invoiceEmail?: string | null;
   @IsOptional() @IsNumber() @Min(0) depositAmount?: number;
   @IsOptional() @IsDateString() quoteValidUntil?: string | null;
   @IsOptional() @IsString() notes?: string | null;

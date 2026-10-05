@@ -1,6 +1,6 @@
 import { TripStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
 
 export class DispatchQueryDto {
   /** YYYY-MM-DD */
@@ -32,6 +32,7 @@ export class AssignDto {
   /** Giao nhà xe: yêu cầu nhà xe xuất hóa đơn cho công ty */
   @IsOptional() @IsBoolean() partnerInvoice?: boolean;
   @IsOptional() @IsString() partnerInvoiceNote?: string | null;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) partnerVatPercent?: number;
 
   /** Đã xem cảnh báo và vẫn muốn gán */
   @IsOptional() @IsBoolean() force?: boolean;
