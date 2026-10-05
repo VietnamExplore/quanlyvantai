@@ -42,6 +42,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useCopyText } from "../clipboard";
 import {
   buildQuoteText,
   computeTotals,
@@ -88,6 +89,7 @@ export default function BookingEditPage() {
   const queryClient = useQueryClient();
   const { message, modal } = App.useApp();
   const { hasRole, user } = useAuth();
+  const copy = useCopyText();
   const [form] = Form.useForm();
   const customers = useCustomers();
   const salesOptions = useSalesStaffOptions();
@@ -285,16 +287,7 @@ export default function BookingEditPage() {
       message.warning("Hãy lưu booking trước khi sao chép báo giá");
       return;
     }
-    try {
-      await navigator.clipboard.writeText(buildQuoteText(booking, settings, lang ?? toDocLang(booking.docLanguage)));
-      message.success(
-        "Đã sao chép nội dung báo giá. Dán (Ctrl+V) vào Zalo hoặc email.",
-      );
-    } catch {
-      message.error(
-        'Trình duyệt chặn sao chép. Hãy dùng nút "Xem / In báo giá".',
-      );
-    }
+    await copy(buildQuoteText(booking, settings, lang ?? toDocLang(booking.docLanguage)), "Đã sao chép nội dung báo giá. Dán vào Zalo hoặc email.");
   }
 
   const saveTrip = (t: TripDraft) => {

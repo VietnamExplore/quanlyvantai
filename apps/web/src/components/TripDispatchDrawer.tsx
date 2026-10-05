@@ -29,6 +29,7 @@ import { api, ApiError } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime, routeText } from '../booking-utils';
 import { TripOdometer } from './TripOdometer';
+import { useCopyText } from '../clipboard';
 import { buildDispatchText, NEXT_ACTION, TRIP_FLOW } from '../dispatch-utils';
 import { TRIP_STATUS } from '../labels';
 import type { DispatchOptions, DispatchTrip, Partner } from '../types';
@@ -49,6 +50,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
   const canDispatch = hasRole('ADMIN', 'DIEU_HANH');
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
+  const copy = useCopyText();
 
   /** Văn phòng đã nhận lại tiền lái xe thu hộ khách */
   async function settleCollect(settled: boolean) {
@@ -174,12 +176,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
 
   async function copyOrder() {
     if (!trip) return;
-    try {
-      await navigator.clipboard.writeText(buildDispatchText(trip));
-      message.success('Đã sao chép lệnh điều xe. Dán (Ctrl+V) vào Zalo của tài xế / nhà xe.');
-    } catch {
-      message.error('Trình duyệt chặn sao chép');
-    }
+    await copy(buildDispatchText(trip), 'Đã sao chép lệnh điều xe. Dán vào Zalo của tài xế / nhà xe.');
   }
 
   const vehicleOptions = (options?.vehicles ?? []).map((v) => ({
