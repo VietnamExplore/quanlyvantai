@@ -214,3 +214,15 @@ body {
   padding-top: 12px;
   padding-bottom: 12px;
 }
+
+/* Thanh thao tác hàng loạt (danh sách booking): dính trên cùng khi cuộn */
+.bulk-bar {
+  position: sticky;
+  top: 72px;
+  z-index: 12;
+  background: #eef5ff;
+  border: 1px solid #c9ddff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}

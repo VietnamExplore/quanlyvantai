@@ -6,7 +6,7 @@ import { BOOKING_STATUS } from '../labels';
 import type { Booking, BookingStatus } from '../types';
 
 /** Các bước chuyển trạng thái được phép (giống máy chủ) */
-const TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
+export const TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   NHAP: ['BAO_GIA', 'XAC_NHAN', 'HUY'],
   BAO_GIA: ['NHAP', 'XAC_NHAN', 'HUY'],
   XAC_NHAN: ['HOAN_THANH', 'HUY'],

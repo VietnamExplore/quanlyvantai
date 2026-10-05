@@ -2,10 +2,12 @@ import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, Flex, Grid, Table, Tooltip, Typography } from 'antd';
 import dayjs from 'dayjs';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { flightText, fmtTime, routeText } from '../booking-utils';
+import { BookingBulkBar } from '../components/BookingBulkBar';
 import { BookingFilterBar, useBookingFilters } from '../components/BookingFilters';
 import { BookingStatusMenu } from '../components/BookingStatusMenu';
 import { EnumTag, Money, ServiceTag, formatVnd, paged, byText } from '../components/common';
@@ -30,6 +32,12 @@ export default function BookingsPage() {
     queryKey: ['/bookings', filters],
     queryFn: () => api<Booking[]>('/bookings', { query: filters }),
   });
+  // Chọn nhiều booking để thao tác hàng loạt; đổi bộ lọc thì bỏ chọn
+  const [selectedKeys, setSelectedKeys] = useState<number[]>([]);
+  const filterKey = JSON.stringify(filters);
+  useEffect(() => setSelectedKeys([]), [filterKey]);
+  const selected = useMemo(() => data.filter((b) => selectedKeys.includes(b.id)), [data, selectedKeys]);
+
   // Tổng của kết quả đang lọc (không tính booking đã hủy)
   const live = data.filter((b) => b.status !== 'HUY');
   const sum = (f: (b: Booking) => number) => live.reduce((t, b) => t + f(b), 0);
@@ -67,15 +75,41 @@ export default function BookingsPage() {
         </Flex>
       )}
 
+      <BookingBulkBar
+        selected={selected}
+        total={data.length}
+        canEdit={canEdit}
+        onSelectAll={() => setSelectedKeys(data.map((b) => b.id))}
+        onClear={() => setSelectedKeys([])}
+      />
+
       <Table<Booking>
         rowKey="id"
+        rowSelection={{
+          selectedRowKeys: selectedKeys,
+          onChange: (keys) => setSelectedKeys(keys as number[]),
+          preserveSelectedRowKeys: true,
+          columnWidth: 40,
+          selections: [
+            { key: 'all', text: 'Chọn tất cả booking theo bộ lọc (mọi trang)', onSelect: () => setSelectedKeys(data.map((b) => b.id)) },
+            Table.SELECTION_ALL,
+            Table.SELECTION_INVERT,
+            Table.SELECTION_NONE,
+          ],
+        }}
         size="middle"
         loading={isFetching}
         dataSource={data}
         pagination={paged('booking')}
         showSorterTooltip={{ title: 'Bấm để sắp xếp tăng / giảm / bỏ sắp xếp' }}
         locale={{ emptyText: active ? 'Không có booking nào khớp bộ lọc' : 'Chưa có booking' }}
-        onRow={(r) => ({ onClick: () => navigate(`/bookings/${r.id}`), style: { cursor: 'pointer' } })}
+        onRow={(r) => ({
+          onClick: (e) => {
+            if ((e.target as HTMLElement).closest('.ant-table-selection-column')) return;
+            navigate(`/bookings/${r.id}`);
+          },
+          style: { cursor: 'pointer' },
+        })}
         columns={[
           {
             title: 'Mã',
