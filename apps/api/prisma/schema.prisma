@@ -15,6 +15,7 @@ enum Role {
   KINH_DOANH
   KE_TOAN
   LAI_XE
+  NHA_XE // Tài khoản nhà xe đối tác: chỉ thấy chuyến giao cho nhà xe mình
 }
 
 model User {
@@ -30,6 +31,9 @@ model User {
   /// Admin đã xóa (tài khoản có dữ liệu cũ thì giữ lại để không mất lịch sử, ẩn khỏi danh sách)
   deletedAt       DateTime?
   driver          Driver?
+  /// Tài khoản nhà xe đối tác (vai trò NHA_XE)
+  partnerId       Int?
+  partner         Partner?         @relation(fields: [partnerId], references: [id])
   customers       Customer[]       @relation("SalesOwner")
   salesBookings   Booking[]        @relation("BookingSales")
   createdBookings Booking[]        @relation("BookingCreator")
@@ -173,6 +177,7 @@ model Partner {
   trips            BookingTrip[]
   payments         PartnerPayment[]
   vouchers         CashVoucher[]
+  users            User[]
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 }

@@ -432,3 +432,46 @@ body {
     flex: none;
   }
 }
+
+/* ───── Cổng nhà xe đối tác ───── */
+.partner-trip-time {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.partner-trip-route {
+  margin: 10px 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.partner-trip-route .dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.partner-trip-route .dot-from {
+  background: #1677ff;
+}
+.partner-trip-route .dot-to {
+  background: #e3262b;
+}
+.partner-note {
+  background: #f5f8fc;
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  font-size: 13.5px;
+}
+.partner-note-warn {
+  background: #fff7e6;
+}
+.partner-vehicle {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #e6ebf2;
+}
+.partner-trip-focus {
+  box-shadow: 0 0 0 2px #1677ff;
+}

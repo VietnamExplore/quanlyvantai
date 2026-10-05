@@ -15,6 +15,7 @@ const userSelect = {
   isActive: true,
   createdAt: true,
   driver: { select: { id: true, fullName: true } },
+  partner: { select: { id: true, name: true } },
 } satisfies Prisma.UserSelect;
 
 @Injectable()
@@ -122,8 +123,18 @@ export class UsersService {
     return { deleted: true, kept: true };
   }
 
+  /** Tài khoản nhà xe phải chọn nhà xe; vai trò khác không gắn nhà xe */
+  private checkPartnerLink(roles?: Role[], partnerId?: number | null) {
+    if (!roles) return;
+    if (roles.includes(Role.NHA_XE) && !partnerId) throw new BadRequestException('Tài khoản nhà xe phải chọn nhà xe đối tác');
+    if (roles.includes(Role.NHA_XE) && roles.some((r) => r !== Role.NHA_XE)) {
+      throw new BadRequestException('Tài khoản nhà xe không được kèm vai trò khác của văn phòng / lái xe');
+    }
+  }
+
   async create(dto: CreateUserDto) {
     const { password, driverId, ...data } = dto;
+    this.checkPartnerLink(data.roles, data.partnerId);
     await this.assertUsernameFree(data.username);
     await this.assertPhoneFree(data.phone);
     return this.prisma.user.create({
@@ -139,6 +150,11 @@ export class UsersService {
 
   async update(id: number, dto: UpdateUserDto, currentUserId: number) {
     const { password, driverId, ...data } = dto;
+    if (data.roles) {
+      const current = await this.prisma.user.findUnique({ where: { id }, select: { partnerId: true } });
+      this.checkPartnerLink(data.roles, data.partnerId !== undefined ? data.partnerId : current?.partnerId);
+      if (!data.roles.includes(Role.NHA_XE)) data.partnerId = null;
+    }
     if (id === currentUserId && (dto.isActive === false || (dto.roles && !dto.roles.includes(Role.ADMIN)))) {
       throw new BadRequestException('Không thể tự khóa hoặc tự bỏ quyền Admin của chính mình');
     }

@@ -27,6 +27,14 @@ const ICON: Record<string, string> = {
   COLLECTED: '💵',
   ADVANCE_NEW: '🤝',
   TRIP_REJECTED: '⛔',
+  PARTNER_TRIP_NEW: '🚌',
+  PARTNER_TRIP_MOVED: '↪️',
+  PARTNER_TRIP_CHANGED: '🕘',
+  PARTNER_TRIP_CANCELLED: '❌',
+  PARTNER_ACCEPTED: '🤝',
+  PARTNER_REJECTED: '⛔',
+  PARTNER_VEHICLE: '🚐',
+  PARTNER_DONE: '🏁',
 };
 
 const POLL_MS = 30_000;

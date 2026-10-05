@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, BackHandler, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { api, loadSession, setToken, setUnauthorizedHandler } from './src/api';
+import { api, ApiError, loadSession, setToken, setUnauthorizedHandler } from './src/api';
 import { clearKnown, onNotificationOpen, setupNotifications, takeNew, type AppNotification } from './src/notify';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { EarningsScreen } from './src/screens/EarningsScreen';
@@ -87,10 +87,15 @@ export default function App() {
     (async () => {
       const { serverUrl, token } = await loadSession();
       if (serverUrl && token) {
-        try {
-          setUser(await api<AuthUser>('/auth/me'));
-        } catch {
-          /* hết phiên hoặc mất mạng: về màn đăng nhập */
+        // Hết phiên (401) thì về màn đăng nhập; máy chủ đang khởi động lại / mất mạng thì thử lại tối đa ~30 giây
+        for (let attempt = 0; attempt < 15; attempt++) {
+          try {
+            setUser(await api<AuthUser>('/auth/me'));
+            break;
+          } catch (e) {
+            if (e instanceof ApiError && e.status === 401) break;
+            await new Promise((r) => setTimeout(r, 2000));
+          }
         }
       }
       setBooting(false);

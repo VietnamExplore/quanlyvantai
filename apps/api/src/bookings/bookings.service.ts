@@ -296,10 +296,10 @@ export class BookingsService {
 
     // Báo lái xe khi chuyến đã giao bị đổi giờ / điểm đón / điểm trả, hoặc văn phòng nhờ thu tiền
     if (trips) {
-      const after = await this.prisma.bookingTrip.findMany({ where: { bookingId: id, driverId: { not: null }, status: { not: TripStatus.HUY } } });
+      const after = await this.prisma.bookingTrip.findMany({ where: { bookingId: id, OR: [{ driverId: { not: null } }, { partnerId: { not: null } }], status: { not: TripStatus.HUY } } });
       for (const t of after) {
         const before = current.trips.find((c) => c.id === t.id);
-        if (!before || before.driverId !== t.driverId) continue;
+        if (!before || before.driverId !== t.driverId || before.partnerId !== t.partnerId) continue;
         const changes = [
           before.pickupTime.getTime() !== t.pickupTime.getTime() && `giờ đón ${this.when(before.pickupTime)} → ${this.when(t.pickupTime)}`,
           before.pickupAddress !== t.pickupAddress && `điểm đón: ${t.pickupAddress}`,
@@ -307,6 +307,7 @@ export class BookingsService {
         ].filter(Boolean);
         if (changes.length) {
           await this.push.notifyDriver(t.driverId, `Chuyến ${current.code} thay đổi`, changes.join(' · '), { tripId: t.id }, 'TRIP_CHANGED');
+          await this.push.notifyPartner(t.partnerId, { type: 'PARTNER_TRIP_CHANGED', title: `Chuyến ${current.code} thay đổi`, body: changes.join(' · '), tripId: t.id });
         }
         if (t.collectAmount && !t.collectedAt && Number(t.collectAmount) !== Number(before.collectAmount ?? 0)) {
           await this.push.notifyDriver(
@@ -360,8 +361,9 @@ export class BookingsService {
     }
     // Hủy booking: báo các lái xe đã được giao chuyến
     if (status === BookingStatus.HUY) {
-      for (const t of booking.trips.filter((x) => x.driverId && x.status !== TripStatus.HUY && x.status !== TripStatus.HOAN_THANH)) {
+      for (const t of booking.trips.filter((x) => (x.driverId || x.partnerId) && x.status !== TripStatus.HUY && x.status !== TripStatus.HOAN_THANH)) {
         await this.push.notifyDriver(t.driverId, `Chuyến ${booking.code} đã hủy`, `${this.when(t.pickupTime)} · ${t.pickupAddress}`, { tripId: t.id }, 'TRIP_CANCELLED');
+        await this.push.notifyPartner(t.partnerId, { type: 'PARTNER_TRIP_CANCELLED', title: `Chuyến ${booking.code} đã hủy`, body: `${this.when(t.pickupTime)} · ${t.pickupAddress}`, tripId: t.id });
       }
     }
     return this.findOne(id);

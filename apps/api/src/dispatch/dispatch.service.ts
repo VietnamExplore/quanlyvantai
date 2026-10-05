@@ -355,7 +355,29 @@ export class DispatchService {
       this.prisma.tripEvent.create({ data: { tripId: id, status: TripStatus.DA_GAN, note, userId: user.id } }),
     ]);
     await this.notifyAssignment(id, trip.driverId, dto.mode === 'COMPANY' ? (dto.driverId ?? null) : null);
+    await this.notifyPartnerChange(id, trip.partnerId, dto.mode === 'PARTNER' ? (dto.partnerId ?? null) : null);
     return this.getTrip(id);
+  }
+
+  /** Báo nhà xe đối tác: được giao chuyến mới / chuyến bị chuyển đi */
+  private async notifyPartnerChange(tripId: number, previous: number | null, next: number | null) {
+    const trip = await this.prisma.bookingTrip.findUnique({
+      where: { id: tripId },
+      select: { pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerCost: true, passengers: true, vehicleType: { select: { name: true } }, booking: { select: { code: true } } },
+    });
+    if (!trip) return;
+    const when = fmt(trip.pickupTime);
+    if (previous && previous !== next) {
+      await this.push.notifyPartner(previous, { type: 'PARTNER_TRIP_MOVED', title: `Chuyến ${trip.booking.code} đã được chuyển`, body: `${when} · ${trip.pickupAddress} không còn giao cho nhà xe`, tripId });
+    }
+    if (next) {
+      await this.push.notifyPartner(next, {
+        type: 'PARTNER_TRIP_NEW',
+        title: previous === next ? `Cập nhật chuyến ${trip.booking.code}` : `Chuyến mới ${trip.booking.code} – chờ nhà xe nhận`,
+        body: [when, `${trip.pickupAddress}${trip.dropoffAddress ? ` → ${trip.dropoffAddress}` : ''}`, `${trip.vehicleType.name} · ${trip.passengers} khách`, trip.partnerCost && `giá thuê ${Number(trip.partnerCost).toLocaleString('vi-VN')}đ`].filter(Boolean).join(' · '),
+        tripId,
+      });
+    }
   }
 
   async unassign(id: number, user: AuthUser) {
@@ -381,6 +403,7 @@ export class DispatchService {
       this.prisma.tripEvent.create({ data: { tripId: id, status: TripStatus.CHO_DIEU, note: 'Hủy điều xe', userId: user.id } }),
     ]);
     await this.notifyAssignment(id, trip.driverId, null);
+    await this.notifyPartnerChange(id, trip.partnerId, null);
     return this.getTrip(id);
   }
 

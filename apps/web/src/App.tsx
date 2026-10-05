@@ -4,6 +4,7 @@ import { useAuth } from './auth';
 import { AppLayout } from './components/AppLayout';
 import AdvancesPage from './pages/AdvancesPage';
 import AuditLogPage from './pages/AuditLogPage';
+import PartnerPortalPage from './pages/PartnerPortalPage';
 import BookingEditPage from './pages/BookingEditPage';
 import BookingsPage from './pages/BookingsPage';
 import CostCategoriesPage from './pages/CostCategoriesPage';
@@ -43,6 +44,16 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
+
+  // Tài khoản nhà xe đối tác: chỉ có cổng nhận chuyến của nhà xe
+  if (hasRole('NHA_XE') && !hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH', 'KE_TOAN')) {
+    return (
+      <Routes>
+        <Route path="partner" element={<PartnerPortalPage />} />
+        <Route path="*" element={<Navigate to="/partner" replace />} />
+      </Routes>
+    );
+  }
 
   if (!hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH', 'KE_TOAN')) {
     return (

@@ -48,6 +48,20 @@ export class PushService {
     }
   }
 
+  /** Thông báo cho mọi tài khoản của một nhà xe đối tác (chuông trên web nhà xe) */
+  async notifyPartner(partnerId: number | null | undefined, n: NotifyPayload) {
+    if (!partnerId) return;
+    try {
+      const users = await this.prisma.user.findMany({ where: { partnerId, isActive: true, deletedAt: null }, select: { id: true } });
+      await this.notifyUsers(
+        users.map((u) => u.id),
+        { ...n, link: n.link ?? (n.tripId ? `/partner?trip=${n.tripId}` : '/partner') },
+      );
+    } catch (e) {
+      this.logger.warn(`Không gửi được thông báo nhà xe: ${(e as Error).message}`);
+    }
+  }
+
   /** Thông báo cho lái xe: lưu vào chuông trên app + đẩy tới điện thoại (nếu app đã đăng ký) */
   async notifyDriver(driverId: number | null | undefined, title: string, body: string, data: Record<string, unknown> = {}, type = 'TRIP') {
     if (!driverId) return;

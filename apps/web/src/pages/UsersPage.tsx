@@ -1,12 +1,13 @@
 import { QuickSelect } from '../components/QuickCreate';
 import { Checkbox, Col, Form, Input, Row, Select, Switch, Tag } from 'antd';
 import { CrudPage } from '../components/CrudPage';
-import { EnumTag, useCompanyDriverOptions } from '../components/common';
+import { EnumTag, useCompanyDriverOptions, usePartnerOptions } from '../components/common';
 import { ROLE, toOptions } from '../labels';
 import type { Role, User } from '../types';
 
 export default function UsersPage() {
   const driverOptions = useCompanyDriverOptions();
+  const partnerOptions = usePartnerOptions();
 
   return (
     <CrudPage<User>
@@ -17,7 +18,7 @@ export default function UsersPage() {
       deleteConfirm="Xóa người dùng này? Tài khoản đã có dữ liệu (booking, phiếu thu chi, điều xe…) sẽ được khóa và ẩn đi, chứng từ cũ vẫn giữ tên người tạo."
       searchPlaceholder="Tên đăng nhập, họ tên, SĐT"
       newDefaults={{ isActive: true, roles: [] }}
-      toFormValues={(r) => ({ driverId: r.driver?.id ?? null, password: undefined })}
+      toFormValues={(r) => ({ driverId: r.driver?.id ?? null, partnerId: r.partner?.id ?? null, password: undefined })}
       modalWidth={640}
       renderFilters={(f, set) => (
         <Select allowClear placeholder="Vai trò" style={{ width: 150 }} options={toOptions(ROLE)} value={f.role} onChange={(v) => set('role', v)} />
@@ -27,7 +28,7 @@ export default function UsersPage() {
         { title: 'Họ tên', dataIndex: 'fullName' },
         { title: 'SĐT', dataIndex: 'phone' },
         { title: 'Vai trò', dataIndex: 'roles', render: (roles: Role[]) => roles.map((r) => <EnumTag key={r} labels={ROLE} value={r} />) },
-        { title: 'Hồ sơ lái xe', render: (_, r) => r.driver?.fullName },
+        { title: 'Liên kết', render: (_, r) => r.driver?.fullName ?? (r.partner ? <Tag color="purple">{r.partner.name}</Tag> : null) },
         { title: 'Trạng thái', dataIndex: 'isActive', render: (v) => (v ? <Tag color="green">Hoạt động</Tag> : <Tag>Đã khóa</Tag>) },
       ]}
       renderForm={({ editing }) => (
@@ -88,6 +89,15 @@ export default function UsersPage() {
                 (getFieldValue('roles') ?? []).includes('LAI_XE') ? (
                   <Form.Item name="driverId" label="Liên kết hồ sơ lái xe" extra="Lái xe sẽ thấy các chuyến được giao cho hồ sơ này trên app">
                     <QuickSelect entity="driver" allowClear options={driverOptions} />
+                  </Form.Item>
+                ) : (getFieldValue('roles') ?? []).includes('NHA_XE') ? (
+                  <Form.Item
+                    name="partnerId"
+                    label="Thuộc nhà xe đối tác"
+                    rules={[{ required: true, message: 'Chọn nhà xe' }]}
+                    extra="Tài khoản này chỉ thấy cổng nhà xe: nhận / từ chối chuyến giao cho nhà xe, nhập xe & tài xế, xem công nợ. Không kèm vai trò khác."
+                  >
+                    <QuickSelect entity="partner" options={partnerOptions} />
                   </Form.Item>
                 ) : null
               }

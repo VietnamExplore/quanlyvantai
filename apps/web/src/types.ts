@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'DIEU_HANH' | 'KINH_DOANH' | 'KE_TOAN' | 'LAI_XE';
+export type Role = 'ADMIN' | 'DIEU_HANH' | 'KINH_DOANH' | 'KE_TOAN' | 'LAI_XE' | 'NHA_XE';
 export type Ownership = 'CONG_TY' | 'DOI_TAC';
 export type VehicleStatus = 'SAN_SANG' | 'BAO_DUONG' | 'NGUNG_HOAT_DONG';
 export type DriverStatus = 'DANG_LAM' | 'NGHI_PHEP' | 'NGHI_VIEC';
@@ -11,6 +11,8 @@ export interface AuthUser {
   fullName: string;
   roles: Role[];
   driverId: number | null;
+  /** Tài khoản nhà xe đối tác: nhà xe được liên kết */
+  partnerId?: number | null;
 }
 
 interface Ref {
@@ -121,6 +123,8 @@ export interface User extends Ref {
   roles: Role[];
   isActive: boolean;
   driver: { id: number; fullName: string } | null;
+  /** Tài khoản nhà xe đối tác: nhà xe được liên kết */
+  partner?: { id: number; name: string } | null;
 }
 
 // ───── Bảng giá & booking ─────

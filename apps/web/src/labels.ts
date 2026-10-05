@@ -19,6 +19,7 @@ export const ROLE: Labels<Role> = {
   KINH_DOANH: { label: 'Kinh doanh', color: 'green' },
   KE_TOAN: { label: 'Kế toán', color: 'purple' },
   LAI_XE: { label: 'Lái xe', color: 'orange' },
+  NHA_XE: { label: 'Nhà xe đối tác', color: 'purple' },
 };
 
 export const OWNERSHIP: Labels<Ownership> = {

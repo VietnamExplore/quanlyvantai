@@ -19,6 +19,8 @@ export interface AuthUser {
   fullName: string;
   roles: Role[];
   driverId: number | null;
+  /** Tài khoản nhà xe đối tác: nhà xe được liên kết */
+  partnerId?: number | null;
 }
 
 export const CurrentUser = createParamDecorator(

@@ -108,6 +108,12 @@ export const AUDIT_RULES: AuditRule[] = [
   r('POST', '/driver/advances', 'Lái xe đề nghị tạm ứng', 'Advance', 'advanceRequest'),
   r('POST', '/driver/advances/:id/cancel', 'Lái xe hủy đề nghị tạm ứng', 'Advance', 'advanceRequest'),
 
+  // Cổng nhà xe đối tác
+  r('POST', '/partner/trips/:id/accept', 'Nhà xe nhận chuyến', 'Trip', 'bookingTrip'),
+  r('POST', '/partner/trips/:id/reject', 'Nhà xe từ chối chuyến', 'Trip', 'bookingTrip'),
+  r('POST', '/partner/trips/:id/vehicle', 'Nhà xe cập nhật xe / tài xế', 'Trip', 'bookingTrip'),
+  r('POST', '/partner/trips/:id/status', 'Nhà xe cập nhật trạng thái chuyến', 'Trip', 'bookingTrip'),
+
   // Không ghi
   { method: 'POST', path: '/driver/push-token', action: '', skip: true },
   { method: 'POST', path: '/notifications/:id/read', action: '', skip: true },

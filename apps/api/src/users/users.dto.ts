@@ -60,6 +60,11 @@ export class CreateUserDto {
   @IsOptional()
   @IsInt()
   driverId?: number | null;
+
+  /** Tài khoản nhà xe đối tác (vai trò NHA_XE): nhà xe được liên kết; null để bỏ liên kết */
+  @IsOptional()
+  @IsInt()
+  partnerId?: number | null;
 }
 
 export class UpdateUserDto extends PartialType(OmitType(CreateUserDto, ['username', 'password'] as const)) {

@@ -47,6 +47,7 @@ export class AuthGuard implements CanActivate {
       fullName: user.fullName,
       roles: user.roles,
       driverId: user.driver?.id ?? null,
+      partnerId: user.partnerId ?? null,
     };
     req.user = authUser;
 
