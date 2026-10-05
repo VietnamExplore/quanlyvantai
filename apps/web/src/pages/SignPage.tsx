@@ -46,8 +46,10 @@ const css = `
   .sb-welcome { position: relative; display: flex; align-items: center; gap: 5mm; font-size: 7mm; font-weight: 600; letter-spacing: 2.2mm;
                 text-transform: uppercase; color: var(--accent); margin-bottom: 5mm; }
   .sb-welcome::before, .sb-welcome::after { content: ''; width: 28mm; height: .5mm; background: var(--accent); }
-  .sb-fit { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .sb-title { font-weight: 900; line-height: 1.18; padding-top: .08em; text-transform: uppercase; word-break: break-word; color: #111; }
+  /* Chào mừng + tên khách + dòng phụ là một khối, luôn nằm chính giữa bảng dù chữ to hay nhỏ */
+  .sb-group { position: relative; max-width: 100%; display: flex; flex-direction: column; align-items: center; }
+  .sb-title { font-weight: 900; line-height: 1.18; padding-top: .08em; text-transform: uppercase; word-break: break-word; color: #111;
+              max-width: 100%; text-align: center; text-wrap: balance; }
   .sb-sub { margin-top: 6mm; font-size: 9mm; line-height: 1.2; color: #333; }
 
   /* Chân trang: dải màu với đầy đủ thông tin liên hệ */
@@ -105,7 +107,9 @@ export default function SignPage() {
   const [scale, setScale] = useState(1); // Hệ số người dùng chỉnh thêm
   const [fitSize, setFitSize] = useState(60); // Cỡ chữ (mm) vừa khung
   const [zoom, setZoom] = useState(1); // Thu nhỏ để xem trọn trang trên màn hình nhỏ
-  const fitRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const welcomeRef = useRef<HTMLDivElement>(null);
+  const subRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
 
   const title = (b?.signTitle || b?.customer?.name || b?.contactName || '').trim();
@@ -131,13 +135,21 @@ export default function SignPage() {
 
   // Tìm cỡ chữ lớn nhất mà dòng chính vẫn vừa khung
   useLayoutEffect(() => {
-    const box = fitRef.current;
+    const body = bodyRef.current;
     const el = titleRef.current;
-    if (!box || !el) return;
-    const maxH = box.clientHeight * (subtitle ? 0.7 : 0.95);
+    if (!body || !el) return;
+    // Chỗ trống cho tên khách = vùng giữa bảng trừ dòng Chào mừng và dòng phụ
+    const cs = getComputedStyle(body);
+    const outer = (x: HTMLElement | null) => {
+      if (!x) return 0;
+      const s = getComputedStyle(x);
+      return x.offsetHeight + parseFloat(s.marginTop) + parseFloat(s.marginBottom);
+    };
+    const maxW = body.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const maxH = (body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - outer(welcomeRef.current) - outer(subRef.current)) * 0.96;
     let size = 70;
     el.style.fontSize = `${size}mm`;
-    while (size > 10 && (el.scrollHeight > maxH || el.scrollWidth > box.clientWidth)) {
+    while (size > 10 && (el.scrollHeight > maxH || el.scrollWidth > maxW)) {
       size -= 2;
       el.style.fontSize = `${size}mm`;
     }
@@ -246,18 +258,24 @@ export default function SignPage() {
                 )}
               </div>
             )}
-            <div className="sb-body">
+            <div className="sb-body" ref={bodyRef}>
               {showCompany && logo && (
                 <div className="sb-watermark">
                   <img src={logo} alt="" />
                 </div>
               )}
-              <div className="sb-welcome">{t('welcome')}</div>
-              <div className="sb-fit" ref={fitRef}>
+              <div className="sb-group">
+                <div className="sb-welcome" ref={welcomeRef}>
+                  {t('welcome')}
+                </div>
                 <div className="sb-title" ref={titleRef} style={{ fontSize: `${fitSize * scale}mm` }}>
                   {title}
                 </div>
-                {subtitle && <div className="sb-sub">{subtitle}</div>}
+                {subtitle && (
+                  <div className="sb-sub" ref={subRef}>
+                    {subtitle}
+                  </div>
+                )}
               </div>
             </div>
             {foot && (
