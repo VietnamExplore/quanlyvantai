@@ -1,8 +1,9 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Put, Query } from '@nestjs/common';
 import { Prisma, Role, TripStatus } from '@prisma/client';
+import { assertCanEditBooking } from './booking-access';
 import { Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
-import { OFFICE_ROLES, Roles } from '../auth/auth.decorators';
+import { OFFICE_ROLES, Roles, AuthUser, CurrentUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { TranslateService, type TargetLang } from '../translate/translate.service';
 
@@ -84,7 +85,8 @@ export class BookingTranslationsController {
   /** Lưu bản dịch nhân viên đã xem / sửa (gắn với câu gốc hiện tại) */
   @Put()
   @Roles(Role.ADMIN, Role.DIEU_HANH, Role.KINH_DOANH)
-  async save(@Param('id', ParseIntPipe) id: number, @Body() dto: SaveTranslationsDto) {
+  async save(@Param('id', ParseIntPipe) id: number, @Body() dto: SaveTranslationsDto, @CurrentUser() user: AuthUser) {
+    await assertCanEditBooking(this.prisma, id, user);
     const { rows, saved } = await this.sources(id);
     const map: Record<string, Entry> = { ...(saved[dto.lang] ?? {}) };
     for (const e of dto.entries) {
@@ -101,7 +103,8 @@ export class BookingTranslationsController {
   @Post('auto')
   @HttpCode(200)
   @Roles(Role.ADMIN, Role.DIEU_HANH, Role.KINH_DOANH)
-  async auto(@Param('id', ParseIntPipe) id: number, @Body() dto: AutoTranslateDto) {
+  async auto(@Param('id', ParseIntPipe) id: number, @Body() dto: AutoTranslateDto, @CurrentUser() user: AuthUser) {
+    await assertCanEditBooking(this.prisma, id, user);
     const { rows, saved } = await this.sources(id);
     if (!rows.length) throw new BadRequestException('Booking chưa có nội dung tiếng Việt cần dịch');
     const map: Record<string, Entry> = { ...(saved[dto.lang] ?? {}) };

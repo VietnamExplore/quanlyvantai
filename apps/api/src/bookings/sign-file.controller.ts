@@ -12,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { assertCanEditBooking } from './booking-access';
 import { Role } from '@prisma/client';
 import { execFile } from 'child_process';
 import { randomBytes } from 'crypto';
@@ -20,7 +21,7 @@ import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join, resolve } from 'path';
 import { promisify } from 'util';
-import { OFFICE_ROLES, Roles } from '../auth/auth.decorators';
+import { OFFICE_ROLES, Roles, AuthUser, CurrentUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Thư mục lưu file bảng đón: apps/api/uploads/signs (đổi bằng biến môi trường UPLOAD_DIR) */
@@ -94,8 +95,14 @@ export class SignFileController {
         ALLOWED[file.mimetype] ? cb(null, true) : cb(new BadRequestException('Chỉ nhận file ảnh (JPG, PNG, WEBP) hoặc PDF'), false),
     }),
   )
-  async upload(@Param('id', ParseIntPipe) id: number, @UploadedFile() file?: Express.Multer.File) {
+  async upload(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('Chưa chọn file');
+    try {
+      await assertCanEditBooking(this.prisma, id, user);
+    } catch (e) {
+      removeFile(file.filename);
+      throw e;
+    }
     const booking = await this.prisma.booking.findUnique({ where: { id } });
     if (!booking) {
       removeFile(file.filename);
@@ -125,7 +132,8 @@ export class SignFileController {
 
   @Delete()
   @Roles(Role.ADMIN, Role.DIEU_HANH, Role.KINH_DOANH)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+    await assertCanEditBooking(this.prisma, id, user);
     const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id } });
     await this.prisma.booking.update({ where: { id }, data: { signFile: null, signFileName: null, signFileType: null } });
     removeFile(booking.signFile);

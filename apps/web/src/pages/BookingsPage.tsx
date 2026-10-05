@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { flightText, fmtTime, routeText } from '../booking-utils';
+import { flightText, fmtTime, ownsBooking, routeText } from '../booking-utils';
 import { BookingBulkBar } from '../components/BookingBulkBar';
 import { BookingCard } from '../components/BookingCard';
 import { BookingFilterBar, useBookingFilters } from '../components/BookingFilters';
@@ -35,7 +35,9 @@ const CARD_SORTS: { value: string; label: string; fn: (a: Booking, b: Booking) =
 
 export default function BookingsPage() {
   const navigate = useNavigate();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
+  /** Sửa được booking này không (của mình hoặc Admin) */
+  const mine = (b: Booking) => ownsBooking(b, user);
   const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
   const screens = Grid.useBreakpoint();
   // Màn hình dưới 1600px: nút thao tác chỉ hiện biểu tượng cho gọn bảng
@@ -61,7 +63,7 @@ export default function BookingsPage() {
     {
       key: 'card',
       title: <Typography.Text type="secondary">Chọn tất cả</Typography.Text>,
-      render: (_, r) => <BookingCard b={r} canEdit={canEdit} onEdit={() => navigate(`/bookings/${r.id}?edit=1`)} />,
+      render: (_, r) => <BookingCard b={r} canEdit={canEdit && mine(r)} onEdit={() => navigate(`/bookings/${r.id}?edit=1`)} />,
     },
   ];
 
@@ -106,6 +108,7 @@ export default function BookingsPage() {
         selected={selected}
         total={data.length}
         canEdit={canEdit}
+        canEditRow={mine}
         compact={mobile}
         onSelectAll={() => setSelectedKeys(data.map((b) => b.id))}
         onClear={() => setSelectedKeys([])}
@@ -278,15 +281,15 @@ export default function BookingsPage() {
                 <Button
                   size="small"
                   icon={<EditOutlined />}
-                  title={r.status === 'HUY' || !canEdit ? 'Xem' : 'Sửa'}
+                  title={r.status === 'HUY' || !canEdit || !mine(r) ? 'Xem' : 'Sửa'}
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/bookings/${r.id}?edit=1`);
                   }}
                 >
-                  {!compact && (r.status === 'HUY' || !canEdit ? 'Xem' : 'Sửa')}
+                  {!compact && (r.status === 'HUY' || !canEdit || !mine(r) ? 'Xem' : 'Sửa')}
                 </Button>
-                {canEdit && <BookingStatusMenu booking={r} compact={compact} />}
+                {canEdit && mine(r) && <BookingStatusMenu booking={r} compact={compact} />}
               </Flex>
             ),
           },

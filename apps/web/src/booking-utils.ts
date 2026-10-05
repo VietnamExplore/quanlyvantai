@@ -148,3 +148,16 @@ export function buildQuoteText(raw: Booking, s: Settings, lang: DocLang = toDocL
   if (s.companyPhone && s.companyPhone !== staff.phone) lines.push(`${t('hotline')}: ${s.companyPhone}`);
   return lines.join('\n');
 }
+
+/**
+ * Quyền sửa booking: Admin sửa mọi booking; người khác chỉ sửa booking do mình tạo hoặc mình là NV kinh doanh phụ trách
+ * (booking mới chưa lưu thì luôn sửa được). Máy chủ kiểm tra lại cùng quy tắc.
+ */
+export function ownsBooking(
+  b: { createdBy?: { id: number } | null; salesUser?: { id: number } | null } | null | undefined,
+  user: { id: number; roles: string[] } | null,
+) {
+  if (!user) return false;
+  if (!b || user.roles.includes('ADMIN')) return true;
+  return b.createdBy?.id === user.id || b.salesUser?.id === user.id;
+}

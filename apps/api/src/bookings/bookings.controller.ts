@@ -3,13 +3,18 @@ import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { BookingQueryDto, ChangeStatusDto, CreateBookingDto, UpdateBookingDto } from './bookings.dto';
 import { BookingsService } from './bookings.service';
+import { assertCanEditBooking } from './booking-access';
+import { PrismaService } from '../prisma/prisma.service';
 
 const BOOKING_EDITORS = [Role.ADMIN, Role.DIEU_HANH, Role.KINH_DOANH];
 
 @Controller('bookings')
 @Roles(...OFFICE_ROLES)
 export class BookingsController {
-  constructor(private readonly bookings: BookingsService) {}
+  constructor(
+    private readonly bookings: BookingsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get()
   findAll(@Query() query: BookingQueryDto) {
@@ -42,14 +47,16 @@ export class BookingsController {
 
   @Patch(':id')
   @Roles(...BOOKING_EDITORS)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBookingDto) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBookingDto, @CurrentUser() user: AuthUser) {
+    await assertCanEditBooking(this.prisma, id, user);
     return this.bookings.update(id, dto);
   }
 
   @Post(':id/status')
   @HttpCode(200)
   @Roles(...BOOKING_EDITORS)
-  changeStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: ChangeStatusDto) {
+  async changeStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: ChangeStatusDto, @CurrentUser() user: AuthUser) {
+    await assertCanEditBooking(this.prisma, id, user);
     return this.bookings.changeStatus(id, dto);
   }
 }

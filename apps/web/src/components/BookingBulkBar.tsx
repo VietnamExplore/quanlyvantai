@@ -30,7 +30,10 @@ export function BookingBulkBar({
   onSelectAll,
   onClear,
   compact,
+  canEditRow = () => true,
 }: {
+  /** Booking người dùng được sửa (của mình / Admin); còn lại bỏ qua khi đổi trạng thái, gán NV */
+  canEditRow?: (b: Booking) => boolean;
   /** Điện thoại: nút nhỏ, nhãn ngắn để thanh không che màn hình */
   compact?: boolean;
   selected: Booking[];
@@ -85,10 +88,10 @@ export function BookingBulkBar({
   }
 
   function changeStatus(status: BookingStatus) {
-    const ok = selected.filter((b) => TRANSITIONS[b.status].includes(status) && !(status !== 'HUY' && !b.trips.length));
+    const ok = selected.filter((b) => canEditRow(b) && TRANSITIONS[b.status].includes(status) && !(status !== 'HUY' && !b.trips.length));
     const skipped = selected
       .filter((b) => !ok.includes(b))
-      .map((b) => ({ code: b.code, reason: b.status === status ? `đã ở trạng thái ${BOOKING_STATUS[status].label}` : `đang ${BOOKING_STATUS[b.status].label}, không chuyển sang ${BOOKING_STATUS[status].label} được` }));
+      .map((b) => !canEditRow(b) ? { code: b.code, reason: 'booking của người khác, bạn không được sửa' } : ({ code: b.code, reason: b.status === status ? `đã ở trạng thái ${BOOKING_STATUS[status].label}` : `đang ${BOOKING_STATUS[b.status].label}, không chuyển sang ${BOOKING_STATUS[status].label} được` }));
     const label = BULK_STATUS.find((x) => x.status === status)!.label;
     if (!ok.length) {
       message.warning(`Không có booking nào trong số đã chọn chuyển được sang "${BOOKING_STATUS[status].label}"`);
@@ -119,7 +122,7 @@ export function BookingBulkBar({
 
   function assignSales() {
     let salesUserId: number | null = null;
-    const editable = selected.filter((b) => b.status !== 'HUY');
+    const editable = selected.filter((b) => b.status !== 'HUY' && canEditRow(b));
     modal.confirm({
       title: `Gán nhân viên kinh doanh cho ${editable.length} booking`,
       content: <Select style={{ width: '100%', marginTop: 8 }} showSearch optionFilterProp="label" allowClear placeholder="Chọn nhân viên (bỏ trống = bỏ gán)" options={salesOptions} onChange={(v) => (salesUserId = v ?? null)} />,
@@ -130,7 +133,9 @@ export function BookingBulkBar({
           'Gán NV kinh doanh',
           editable,
           (b) => api(`/bookings/${b.id}`, { method: 'PATCH', body: { salesUserId } }),
-          selected.filter((b) => b.status === 'HUY').map((b) => ({ code: b.code, reason: 'booking đã hủy, không sửa được' })),
+          selected
+            .filter((b) => !editable.includes(b))
+            .map((b) => ({ code: b.code, reason: b.status === 'HUY' ? 'booking đã hủy, không sửa được' : 'booking của người khác, bạn không được sửa' })),
         ),
     });
   }

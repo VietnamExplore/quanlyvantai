@@ -51,8 +51,7 @@ import {
   routeText,
   toTripPayload,
   tripAmount,
-  type TripDraft,
-} from "../booking-utils";
+  type TripDraft, ownsBooking } from "../booking-utils";
 import {
   DATE_FORMAT,
   EnumTag,
@@ -141,7 +140,9 @@ export default function BookingEditPage() {
   }, [isNew, booking, form, user, reloadKey]);
 
   const status: BookingStatus = booking?.status ?? "NHAP";
-  const canEdit = hasRole("ADMIN", "DIEU_HANH", "KINH_DOANH");
+  // Booking của người khác (không do mình tạo / không phụ trách): chỉ xem
+  const notMine = !isNew && !!booking && !ownsBooking(booking, user);
+  const canEdit = hasRole("ADMIN", "DIEU_HANH", "KINH_DOANH") && !notMine;
   const readOnly = !canEdit || LOCKED.includes(status) || (status === "HOAN_THANH" && !editCompleted);
 
   const discount = Form.useWatch("discountAmount", form) ?? 0;
@@ -477,6 +478,14 @@ export default function BookingEditPage() {
             )}
           </Space>
         </Flex>
+        {notMine && booking && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginTop: 12 }}
+            title={`Booking ${!booking.salesUser || booking.salesUser.id === booking.createdBy.id ? `của ${booking.createdBy.fullName}` : `do ${booking.createdBy.fullName} tạo, NV ${booking.salesUser.fullName} phụ trách`}. Bạn chỉ được xem, không sửa được.`}
+          />
+        )}
         {booking?.status === "HOAN_THANH" && editCompleted && (
           <Alert
             type="info"
@@ -849,6 +858,7 @@ export default function BookingEditPage() {
           defaultTitle={signDefault}
           canPrint={!isNew && !dirty}
           bookingId={booking?.id}
+          editable={!readOnly}
           pendingFile={pendingSignFile}
           onPendingFile={setPendingSignFile}
         />

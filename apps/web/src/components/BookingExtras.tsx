@@ -265,10 +265,12 @@ interface SignCardProps {
   /** Booking mới (chưa lưu): file bảng đón khách gửi đang chờ, sẽ tải lên ngay sau khi lưu booking */
   pendingFile?: File | null;
   onPendingFile?: (f: File | null) => void;
+  /** false = chỉ xem (booking của người khác / đã hủy) */
+  editable?: boolean;
 }
 
 /** Thông tin bảng đón khách (cầm ở sân bay / khách sạn) */
-export function SignCard({ form, defaultTitle, canPrint, bookingId, pendingFile, onPendingFile }: SignCardProps) {
+export function SignCard({ form, defaultTitle, canPrint, bookingId, pendingFile, onPendingFile, editable = true }: SignCardProps) {
   const title: string = Form.useWatch('signTitle', form) || defaultTitle;
   const subtitle: string | undefined = Form.useWatch('signSubtitle', form);
   const saved = useSignFile(bookingId);
@@ -307,7 +309,7 @@ export function SignCard({ form, defaultTitle, canPrint, bookingId, pendingFile,
           <Form.Item name="signSubtitle" label="Dòng phụ">
             <Input placeholder="Welcome to Da Nang · Đoàn khảo sát ABC" />
           </Form.Item>
-          <SignFileBox bookingId={bookingId} shown={shown} onSaved={saved.refetch} onPendingFile={onPendingFile} />
+          <SignFileBox bookingId={bookingId} shown={shown} onSaved={saved.refetch} onPendingFile={onPendingFile} editable={editable} />
         </Col>
         <Col xs={24} md={12}>
           <Typography.Text type="secondary">{shown?.url ? 'Xem trước: bảng đón khách gửi (sẽ được in)' : 'Xem trước'}</Typography.Text>
@@ -422,15 +424,17 @@ function SignFileBox({
   shown,
   onSaved,
   onPendingFile,
+  editable = true,
 }: {
   bookingId?: number;
   shown: ShownFile | null;
   onSaved: () => void;
   onPendingFile?: (f: File | null) => void;
+  editable?: boolean;
 }) {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
+  const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH') && editable;
   const [uploading, setUploading] = useState(false);
   // Booking mới: chỉ giữ file trên trang, tải lên khi lưu booking
   const deferred = !bookingId;
