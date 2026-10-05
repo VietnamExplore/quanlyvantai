@@ -202,3 +202,15 @@ body {
   margin: 12px 18px 6px;
   background: rgba(148, 163, 184, 0.22);
 }
+
+/* Thanh tiêu đề trang cố định ngay dưới thanh trên cùng khi cuộn (trang booking) */
+.app-content .ant-card.sticky-page-head {
+  position: sticky;
+  top: 64px;
+  z-index: 15;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+}
+.app-content .sticky-page-head > .ant-card-body {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}

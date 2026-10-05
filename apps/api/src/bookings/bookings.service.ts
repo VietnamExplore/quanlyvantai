@@ -131,7 +131,7 @@ export class BookingsService {
       },
       include: bookingInclude,
       orderBy: { createdAt: 'desc' },
-      take: 500,
+      take: 5000,
     });
     const list = rows.map(withTotals);
     if (!payment) return list;

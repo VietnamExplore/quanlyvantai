@@ -401,7 +401,8 @@ export default function BookingEditPage() {
 
   return (
     <Space orientation="vertical" size={16} style={{ width: "100%" }}>
-      <Card>
+      {/* Thanh tiêu đề + nút thao tác: luôn hiện khi cuộn trang */}
+      <Card className="sticky-page-head">
         <Flex justify="space-between" align="center" wrap gap={12}>
           <Space wrap>
             <Button

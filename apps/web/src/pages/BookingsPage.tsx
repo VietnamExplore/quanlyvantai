@@ -13,6 +13,13 @@ import { PaidTag } from '../components/finance';
 import { BOOKING_STATUS } from '../labels';
 import type { Booking } from '../types';
 
+/** So sánh chữ tiếng Việt (có dấu) */
+const byText = (a: string, b: string) => a.localeCompare(b, 'vi');
+/** Giờ đón chuyến đầu tiên (booking chưa có chuyến xếp cuối) */
+const firstPickup = (b: Booking) => (b.trips[0] ? new Date(b.trips[0].pickupTime).getTime() : Number.MAX_SAFE_INTEGER);
+const liveTrips = (b: Booking) => b.trips.filter((t) => t.status !== 'HUY');
+const PAGE_SIZE = 100;
+
 export default function BookingsPage() {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
@@ -49,7 +56,7 @@ export default function BookingsPage() {
         <Flex gap={20} wrap style={{ marginBottom: 12, fontSize: 13, color: '#64748b' }}>
           <span>
             {active > 0 ? 'Kết quả lọc' : 'Tất cả'}: <b style={{ color: '#1e293b' }}>{data.length}</b> booking
-            {data.length >= 500 && ' (hiện 500 booking mới nhất — hãy lọc thêm)'}
+            {data.length >= 5000 && ' (hiện 5.000 booking mới nhất — hãy lọc thêm)'}
           </span>
           <span>
             Tổng tiền: <b style={{ color: '#1e293b' }}>{formatVnd(sum((b) => b.total))} đ</b>
@@ -68,13 +75,20 @@ export default function BookingsPage() {
         size="middle"
         loading={isFetching}
         dataSource={data}
-        pagination={{ pageSize: 30, hideOnSinglePage: true }}
+        pagination={{
+          pageSize: PAGE_SIZE,
+          hideOnSinglePage: true,
+          showSizeChanger: false,
+          showTotal: (total, [a, b]) => `${a}–${b} / ${total} booking`,
+        }}
+        showSorterTooltip={{ title: 'Bấm để sắp xếp tăng / giảm / bỏ sắp xếp' }}
         locale={{ emptyText: active ? 'Không có booking nào khớp bộ lọc' : 'Chưa có booking' }}
         onRow={(r) => ({ onClick: () => navigate(`/bookings/${r.id}`), style: { cursor: 'pointer' } })}
         columns={[
           {
             title: 'Mã',
             dataIndex: 'code',
+            sorter: (a, b) => byText(a.code, b.code),
             render: (v, r) => (
               <>
                 <b className="nowrap">{v}</b>
@@ -88,6 +102,7 @@ export default function BookingsPage() {
           },
           {
             title: 'Khách hàng',
+            sorter: (a, b) => byText(a.customer?.name ?? a.contactName, b.customer?.name ?? b.contactName),
             render: (_, r) => (
               <>
                 {r.customer?.name ?? r.contactName}
@@ -101,6 +116,7 @@ export default function BookingsPage() {
           },
           {
             title: 'Ngày đi',
+            sorter: (a, b) => firstPickup(a) - firstPickup(b),
             render: (_, r) => {
               const first = r.trips[0];
               if (!first) return <Typography.Text type="secondary">Chưa có chuyến</Typography.Text>;
@@ -115,6 +131,7 @@ export default function BookingsPage() {
           },
           {
             title: 'Hành trình',
+            sorter: (a, b) => byText(liveTrips(a)[0] ? routeText(liveTrips(a)[0]) : '', liveTrips(b)[0] ? routeText(liveTrips(b)[0]) : ''),
             render: (_, r) => {
               const trips = r.trips.filter((t) => t.status !== 'HUY');
               const list = trips.length ? trips : r.trips;
@@ -136,6 +153,7 @@ export default function BookingsPage() {
           {
             title: 'Lịch trình',
             responsive: ['xl'],
+            sorter: (a, b) => byText(liveTrips(a).map((t) => t.itinerary ?? '').join(''), liveTrips(b).map((t) => t.itinerary ?? '').join('')),
             render: (_, r) => {
               const list = r.trips.filter((t) => t.status !== 'HUY' && t.itinerary?.trim());
               if (!list.length) return null;
@@ -162,10 +180,12 @@ export default function BookingsPage() {
               );
             },
           },
-          { title: 'Số chuyến', align: 'center', responsive: ['xxl'], render: (_, r) => r.trips.filter((t) => t.status !== 'HUY').length || r.trips.length },
-          { title: 'Tổng tiền', align: 'right', dataIndex: 'total', render: (v) => <Money value={v} strong /> },
+          { title: 'Số chuyến', align: 'center', responsive: ['xxl'], sorter: (a, b) => liveTrips(a).length - liveTrips(b).length, render: (_, r) => r.trips.filter((t) => t.status !== 'HUY').length || r.trips.length },
+          { title: 'Tổng tiền', align: 'right', dataIndex: 'total', sorter: (a, b) => a.total - b.total, render: (v) => <Money value={v} strong /> },
           {
             title: 'Thanh toán',
+            // Sắp theo số tiền còn phải thu
+            sorter: (a, b) => a.balance - b.balance,
             render: (_, r) =>
               r.status === 'HUY' ? null : (
                 <>
@@ -178,9 +198,9 @@ export default function BookingsPage() {
                 </>
               ),
           },
-          { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={BOOKING_STATUS} value={v} /> },
-          { title: 'NV kinh doanh', responsive: ['xxl'], render: (_, r) => r.salesUser?.fullName },
-          { title: 'Ngày tạo', responsive: ['xxl'], dataIndex: 'createdAt', render: (v) => new Date(v).toLocaleDateString('vi-VN') },
+          { title: 'Trạng thái', dataIndex: 'status', sorter: (a, b) => byText(BOOKING_STATUS[a.status].label, BOOKING_STATUS[b.status].label), render: (v) => <EnumTag labels={BOOKING_STATUS} value={v} /> },
+          { title: 'NV kinh doanh', responsive: ['xxl'], sorter: (a, b) => byText(a.salesUser?.fullName ?? '', b.salesUser?.fullName ?? ''), render: (_, r) => r.salesUser?.fullName },
+          { title: 'Ngày tạo', responsive: ['xxl'], dataIndex: 'createdAt', sorter: (a, b) => a.createdAt.localeCompare(b.createdAt), render: (v) => new Date(v).toLocaleDateString('vi-VN') },
           {
             key: 'edit',
             fixed: 'right',
