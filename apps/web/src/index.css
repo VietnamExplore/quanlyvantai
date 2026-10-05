@@ -756,3 +756,17 @@ body {
     height: 180mm;
   }
 }
+
+.pt-row-strong > span:first-child {
+  color: #0f6be0;
+  font-weight: 600;
+}
+.pt-row > :last-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pt-row a {
+  display: inline-block;
+  white-space: nowrap;
+}

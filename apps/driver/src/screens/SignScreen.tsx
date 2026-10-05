@@ -20,7 +20,8 @@ export function SignScreen({ trip, onClose }: { trip: Trip; onClose: () => void 
   const [reloadKey, setReloadKey] = useState(0);
   const img = useAuthImage(hasImage ? `/driver/trips/${trip.id}/sign-file` : null, reloadKey);
   const imgError = !!img.error;
-  const title = (b.signTitle || b.customer?.name || b.contactName || '').trim();
+  // Chưa nhập dòng chính: tên trưởng đoàn / HDV → khách đầu tiên → người liên hệ khách lẻ (không dùng tên công ty / đại lý đặt xe)
+  const title = (b.signTitle || b.leaderName || b.passengers?.[0]?.fullName || (!b.customer ? b.contactName : '') || '').trim();
   const subtitle = b.signSubtitle?.trim();
 
   // Xoay ngang khi mở, trả về dọc khi đóng

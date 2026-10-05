@@ -37,6 +37,9 @@ function PassengerRow({ p, onContact }: { p: Passenger; onContact: (c: GuestCont
   );
 }
 
+/** Tra giờ bay thực tế (trễ / sớm) của số hiệu chuyến bay */
+const openFlight = (flight: string) => Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(`${flight} flight status`)}`);
+
 const openMap = (address: string) =>
   Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`);
 
@@ -245,6 +248,35 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
             {trip.flightNumber && <Chip tone="blue" text={`✈ Đón ${trip.flightNumber}`} />}
             {trip.departureFlight && <Chip tone="blue" text={`✈ Tiễn ${trip.departureFlight}`} />}
           </View>
+          <View style={{ marginTop: 10 }}>
+            <Row label="Giờ đón khách">
+              <Text style={s.pickupStrong}>
+                {fmtHour(trip.pickupTime)} · {dayLabel(trip.pickupTime)} {fmtDate(trip.pickupTime)}
+              </Text>
+            </Row>
+            {trip.flightNumber && (
+              <Row label="Chuyến bay đón">
+                <Text style={s.pickupStrong}>
+                  ✈ {trip.flightNumber}
+                  {'  '}
+                  <Text style={s.flightLink} onPress={() => openFlight(trip.flightNumber!)}>
+                    Tra giờ hạ cánh
+                  </Text>
+                </Text>
+              </Row>
+            )}
+            {trip.departureFlight && (
+              <Row label="Chuyến bay tiễn">
+                <Text style={s.pickupStrong}>
+                  ✈ {trip.departureFlight}
+                  {'  '}
+                  <Text style={s.flightLink} onPress={() => openFlight(trip.departureFlight!)}>
+                    Tra giờ cất cánh
+                  </Text>
+                </Text>
+              </Row>
+            )}
+          </View>
           {trip.notes && (
             <View style={{ marginTop: 10 }}>
               <Row label="Ghi chú">{trip.notes}</Row>
@@ -343,4 +375,6 @@ const s = StyleSheet.create({
   bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 18, backgroundColor: 'rgba(255,255,255,0.97)', borderTopLeftRadius: 22, borderTopRightRadius: 22, elevation: 16, shadowColor: '#0b2a5c', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: -4 } },
   modalBg: { flex: 1, backgroundColor: 'rgba(8,24,56,0.45)', justifyContent: 'center', padding: 24 },
   modal: { backgroundColor: '#fff', borderRadius: 22, padding: 20 },
+  pickupStrong: { fontSize: 15.5, fontWeight: '800', color: colors.primary },
+  flightLink: { fontSize: 13, fontWeight: '700', color: colors.primary, textDecorationLine: 'underline' },
 });

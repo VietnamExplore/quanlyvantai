@@ -82,10 +82,13 @@ const tripSelect = {
 
 type RawTrip = Prisma.BookingTripGetPayload<{ select: typeof tripSelect }>;
 
-/** Bỏ thông tin khách hàng (công ty / người đặt) trước khi gửi cho nhà xe; chỉ dùng để điền sẵn dòng chính bảng đón */
+/**
+ * Bỏ thông tin khách hàng (công ty / đại lý / người đặt) trước khi gửi cho nhà xe.
+ * Bảng đón chưa nhập dòng chính: dùng tên trưởng đoàn / HDV, không thì tên khách đầu tiên (không dùng tên khách hàng / đại lý).
+ */
 function clean(t: RawTrip) {
-  const { customer, contactName, ...booking } = t.booking;
-  return { ...t, booking: { ...booking, signTitle: booking.signTitle || customer?.name || contactName } };
+  const { customer: _c, contactName: _n, ...booking } = t.booking;
+  return { ...t, booking: { ...booking, signTitle: booking.signTitle || booking.leaderName || booking.passengers[0]?.fullName || null } };
 }
 
 const fmt = (d: Date) => {

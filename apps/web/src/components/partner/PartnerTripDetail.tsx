@@ -27,6 +27,9 @@ export const NEXT_STEP: Record<string, { status: string; label: string }> = {
   DA_DON_KHACH: { status: 'HOAN_THANH', label: 'Hoàn thành chuyến' },
 };
 
+/** Tra giờ bay thực tế (trễ / sớm) của số hiệu chuyến bay */
+const flightUrl = (flight: string) => `https://www.google.com/search?q=${encodeURIComponent(`${flight} flight status`)}`;
+
 const mapUrl = (address: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
 
 /** Chi tiết chuyến cho nhà xe (bố cục giống app lái xe): lộ trình, liên hệ đón khách, đoàn khách, bảng đón, xe & tài xế */
@@ -211,6 +214,34 @@ export function PartnerTripDetail({
           {t.flightNumber && <Tag color="blue">✈ Đón {t.flightNumber}</Tag>}
           {t.departureFlight && <Tag color="blue">✈ Tiễn {t.departureFlight}</Tag>}
         </Flex>
+        <div className="pt-row pt-row-strong">
+          <span>Giờ đón khách</span>
+          <b>
+            {dayjs(t.pickupTime).format('HH:mm')} · <span style={{ textTransform: 'capitalize' }}>{dayjs(t.pickupTime).format('dddd, DD/MM/YYYY')}</span>
+          </b>
+        </div>
+        {t.flightNumber && (
+          <div className="pt-row pt-row-strong">
+            <span>Chuyến bay đón</span>
+            <span>
+              <b>✈ {t.flightNumber}</b>
+              <a href={flightUrl(t.flightNumber)} target="_blank" rel="noreferrer" style={{ marginLeft: 10, fontSize: 13 }}>
+                Tra giờ hạ cánh
+              </a>
+            </span>
+          </div>
+        )}
+        {t.departureFlight && (
+          <div className="pt-row pt-row-strong">
+            <span>Chuyến bay tiễn</span>
+            <span>
+              <b>✈ {t.departureFlight}</b>
+              <a href={flightUrl(t.departureFlight)} target="_blank" rel="noreferrer" style={{ marginLeft: 10, fontSize: 13 }}>
+                Tra giờ cất cánh
+              </a>
+            </span>
+          </div>
+        )}
         <div className="pt-row">
           <span>Bảng đón</span>
           <b>{b.signTitle || '—'}</b>
