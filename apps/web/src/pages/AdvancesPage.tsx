@@ -3,7 +3,7 @@ import { App, Button, Card, DatePicker, Flex, Form, Input, Modal, Segmented, Spa
 import dayjs, { type Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { api } from '../api';
-import { DATE_FORMAT, formatVnd, MoneyInput } from '../components/common';
+import { DATE_FORMAT, formatVnd, MoneyInput, paged } from '../components/common';
 import { PAYMENT_METHOD } from '../labels';
 import type { PaymentMethod } from '../types';
 
@@ -117,7 +117,7 @@ export default function AdvancesPage() {
         loading={isLoading}
         dataSource={data}
         scroll={{ x: 900 }}
-        pagination={{ pageSize: 50, hideOnSinglePage: true }}
+        pagination={paged('đề nghị')}
         locale={{ emptyText: filter === 'CHO_DUYET' ? 'Không có đề nghị nào chờ duyệt' : 'Không có đề nghị' }}
         columns={[
           { title: 'Ngày gửi', dataIndex: 'createdAt', render: (v) => dayjs(v).format('HH:mm DD/MM/YYYY'), width: 140 },

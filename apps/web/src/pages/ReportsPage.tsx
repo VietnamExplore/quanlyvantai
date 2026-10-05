@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { routeText } from '../booking-utils';
-import { formatVnd } from '../components/common';
+import { formatVnd, paged } from '../components/common';
 import { DriverSalaryModal } from '../components/DriverSalary';
 import { downloadExcel, type ExcelSheet } from '../excel';
 import { DRIVER_STATUS, TRIP_STATUS, VEHICLE_STATUS } from '../labels';
@@ -623,7 +623,7 @@ function TripDetail({ trips, loading }: { trips: ReportTrip[]; loading: boolean 
         size="small"
         loading={loading}
         dataSource={rows}
-        pagination={{ pageSize: 50, hideOnSinglePage: true, showTotal: (n) => `${n} chuyến` }}
+        pagination={paged('chuyến')}
         locale={{ emptyText: 'Không có chuyến trong kỳ' }}
         columns={[
           { title: 'Giờ đón', dataIndex: 'pickupTime', render: (v) => dayjs(v).format('DD/MM/YYYY HH:mm'), sorter: (a, b) => a.pickupTime.localeCompare(b.pickupTime), defaultSortOrder: 'ascend' },
@@ -743,7 +743,7 @@ function GroupTable({
         loading={loading}
         dataSource={rows}
         columns={cols}
-        pagination={{ pageSize: 50, hideOnSinglePage: true }}
+        pagination={paged()}
         locale={{ emptyText: 'Không có dữ liệu trong kỳ' }}
         summary={() =>
           rows.length > 1 && (
@@ -841,7 +841,7 @@ function DriverPayTable({ pay, loading, trips }: { pay?: DriverPayReport; loadin
         size="small"
         loading={loading}
         dataSource={rows}
-        pagination={false}
+        pagination={paged('lái xe')}
         locale={{ emptyText: 'Chưa có lái xe công ty' }}
         expandable={{
           expandRowByClick: true,

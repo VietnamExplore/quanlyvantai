@@ -8,7 +8,7 @@ import { useAuth } from '../auth';
 import { flightText, fmtTime, routeText } from '../booking-utils';
 import { BookingFilterBar, useBookingFilters } from '../components/BookingFilters';
 import { BookingStatusMenu } from '../components/BookingStatusMenu';
-import { EnumTag, Money, ServiceTag, formatVnd } from '../components/common';
+import { EnumTag, Money, ServiceTag, formatVnd, paged } from '../components/common';
 import { PaidTag } from '../components/finance';
 import { BOOKING_STATUS } from '../labels';
 import type { Booking } from '../types';
@@ -18,7 +18,6 @@ const byText = (a: string, b: string) => a.localeCompare(b, 'vi');
 /** Giờ đón chuyến đầu tiên (booking chưa có chuyến xếp cuối) */
 const firstPickup = (b: Booking) => (b.trips[0] ? new Date(b.trips[0].pickupTime).getTime() : Number.MAX_SAFE_INTEGER);
 const liveTrips = (b: Booking) => b.trips.filter((t) => t.status !== 'HUY');
-const PAGE_SIZE = 100;
 
 export default function BookingsPage() {
   const navigate = useNavigate();
@@ -75,12 +74,7 @@ export default function BookingsPage() {
         size="middle"
         loading={isFetching}
         dataSource={data}
-        pagination={{
-          pageSize: PAGE_SIZE,
-          hideOnSinglePage: true,
-          showSizeChanger: false,
-          showTotal: (total, [a, b]) => `${a}–${b} / ${total} booking`,
-        }}
+        pagination={paged('booking')}
         showSorterTooltip={{ title: 'Bấm để sắp xếp tăng / giảm / bỏ sắp xếp' }}
         locale={{ emptyText: active ? 'Không có booking nào khớp bộ lọc' : 'Chưa có booking' }}
         onRow={(r) => ({ onClick: () => navigate(`/bookings/${r.id}`), style: { cursor: 'pointer' } })}

@@ -32,7 +32,7 @@ import { api } from "../api";
 import { fmtTime, routeText, toTripPayload, type TripDraft } from "../booking-utils";
 import { useAuth } from "../auth";
 import { TripModal, type QuickContact } from "../components/TripModal";
-import { EnumTag } from "../components/common";
+import { EnumTag, paged } from "../components/common";
 import { MonthGrid, WeekGrid, YearGrid } from "../components/ScheduleViews";
 import { TripDispatchDrawer } from "../components/TripDispatchDrawer";
 import { assignmentText, BLOCK_COLOR } from "../dispatch-utils";
@@ -378,7 +378,7 @@ function TripList({
         size="middle"
         loading={isFetching}
         dataSource={data}
-        pagination={{ pageSize: 50, hideOnSinglePage: true }}
+        pagination={paged('chuyến')}
         onRow={(t) => ({
           onClick: () => onOpen(t.id),
           style: { cursor: "pointer" },
@@ -527,7 +527,7 @@ export default function DispatchPage() {
               <Table<DispatchTrip>
                 rowKey="id"
                 size="small"
-                pagination={{ pageSize: 20, hideOnSinglePage: true }}
+                pagination={paged()}
                 dataSource={data?.partnerTrips ?? []}
                 locale={{
                   emptyText: `Không có chuyến giao đối tác trong ${view === "day" ? "ngày" : view === "week" ? "tuần" : view === "month" ? "tháng" : "năm"}`,

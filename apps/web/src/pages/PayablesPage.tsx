@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime } from '../booking-utils';
-import { DATE_FORMAT, EnumTag, formatVnd, Money } from '../components/common';
+import { DATE_FORMAT, EnumTag, formatVnd, Money, paged } from '../components/common';
 import { PaymentModal } from '../components/finance';
 import { downloadExcel } from '../excel';
 import { PAYMENT_METHOD, TRIP_STATUS } from '../labels';
@@ -116,7 +116,7 @@ export default function PayablesPage() {
           rowKey="id"
           loading={isLoading}
           dataSource={data?.partners ?? []}
-          pagination={false}
+          pagination={paged('nhà xe')}
           locale={{ emptyText: 'Chưa có chuyến nào giao cho nhà xe đối tác' }}
           expandable={{
             expandRowByClick: true,
@@ -131,7 +131,7 @@ export default function PayablesPage() {
                       <Table<PayTrip>
                         rowKey="id"
                         size="small"
-                        pagination={{ pageSize: 20, hideOnSinglePage: true }}
+                        pagination={paged('chuyến')}
                         dataSource={p.trips}
                         columns={[
                           { title: 'Ngày chạy', render: (_, t) => fmtTime(t.pickupTime) },

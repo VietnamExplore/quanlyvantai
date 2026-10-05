@@ -7,7 +7,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api, apiBlob } from '../api';
 import { useAuth } from '../auth';
 import { VoucherModal, type Voucher } from '../components/VoucherModal';
-import { DATE_FORMAT, EnumTag, formatVnd } from '../components/common';
+import { DATE_FORMAT, EnumTag, formatVnd, paged } from '../components/common';
 import { downloadExcel } from '../excel';
 import { PAYMENT_METHOD } from '../labels';
 import type { PaymentMethod } from '../types';
@@ -225,7 +225,7 @@ export default function LedgerPage() {
           size="middle"
           loading={isLoading}
           dataSource={entries}
-          pagination={{ pageSize: 50, hideOnSinglePage: true }}
+          pagination={paged('khoản')}
           locale={{ emptyText: 'Không có khoản thu chi trong khoảng thời gian này' }}
           columns={[
             { title: 'Ngày', dataIndex: 'date', render: (v) => dayjs(v).format(DATE_FORMAT) },
@@ -292,7 +292,7 @@ export default function LedgerPage() {
           size="small"
           loading={isLoading}
           dataSource={byVehicle}
-          pagination={false}
+          pagination={paged()}
           locale={{ emptyText: 'Chưa có khoản nào gắn với xe trong khoảng thời gian này' }}
           onRow={(r) => ({ onClick: () => setTarget(r.key === target ? null : r.key), style: { cursor: 'pointer' } })}
           rowClassName={(r) => (r.key === target ? 'ant-table-row-selected' : '')}

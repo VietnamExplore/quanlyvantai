@@ -5,6 +5,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useState, type ReactNode } from 'react';
 import { api } from '../api';
+import { paged } from './common';
 
 type Filters = Record<string, string | number | undefined>;
 
@@ -153,7 +154,7 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
         loading={isFetching}
         columns={[...columns, ...actionColumn]}
         dataSource={data}
-        pagination={{ pageSize: 20, hideOnSinglePage: true }}
+        pagination={paged()}
       />
 
       <Modal

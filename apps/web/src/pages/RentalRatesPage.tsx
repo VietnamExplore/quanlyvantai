@@ -4,7 +4,7 @@ import { Alert, App, Button, Card, Col, Divider, Form, Input, InputNumber, Modal
 import { useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { Money, MoneyInput } from '../components/common';
+import { Money, MoneyInput, paged } from '../components/common';
 import type { RentalRateRow } from '../types';
 
 export default function RentalRatesPage() {
@@ -65,7 +65,7 @@ export default function RentalRatesPage() {
         rowKey="id"
         loading={isLoading}
         dataSource={data}
-        pagination={false}
+        pagination={paged()}
         columns={[
           { title: 'Loại xe', dataIndex: 'name', render: (v) => <b>{v}</b> },
           { title: 'Giá 1 ngày', render: r((x) => (<><Money value={x.fullDayPrice} strong /><br /><small>{x.fullDayHours}h / {x.fullDayKm}km</small></>)) },

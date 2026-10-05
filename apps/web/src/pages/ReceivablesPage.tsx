@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { DATE_FORMAT, EnumTag, formatVnd, Money } from '../components/common';
+import { DATE_FORMAT, EnumTag, formatVnd, Money, paged } from '../components/common';
 import { PaymentModal } from '../components/finance';
 import { downloadExcel } from '../excel';
 import { BOOKING_STATUS, CUSTOMER_TYPE } from '../labels';
@@ -152,7 +152,7 @@ export default function ReceivablesPage() {
           rowKey="key"
           loading={isLoading}
           dataSource={customers}
-          pagination={{ pageSize: 30, hideOnSinglePage: true }}
+          pagination={paged()}
           locale={{ emptyText: 'Không có công nợ' }}
           expandable={{
             expandRowByClick: true,

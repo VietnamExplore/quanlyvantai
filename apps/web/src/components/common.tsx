@@ -6,6 +6,16 @@ import type { Customer, Driver, Location, Partner, Service, Settings, VehicleTyp
 
 export const DATE_FORMAT = 'DD/MM/YYYY';
 
+/** Số dòng tối đa mỗi trang của mọi bảng danh sách */
+export const PAGE_SIZE = 100;
+/** Phân trang chung: 100 dòng/trang, hiện "1–100 / 245 <đơn vị>" (ẩn khi chỉ có 1 trang) */
+export const paged = (unit = 'dòng') => ({
+  pageSize: PAGE_SIZE,
+  hideOnSinglePage: true,
+  showSizeChanger: false,
+  showTotal: (total: number, [a, b]: [number, number]) => `${a}–${b} / ${total} ${unit}`,
+});
+
 export function EnumTag<K extends string>({ labels, value }: { labels: Record<K, { label: string; color?: string }>; value: K }) {
   const item = labels[value];
   return item ? <Tag color={item.color}>{item.label}</Tag> : <>{value}</>;
