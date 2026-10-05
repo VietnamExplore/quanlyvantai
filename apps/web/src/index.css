@@ -250,3 +250,37 @@ body {
     max-width: 100%;
   }
 }
+
+/* Danh sách booking dạng thẻ (điện thoại) */
+.booking-cards .ant-table-cell {
+  padding: 12px 8px !important;
+  vertical-align: top;
+}
+.booking-cards .ant-table-selection-column {
+  padding-top: 14px !important;
+}
+.booking-cards .ant-table-tbody > tr > td {
+  border-bottom: 8px solid #f3f6fb;
+}
+.booking-card {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.booking-card-code {
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: -0.2px;
+}
+.booking-card-customer {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.booking-card-route {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.bulk-bar.bulk-bar-compact {
+  padding: 6px 8px;
+  font-size: 13px;
+}

@@ -1,6 +1,7 @@
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Card, Flex, Grid, Table, Tooltip, Typography } from 'antd';
+import { Button, Card, Flex, Grid, Select, Table, Tooltip, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +9,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { flightText, fmtTime, routeText } from '../booking-utils';
 import { BookingBulkBar } from '../components/BookingBulkBar';
+import { BookingCard } from '../components/BookingCard';
 import { BookingFilterBar, useBookingFilters } from '../components/BookingFilters';
 import { BookingStatusMenu } from '../components/BookingStatusMenu';
 import { EnumTag, Money, ServiceTag, formatVnd, paged, byText } from '../components/common';
@@ -19,12 +21,28 @@ import type { Booking } from '../types';
 const firstPickup = (b: Booking) => (b.trips[0] ? new Date(b.trips[0].pickupTime).getTime() : Number.MAX_SAFE_INTEGER);
 const liveTrips = (b: Booking) => b.trips.filter((t) => t.status !== 'HUY');
 
+/** Sắp xếp dạng thẻ (điện thoại không có tiêu đề cột để bấm) */
+const CARD_SORTS: { value: string; label: string; fn: (a: Booking, b: Booking) => number }[] = [
+  { value: 'created', label: 'Mới tạo nhất', fn: (a, b) => b.createdAt.localeCompare(a.createdAt) },
+  { value: 'pickup', label: 'Ngày đi gần nhất', fn: (a, b) => firstPickup(a) - firstPickup(b) },
+  { value: 'pickupDesc', label: 'Ngày đi xa nhất', fn: (a, b) => firstPickup(b) - firstPickup(a) },
+  { value: 'code', label: 'Mã booking', fn: (a, b) => byText(a.code, b.code) },
+  { value: 'customer', label: 'Tên khách A → Z', fn: (a, b) => byText(a.customer?.name ?? a.contactName, b.customer?.name ?? b.contactName) },
+  { value: 'total', label: 'Tổng tiền cao nhất', fn: (a, b) => b.total - a.total },
+  { value: 'balance', label: 'Còn phải thu nhiều nhất', fn: (a, b) => b.balance - a.balance },
+  { value: 'status', label: 'Trạng thái', fn: (a, b) => byText(BOOKING_STATUS[a.status].label, BOOKING_STATUS[b.status].label) },
+];
+
 export default function BookingsPage() {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const canEdit = hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH');
+  const screens = Grid.useBreakpoint();
   // Màn hình dưới 1600px: nút thao tác chỉ hiện biểu tượng cho gọn bảng
-  const compact = !Grid.useBreakpoint().xxl;
+  const compact = !screens.xxl;
+  // Điện thoại (< 768px): mỗi booking là một thẻ thay vì dòng bảng nhiều cột
+  const mobile = screens.md === false;
+  const [cardSort, setCardSort] = useState('created');
   // Bộ lọc lưu trên đường dẫn (vd. ?status=BAO_GIA từ trang Tổng quan)
   const filterState = useBookingFilters();
   const { filters, active } = filterState;
@@ -37,6 +55,15 @@ export default function BookingsPage() {
   const filterKey = JSON.stringify(filters);
   useEffect(() => setSelectedKeys([]), [filterKey]);
   const selected = useMemo(() => data.filter((b) => selectedKeys.includes(b.id)), [data, selectedKeys]);
+
+  const cardData = useMemo(() => (mobile ? [...data].sort(CARD_SORTS.find((x) => x.value === cardSort)!.fn) : data), [mobile, data, cardSort]);
+  const cardColumns: ColumnsType<Booking> = [
+    {
+      key: 'card',
+      title: <Typography.Text type="secondary">Chọn tất cả</Typography.Text>,
+      render: (_, r) => <BookingCard b={r} canEdit={canEdit} onEdit={() => navigate(`/bookings/${r.id}?edit=1`)} />,
+    },
+  ];
 
   // Tổng của kết quả đang lọc (không tính booking đã hủy)
   const live = data.filter((b) => b.status !== 'HUY');
@@ -79,17 +106,26 @@ export default function BookingsPage() {
         selected={selected}
         total={data.length}
         canEdit={canEdit}
+        compact={mobile}
         onSelectAll={() => setSelectedKeys(data.map((b) => b.id))}
         onClear={() => setSelectedKeys([])}
       />
 
+      {mobile && data.length > 1 && (
+        <Flex align="center" gap={8} style={{ marginBottom: 10 }}>
+          <Typography.Text type="secondary">Sắp xếp theo</Typography.Text>
+          <Select value={cardSort} onChange={setCardSort} options={CARD_SORTS.map(({ value, label }) => ({ value, label }))} style={{ flex: 1 }} />
+        </Flex>
+      )}
+
       <Table<Booking>
         rowKey="id"
+        className={mobile ? 'booking-cards' : undefined}
         rowSelection={{
           selectedRowKeys: selectedKeys,
           onChange: (keys) => setSelectedKeys(keys as number[]),
           preserveSelectedRowKeys: true,
-          columnWidth: 40,
+          columnWidth: mobile ? 44 : 40,
           selections: [
             { key: 'all', text: 'Chọn tất cả booking theo bộ lọc (mọi trang)', onSelect: () => setSelectedKeys(data.map((b) => b.id)) },
             Table.SELECTION_ALL,
@@ -99,18 +135,25 @@ export default function BookingsPage() {
         }}
         size="middle"
         loading={isFetching}
-        dataSource={data}
+        dataSource={cardData}
         pagination={paged('booking')}
         showSorterTooltip={{ title: 'Bấm để sắp xếp tăng / giảm / bỏ sắp xếp' }}
         locale={{ emptyText: active ? 'Không có booking nào khớp bộ lọc' : 'Chưa có booking' }}
         onRow={(r) => ({
           onClick: (e) => {
-            if ((e.target as HTMLElement).closest('.ant-table-selection-column')) return;
+            const target = e.target as HTMLElement;
+            if (target.closest('.ant-table-selection-column')) {
+              // Chạm vào khoảng trống quanh ô chọn (dễ bấm trên điện thoại) cũng chọn / bỏ chọn
+              if (!target.closest('.ant-checkbox-wrapper')) {
+                setSelectedKeys((k) => (k.includes(r.id) ? k.filter((x) => x !== r.id) : [...k, r.id]));
+              }
+              return;
+            }
             navigate(`/bookings/${r.id}`);
           },
           style: { cursor: 'pointer' },
         })}
-        columns={[
+        columns={mobile ? cardColumns : [
           {
             title: 'Mã',
             dataIndex: 'code',

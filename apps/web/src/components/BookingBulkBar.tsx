@@ -29,7 +29,10 @@ export function BookingBulkBar({
   canEdit,
   onSelectAll,
   onClear,
+  compact,
 }: {
+  /** Điện thoại: nút nhỏ, nhãn ngắn để thanh không che màn hình */
+  compact?: boolean;
   selected: Booking[];
   /** Tổng số booking theo bộ lọc (để chọn tất cả qua mọi trang) */
   total: number;
@@ -164,10 +167,10 @@ export function BookingBulkBar({
   }
 
   return (
-    <Flex align="center" gap={10} wrap className="bulk-bar">
-      <b>Đã chọn {selected.length} booking</b>
+    <Flex align="center" gap={compact ? 6 : 10} wrap className={compact ? 'bulk-bar bulk-bar-compact' : 'bulk-bar'}>
+      <b>Đã chọn {selected.length}{compact ? '' : ' booking'}</b>
       {selected.length < total && (
-        <Typography.Link onClick={onSelectAll}>Chọn tất cả {total} booking theo bộ lọc</Typography.Link>
+        <Typography.Link onClick={onSelectAll}>{compact ? `Chọn cả ${total}` : `Chọn tất cả ${total} booking theo bộ lọc`}</Typography.Link>
       )}
       <span style={{ flex: 1 }} />
       {canEdit && (
@@ -179,20 +182,20 @@ export function BookingBulkBar({
               onClick: ({ key }) => changeStatus(key as BookingStatus),
             }}
           >
-            <Button icon={<SwapOutlined />} loading={busy}>
-              Đổi trạng thái <DownOutlined style={{ fontSize: 10 }} />
+            <Button icon={<SwapOutlined />} loading={busy} size={compact ? 'small' : undefined}>
+              {compact ? 'Trạng thái' : 'Đổi trạng thái'} <DownOutlined style={{ fontSize: 10 }} />
             </Button>
           </Dropdown>
-          <Button icon={<UserSwitchOutlined />} onClick={assignSales} disabled={busy}>
-            Gán NV kinh doanh
+          <Button icon={<UserSwitchOutlined />} onClick={assignSales} disabled={busy} size={compact ? 'small' : undefined}>
+            {compact ? 'Gán NV' : 'Gán NV kinh doanh'}
           </Button>
         </>
       )}
-      <Button icon={<DownloadOutlined />} onClick={exportExcel} disabled={busy}>
-        Xuất Excel
+      <Button icon={<DownloadOutlined />} onClick={exportExcel} disabled={busy} size={compact ? 'small' : undefined}>
+        {compact ? 'Excel' : 'Xuất Excel'}
       </Button>
-      <Button type="text" icon={<CloseOutlined />} onClick={onClear} disabled={busy}>
-        Bỏ chọn
+      <Button type="text" icon={<CloseOutlined />} onClick={onClear} disabled={busy} size={compact ? 'small' : undefined} title="Bỏ chọn">
+        {!compact && 'Bỏ chọn'}
       </Button>
     </Flex>
   );
