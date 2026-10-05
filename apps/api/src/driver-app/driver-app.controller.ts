@@ -28,6 +28,7 @@ import { receiptUpload, removeReceipt, sendReceipt } from '../finance/receipts';
 import { SIGN_DIR, signImage } from '../bookings/sign-file.controller';
 import { PayrollService, vnDate } from '../reports/payroll.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 
 /** Bước kế tiếp hợp lệ mà lái xe được bấm */
 const NEXT: Partial<Record<TripStatus, TripStatus>> = {
@@ -155,6 +156,7 @@ export class DriverAppController {
     private readonly payroll: PayrollService,
     private readonly advances: AdvancesService,
     private readonly odometer: OdometerService,
+    private readonly push: PushService,
   ) {}
 
   private driverId(user: AuthUser) {
@@ -243,7 +245,7 @@ export class DriverAppController {
   @Post('trips/:id/reject')
   @HttpCode(200)
   async reject(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: RejectDto) {
-    const trip = await this.prisma.bookingTrip.findFirst({ where: { id, driverId: this.driverId(user) } });
+    const trip = await this.prisma.bookingTrip.findFirst({ where: { id, driverId: this.driverId(user) }, include: { booking: { select: { id: true, code: true } } } });
     if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
     if (trip.status !== TripStatus.DA_GAN) throw new BadRequestException('Chỉ từ chối được chuyến chưa nhận');
     await this.prisma.$transaction([
@@ -253,6 +255,13 @@ export class DriverAppController {
       }),
       this.prisma.tripEvent.create({ data: { tripId: id, status: TripStatus.CHO_DIEU, note: `Lái xe từ chối: ${dto.reason.trim()}`, userId: user.id } }),
     ]);
+    await this.push.notifyRoles([Role.ADMIN, Role.DIEU_HANH], {
+      type: 'TRIP_REJECTED',
+      title: `Lái xe từ chối chuyến · ${trip.booking.code}`,
+      body: `${user.fullName}: ${dto.reason.trim()} · chuyến ${new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', hour12: false }).format(trip.pickupTime).replace(',', '')} cần điều lại`,
+      link: `/bookings/${trip.booking.id}`,
+      tripId: id,
+    });
     return { message: 'Đã từ chối chuyến, văn phòng sẽ điều xe khác' };
   }
 
@@ -345,7 +354,7 @@ export class DriverAppController {
   async collect(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CollectDto) {
     const trip = await this.prisma.bookingTrip.findFirst({
       where: { id, driverId: this.driverId(user) },
-      include: { driver: { select: { fullName: true } }, booking: { select: { id: true, code: true } } },
+      include: { driver: { select: { fullName: true } }, booking: { select: { id: true, code: true, salesUserId: true, createdById: true } } },
     });
     if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
     if (!trip.collectAmount) throw new BadRequestException('Chuyến này văn phòng không nhờ thu tiền');
@@ -368,6 +377,17 @@ export class DriverAppController {
       });
       await tx.tripEvent.create({ data: { tripId: id, status: trip.status, note: `Lái xe đã thu tiền khách: ${dto.amount.toLocaleString('vi-VN')} đ`, userId: user.id } });
     });
+    await this.push.notifyRoles(
+      [Role.ADMIN, Role.KE_TOAN],
+      {
+        type: 'COLLECTED',
+        title: `Lái xe đã thu tiền · ${trip.booking.code}`,
+        body: `${trip.driver?.fullName ?? user.fullName} thu ${dto.amount.toLocaleString('vi-VN')}đ (${dto.method === PaymentMethod.CHUYEN_KHOAN ? 'chuyển khoản' : 'tiền mặt'})${dto.amount !== Number(trip.collectAmount) ? ` · văn phòng nhờ thu ${Number(trip.collectAmount).toLocaleString('vi-VN')}đ` : ''}`,
+        link: `/bookings/${trip.booking.id}`,
+        tripId: id,
+      },
+      { extra: [trip.booking.salesUserId, trip.booking.createdById], exclude: user.id },
+    );
     return this.trip(user, id);
   }
 

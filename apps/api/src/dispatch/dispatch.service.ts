@@ -77,10 +77,10 @@ export class DispatchService {
     if (!trip) return;
     const when = fmt(trip.pickupTime);
     if (previousDriverId && previousDriverId !== newDriverId) {
-      await this.push.notifyDriver(previousDriverId, 'Chuyến đã được chuyển', `${trip.booking.code} lúc ${when} không còn giao cho bạn`, { tripId });
+      await this.push.notifyDriver(previousDriverId, 'Chuyến đã được chuyển', `${trip.booking.code} lúc ${when} không còn giao cho bạn`, { tripId }, 'TRIP_MOVED');
     }
     if (newDriverId && newDriverId !== previousDriverId) {
-      await this.push.notifyDriver(newDriverId, 'Bạn có chuyến mới', `${when} · ${trip.pickupAddress}`, { tripId });
+      await this.push.notifyDriver(newDriverId, 'Bạn có chuyến mới', `${when} · ${trip.pickupAddress}`, { tripId }, 'TRIP_NEW');
     }
   }
 

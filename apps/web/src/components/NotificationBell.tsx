@@ -1,0 +1,139 @@
+import { BellOutlined, CheckOutlined } from '@ant-design/icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { App, Badge, Button, Empty, Flex, Popover, Spin, Typography } from 'antd';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/vi';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
+
+dayjs.extend(relativeTime);
+
+interface Noti {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  createdAt: string;
+  readAt: string | null;
+}
+
+/** Biểu tượng theo loại thông báo */
+const ICON: Record<string, string> = {
+  BOOKING_NEW: '📝',
+  BOOKING_CONFIRMED: '✅',
+  COLLECTED: '💵',
+  ADVANCE_NEW: '🤝',
+  TRIP_REJECTED: '⛔',
+};
+
+const POLL_MS = 30_000;
+
+/**
+ * Chuông thông báo trên thanh trên cùng: số chưa đọc, danh sách thông báo,
+ * tự kiểm tra mỗi 30 giây và hiện nhắc ở góc màn hình khi có thông báo mới.
+ */
+export function NotificationBell() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { notification } = App.useApp();
+  const [open, setOpen] = useState(false);
+  const { data: count } = useQuery({
+    queryKey: ['/notifications', 'count'],
+    queryFn: () => api<{ unread: number; latestId: number }>('/notifications/unread-count'),
+    refetchInterval: POLL_MS,
+    refetchIntervalInBackground: true,
+  });
+  const { data: list, isFetching } = useQuery({
+    queryKey: ['/notifications', 'list'],
+    queryFn: () => api<{ items: Noti[]; unread: number }>('/notifications', { query: { limit: 30 } }),
+    enabled: open,
+  });
+
+  // Có thông báo mới hơn lần trước: hiện nhắc ở góc phải (lần tải đầu tiên không nhắc)
+  const lastSeen = useRef<number | null>(null);
+  useEffect(() => {
+    if (!count) return;
+    const prev = lastSeen.current;
+    lastSeen.current = count.latestId;
+    if (prev === null || count.latestId <= prev) return;
+    api<{ items: Noti[] }>('/notifications', { query: { limit: 5 } })
+      .then(({ items }) => {
+        for (const n of items.filter((x) => x.id > prev && !x.readAt).reverse()) {
+          notification.info({
+            key: `noti-${n.id}`,
+            title: `${ICON[n.type] ?? "🔔"} ${n.title}`,
+            description: n.body,
+            placement: 'topRight',
+            duration: 8,
+            onClick: () => openItem(n),
+            style: { cursor: n.link ? 'pointer' : undefined },
+          });
+        }
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count?.latestId]);
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['/notifications'] });
+
+  async function openItem(n: Noti) {
+    if (!n.readAt) await api(`/notifications/${n.id}/read`, { method: 'POST' }).catch(() => undefined);
+    notification.destroy(`noti-${n.id}`);
+    setOpen(false);
+    refresh();
+    if (n.link) navigate(n.link);
+  }
+
+  async function readAll() {
+    await api('/notifications/read-all', { method: 'POST' }).catch(() => undefined);
+    refresh();
+  }
+
+  const items = list?.items ?? [];
+  const content = (
+    <div style={{ width: 'min(380px, calc(100vw - 32px))' }}>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+        <b>Thông báo</b>
+        {(count?.unread ?? 0) > 0 && (
+          <Button size="small" type="link" icon={<CheckOutlined />} onClick={readAll}>
+            Đánh dấu đã đọc hết
+          </Button>
+        )}
+      </Flex>
+      {isFetching && !items.length ? (
+        <Flex justify="center" style={{ padding: 24 }}>
+          <Spin />
+        </Flex>
+      ) : !items.length ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có thông báo" />
+      ) : (
+        <div style={{ maxHeight: 'min(460px, 70vh)', overflowY: 'auto', margin: '0 -12px' }}>
+          {items.map((n) => (
+            <div key={n.id} className={`noti-item${n.readAt ? '' : ' noti-unread'}`} onClick={() => openItem(n)}>
+              <span className="noti-icon">{ICON[n.type] ?? '🔔'}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="noti-title">{n.title}</div>
+                <div className="noti-body">{n.body}</div>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {dayjs(n.createdAt).locale('vi').fromNow()}
+                </Typography.Text>
+              </div>
+              {!n.readAt && <span className="noti-dot" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Popover content={content} trigger="click" placement="bottomRight" open={open} onOpenChange={(o) => (setOpen(o), o && refresh())} arrow={false}>
+      <Badge count={count?.unread ?? 0} size="small" offset={[-4, 4]}>
+        <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 18 }} />} aria-label="Thông báo" />
+      </Badge>
+    </Popover>
+  );
+}

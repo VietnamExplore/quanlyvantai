@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 import {
   CreateCostCategoryDto,
   CreatePartnerPaymentDto,
@@ -26,6 +27,7 @@ export class FinanceController {
     private readonly finance: FinanceService,
     private readonly prisma: PrismaService,
     private readonly odometer: OdometerService,
+    private readonly push: PushService,
   ) {}
 
   // ───── Loại chi phí ─────
@@ -161,13 +163,23 @@ export class FinanceController {
   @Post('trips/:id/collect-settle')
   @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
   async settleCollect(@Param('id', ParseIntPipe) id: number, @Body() body: { settled?: boolean }) {
-    const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id } });
+    const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id }, include: { booking: { select: { code: true } } } });
     if (!trip.collectedAt) throw new BadRequestException('Lái xe chưa xác nhận thu tiền');
-    return this.prisma.bookingTrip.update({
+    const updated = await this.prisma.bookingTrip.update({
       where: { id },
       data: { collectSettledAt: body.settled === false ? null : new Date() },
       select: { id: true, collectSettledAt: true },
     });
+    if (body.settled !== false && !trip.collectSettledAt) {
+      await this.push.notifyDriver(
+        trip.driverId,
+        'Văn phòng đã nhận tiền thu hộ',
+        `${Number(trip.collectedAmount).toLocaleString('vi-VN')}đ · ${trip.booking.code}`,
+        { tripId: id },
+        'COLLECT_SETTLED',
+      );
+    }
+    return updated;
   }
 
   /** Văn phòng sửa km bắt đầu / kết thúc, định mức xăng của chuyến (null = xóa) */

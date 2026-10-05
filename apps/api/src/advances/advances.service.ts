@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AdvanceStatus, PaymentMethod, Prisma, VoucherType } from '@prisma/client';
+import { AdvanceStatus, PaymentMethod, Prisma, Role, VoucherType } from '@prisma/client';
 import type { AuthUser } from '../auth/auth.decorators';
 import { FinanceService } from '../finance/finance.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -38,7 +38,14 @@ export class AdvancesService {
   async create(driverId: number, amount: number, reason: string) {
     const pending = await this.prisma.advanceRequest.count({ where: { driverId, status: AdvanceStatus.CHO_DUYET } });
     if (pending) throw new BadRequestException('Bạn đang có đề nghị tạm ứng chờ duyệt. Hủy đề nghị đó nếu muốn đổi số tiền.');
-    return this.prisma.advanceRequest.create({ data: { driverId, amount, reason: reason.trim() }, select: ADVANCE_SELECT });
+    const created = await this.prisma.advanceRequest.create({ data: { driverId, amount, reason: reason.trim() }, select: ADVANCE_SELECT });
+    const driver = await this.prisma.driver.findUnique({ where: { id: driverId }, select: { fullName: true, userId: true } });
+    await this.push.notifyRoles(
+      [Role.ADMIN, Role.KE_TOAN],
+      { type: 'ADVANCE_NEW', title: `Đề nghị tạm ứng mới · ${driver?.fullName ?? ''}`, body: `${vnd(amount)} · ${reason.trim()}`, link: '/finance/advances' },
+      { exclude: driver?.userId },
+    );
+    return created;
   }
 
   async cancel(driverId: number, id: number) {
@@ -103,6 +110,7 @@ export class AdvancesService {
       'Tạm ứng đã được duyệt',
       `Văn phòng đã chi tạm ứng ${vnd(amount)}${dto.method === PaymentMethod.CHUYEN_KHOAN ? ' (chuyển khoản)' : ''}. Khoản này sẽ trừ vào lương tháng.`,
       { advanceId: id },
+      'ADVANCE_DONE',
     );
     return { ok: true, voucherCode: voucher.code };
   }
@@ -110,7 +118,7 @@ export class AdvancesService {
   async reject(id: number, user: AuthUser, reason: string) {
     const r = await this.pending(id);
     await this.prisma.advanceRequest.update({ where: { id }, data: { status: AdvanceStatus.TU_CHOI, decidedAt: new Date(), decidedById: user.id, decisionNote: reason.trim() } });
-    await this.push.notifyDriver(r.driverId, 'Đề nghị tạm ứng chưa được duyệt', `${vnd(r.amount)}: ${reason.trim()}`, { advanceId: id });
+    await this.push.notifyDriver(r.driverId, 'Đề nghị tạm ứng chưa được duyệt', `${vnd(r.amount)}: ${reason.trim()}`, { advanceId: id }, 'ADVANCE_DONE');
     return { ok: true };
   }
 }

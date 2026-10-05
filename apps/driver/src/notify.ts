@@ -3,10 +3,8 @@ import type * as NotificationsModule from 'expo-notifications';
 import { storage } from './storage';
 import { Platform } from 'react-native';
 import { api } from './api';
-import { fmtTime } from './theme';
-import type { Trip } from './types';
 
-const KNOWN_KEY = 'known_trip_ids';
+const KNOWN_KEY = 'last_notification_id';
 
 /**
  * Expo Go (dùng để test trên máy ảo) không còn hỗ trợ expo-notifications trên Android:
@@ -45,35 +43,52 @@ export async function setupNotifications() {
     if (projectId) {
       const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
       await api('/driver/push-token', { method: 'POST', body: { token: data } });
+      pushRegistered = true;
     }
   } catch {
     /* chưa có FCM: dùng cơ chế tự kiểm tra */
   }
 }
 
-/**
- * So sánh danh sách chuyến mới tải với lần trước:
- * báo chuyến mới được giao và chuyến bị chuyển đi.
- */
-export async function notifyChanges(trips: Trip[]) {
-  const raw = await storage.get(KNOWN_KEY);
-  const known: number[] | null = raw ? JSON.parse(raw) : null;
-  const ids = trips.map((t) => t.id);
-  await storage.set(KNOWN_KEY, JSON.stringify(ids));
-  if (!known) return; // lần đầu đăng nhập: không báo các chuyến đã có sẵn
+/** Thông báo trong app (chuông) lấy từ máy chủ */
+export interface AppNotification {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  tripId: number | null;
+  createdAt: string;
+  readAt: string | null;
+}
 
-  const added = trips.filter((t) => !known.includes(t.id));
-  if (!Notifications) return;
-  for (const t of added) {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: { title: 'Bạn có chuyến mới', body: `${fmtTime(t.pickupTime)} · ${t.pickupAddress}`, data: { tripId: t.id }, sound: 'default' },
-        trigger: Platform.OS === 'android' ? { channelId: 'trips' } : null,
-      });
-    } catch {
-      /* thiết bị không hỗ trợ / chưa cho phép thông báo */
+/** Đã đăng ký nhận thông báo đẩy từ máy chủ: khi đó không tự hiện thông báo trên máy nữa (tránh báo 2 lần) */
+let pushRegistered = false;
+
+/**
+ * Có thông báo mới (mã lớn hơn lần trước): trả về danh sách mới để hiện băng nhắc trong app,
+ * và hiện thông báo trên điện thoại khi chưa có thông báo đẩy từ máy chủ.
+ * Lần đầu đăng nhập: chỉ ghi nhớ, không báo các thông báo cũ.
+ */
+export async function takeNew(items: AppNotification[]): Promise<AppNotification[]> {
+  const raw = await storage.get(KNOWN_KEY);
+  const last = raw ? Number(raw) : null;
+  const max = items.reduce((m, n) => Math.max(m, n.id), last ?? 0);
+  await storage.set(KNOWN_KEY, String(max));
+  if (last === null) return [];
+  const fresh = items.filter((n) => n.id > last && !n.readAt).reverse();
+  if (Notifications && !pushRegistered) {
+    for (const n of fresh) {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: { title: n.title, body: n.body, data: n.tripId ? { tripId: n.tripId } : {}, sound: 'default' },
+          trigger: Platform.OS === 'android' ? { channelId: 'trips' } : null,
+        });
+      } catch {
+        /* thiết bị không hỗ trợ / chưa cho phép thông báo */
+      }
     }
   }
+  return fresh;
 }
 
 /** Bấm vào thông báo: gọi lại với mã chuyến. Trả về hàm hủy đăng ký. */
@@ -86,6 +101,8 @@ export function onNotificationOpen(cb: (tripId: number) => void) {
   return () => sub.remove();
 }
 
-export async function clearKnownTrips() {
+export async function clearKnown() {
   await storage.remove(KNOWN_KEY);
+  await storage.remove('known_trip_ids');
+  pushRegistered = false;
 }

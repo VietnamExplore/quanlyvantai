@@ -57,6 +57,6 @@ export class BookingsController {
   @Roles(...BOOKING_EDITORS)
   async changeStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: ChangeStatusDto, @CurrentUser() user: AuthUser) {
     await assertCanEditBooking(this.prisma, id, user);
-    return this.bookings.changeStatus(id, dto);
+    return this.bookings.changeStatus(id, dto, user);
   }
 }

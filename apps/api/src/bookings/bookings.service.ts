@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
 import { AuthUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 import { PriceLine, sumLines } from '../pricing/pricing.service';
 import { BookingQueryDto, ChangeStatusDto, CreateBookingDto, PassengerDto, TripDto, UpdateBookingDto } from './bookings.dto';
 
@@ -88,7 +89,16 @@ export const formatBookingCode = (datePart: string, seq: number) => `${BOOKING_C
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
+  ) {}
+
+  /** "08:30 05/10" giờ Việt Nam */
+  private when(d: Date) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', hour12: false }).formatToParts(d).map((x) => [x.type, x.value]));
+    return `${p.hour}:${p.minute} ${p.day}/${p.month}`;
+  }
 
   async findAll({ q, status, salesUserId, from, to, customerId, source, serviceType, vehicleTypeId, createdFrom, createdTo, payment }: BookingQueryDto) {
     const pickupFilter: Prisma.DateTimeFilter = {};
@@ -216,6 +226,20 @@ export class BookingsService {
           },
           include: bookingInclude,
         });
+        // Booking mới (không tính lệnh điều xe tạo nhanh): báo Admin, Điều hành
+        if (status === BookingStatus.NHAP) {
+          const first = booking.trips[0];
+          await this.push.notifyRoles(
+            [Role.ADMIN, Role.DIEU_HANH],
+            {
+              type: 'BOOKING_NEW',
+              title: `Booking mới ${booking.code}`,
+              body: [booking.customer?.name ?? booking.contactName, first && `đi ${this.when(first.pickupTime)}`, `${booking.trips.length} chuyến`, `${user.fullName} tạo`].filter(Boolean).join(' · '),
+              link: `/bookings/${booking.id}`,
+            },
+            { exclude: user.id },
+          );
+        }
         return withTotals(booking);
       } catch (e) {
         // Hai người tạo booking cùng lúc bị trùng mã: thử lại với số kế tiếp
@@ -269,10 +293,36 @@ export class BookingsService {
     }
 
     await this.prisma.$transaction(ops);
+
+    // Báo lái xe khi chuyến đã giao bị đổi giờ / điểm đón / điểm trả, hoặc văn phòng nhờ thu tiền
+    if (trips) {
+      const after = await this.prisma.bookingTrip.findMany({ where: { bookingId: id, driverId: { not: null }, status: { not: TripStatus.HUY } } });
+      for (const t of after) {
+        const before = current.trips.find((c) => c.id === t.id);
+        if (!before || before.driverId !== t.driverId) continue;
+        const changes = [
+          before.pickupTime.getTime() !== t.pickupTime.getTime() && `giờ đón ${this.when(before.pickupTime)} → ${this.when(t.pickupTime)}`,
+          before.pickupAddress !== t.pickupAddress && `điểm đón: ${t.pickupAddress}`,
+          (before.dropoffAddress ?? '') !== (t.dropoffAddress ?? '') && `điểm trả: ${t.dropoffAddress ?? '—'}`,
+        ].filter(Boolean);
+        if (changes.length) {
+          await this.push.notifyDriver(t.driverId, `Chuyến ${current.code} thay đổi`, changes.join(' · '), { tripId: t.id }, 'TRIP_CHANGED');
+        }
+        if (t.collectAmount && !t.collectedAt && Number(t.collectAmount) !== Number(before.collectAmount ?? 0)) {
+          await this.push.notifyDriver(
+            t.driverId,
+            'Văn phòng nhờ thu tiền khách',
+            `${Number(t.collectAmount).toLocaleString('vi-VN')}đ · chuyến ${this.when(t.pickupTime)}${t.collectNote ? ` · ${t.collectNote}` : ''}`,
+            { tripId: t.id },
+            'COLLECT_REQUEST',
+          );
+        }
+      }
+    }
     return this.findOne(id);
   }
 
-  async changeStatus(id: number, { status, cancelReason }: ChangeStatusDto) {
+  async changeStatus(id: number, { status, cancelReason }: ChangeStatusDto, user?: AuthUser) {
     const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id }, include: { trips: true } });
     if (!TRANSITIONS[booking.status].includes(status)) {
       throw new BadRequestException('Không thể chuyển sang trạng thái này từ trạng thái hiện tại');
@@ -293,6 +343,27 @@ export class BookingsService {
         ? [this.prisma.bookingTrip.updateMany({ where: { bookingId: id }, data: { status: TripStatus.HUY } })]
         : []),
     ]);
+
+    // Khách xác nhận (không tính mở lại booking đã hoàn thành): báo Điều hành để xếp xe
+    if (status === BookingStatus.XAC_NHAN && booking.status !== BookingStatus.HOAN_THANH) {
+      const first = [...booking.trips].sort((a, b) => a.pickupTime.getTime() - b.pickupTime.getTime())[0];
+      await this.push.notifyRoles(
+        [Role.ADMIN, Role.DIEU_HANH],
+        {
+          type: 'BOOKING_CONFIRMED',
+          title: `Khách xác nhận ${booking.code} – cần điều xe`,
+          body: [booking.contactName, first && `đi ${this.when(first.pickupTime)}`, `${booking.trips.length} chuyến`].filter(Boolean).join(' · '),
+          link: `/bookings/${id}`,
+        },
+        { exclude: user?.id },
+      );
+    }
+    // Hủy booking: báo các lái xe đã được giao chuyến
+    if (status === BookingStatus.HUY) {
+      for (const t of booking.trips.filter((x) => x.driverId && x.status !== TripStatus.HUY && x.status !== TripStatus.HOAN_THANH)) {
+        await this.push.notifyDriver(t.driverId, `Chuyến ${booking.code} đã hủy`, `${this.when(t.pickupTime)} · ${t.pickupAddress}`, { tripId: t.id }, 'TRIP_CANCELLED');
+      }
+    }
     return this.findOne(id);
   }
 

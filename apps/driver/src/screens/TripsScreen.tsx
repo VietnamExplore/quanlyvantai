@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 import { api } from '../api';
-import { notifyChanges } from '../notify';
 import { colors, dayLabel, fmtDate, fmtHour, SERVICE, shadow } from '../theme';
 import type { Trip } from '../types';
 import { Card, Chip, StatusBadge } from '../ui';
@@ -112,7 +111,6 @@ export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
       setTrips(data);
       setError(null);
       setUpdatedAt(new Date());
-      if (scope === 'active') await notifyChanges(data);
     } catch (e) {
       setError((e as Error).message);
     } finally {

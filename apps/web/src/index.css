@@ -357,3 +357,40 @@ body {
 .ant-drawer-content-wrapper {
   max-width: 100vw;
 }
+
+/* ───── Chuông thông báo ───── */
+.noti-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f2f5;
+  align-items: flex-start;
+}
+.noti-item:hover {
+  background: #f5f8ff;
+}
+.noti-unread {
+  background: #f0f6ff;
+}
+.noti-icon {
+  font-size: 18px;
+  line-height: 22px;
+}
+.noti-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.noti-body {
+  font-size: 13px;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+.noti-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1677ff;
+  margin-top: 7px;
+  flex-shrink: 0;
+}

@@ -1,10 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, BackHandler, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, BackHandler, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { api, loadSession, setToken, setUnauthorizedHandler } from './src/api';
-import { clearKnownTrips, onNotificationOpen, setupNotifications } from './src/notify';
+import { clearKnown, onNotificationOpen, setupNotifications, takeNew, type AppNotification } from './src/notify';
+import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { EarningsScreen } from './src/screens/EarningsScreen';
 import { FuelScreen } from './src/screens/FuelScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -23,7 +24,10 @@ const initials = (name: string) => {
 import type { AuthUser } from './src/types';
 
 type Tab = 'trips' | 'fuel' | 'earnings';
-type Screen = { name: Tab } | { name: 'trip'; id: number; from: Tab } | { name: 'profile' };
+type Screen = { name: Tab } | { name: 'trip'; id: number; from: Tab } | { name: 'profile' } | { name: 'notifications' };
+
+/** Kiểm tra thông báo mới mỗi 30 giây khi app đang mở */
+const POLL_MS = 30_000;
 
 /** Thanh tab dưới cùng */
 const TABS: { key: Tab; icon: string; label: string; title: string }[] = [
@@ -37,6 +41,45 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [screen, setScreen] = useState<Screen>({ name: 'trips' });
+  const [unread, setUnread] = useState(0);
+  // Băng nhắc trượt xuống khi có thông báo mới (tự ẩn sau vài giây)
+  const [toast, setToast] = useState<{ n: AppNotification; more: number } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pollNotifications = useCallback(async () => {
+    try {
+      const { items, unread: count } = await api<{ items: AppNotification[]; unread: number }>('/notifications?limit=20');
+      setUnread(count);
+      const fresh = await takeNew(items);
+      if (fresh.length) {
+        setToast({ n: fresh[fresh.length - 1], more: fresh.length - 1 });
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToast(null), 6000);
+      }
+    } catch {
+      /* mất mạng: thử lại lần sau */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    pollNotifications();
+    const timer = setInterval(() => AppState.currentState === 'active' && pollNotifications(), POLL_MS);
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && pollNotifications());
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, [user, pollNotifications]);
+
+  function openToast() {
+    if (!toast) return;
+    const { n } = toast;
+    setToast(null);
+    api(`/notifications/${n.id}/read`, { method: 'POST' }).then(pollNotifications).catch(() => undefined);
+    if (n.tripId && n.type !== 'TRIP_MOVED' && n.type !== 'TRIP_CANCELLED') setScreen({ name: 'trip', id: n.tripId, from: 'trips' });
+    else setScreen({ name: 'notifications' });
+  }
 
   // Khôi phục phiên đăng nhập đã lưu
   useEffect(() => {
@@ -76,7 +119,8 @@ export default function App() {
   async function logout() {
     await api('/driver/push-token', { method: 'POST', body: { token: null } }).catch(() => undefined);
     await setToken(null);
-    await clearKnownTrips();
+    await clearKnown();
+    setUnread(0);
     setUser(null);
     setScreen({ name: 'trips' });
   }
@@ -92,7 +136,7 @@ export default function App() {
     );
   }
 
-  const title = screen.name === 'trip' ? 'Chi tiết chuyến' : screen.name === 'profile' ? 'Tài khoản' : 'Chuyến xe';
+  const title = screen.name === 'trip' ? 'Chi tiết chuyến' : screen.name === 'profile' ? 'Tài khoản' : screen.name === 'notifications' ? 'Thông báo' : 'Chuyến xe';
   const tab = isTab(screen.name) ? screen.name : null;
   const back = () => setScreen({ name: screen.name === 'trip' ? screen.from : 'trips' });
   const openTrip = (id: number, from: Tab) => setScreen({ name: 'trip', id, from });
@@ -126,6 +170,16 @@ export default function App() {
                   </>
                 )}
                 {tab && (
+                  <Pressable onPress={() => setScreen({ name: 'notifications' })} hitSlop={8} style={({ pressed }) => [s.bell, pressed && { opacity: 0.8 }]}>
+                    <Text style={{ fontSize: 20 }}>🔔</Text>
+                    {unread > 0 && (
+                      <View style={s.bellBadge}>
+                        <Text style={s.bellBadgeText}>{unread > 99 ? '99+' : unread}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                )}
+                {tab && (
                   <Pressable onPress={() => setScreen({ name: 'profile' })} hitSlop={10} style={({ pressed }) => [s.avatar, pressed && { opacity: 0.8 }]}>
                     <Text style={s.avatarText}>{initials(user.fullName)}</Text>
                   </Pressable>
@@ -140,6 +194,20 @@ export default function App() {
               {screen.name === 'earnings' && <EarningsScreen onOpenTrip={(id) => openTrip(id, 'earnings')} />}
               {screen.name === 'trip' && <TripDetailScreen key={screen.id} tripId={screen.id} onBack={back} />}
               {screen.name === 'profile' && <ProfileScreen user={user} onLogout={logout} />}
+              {screen.name === 'notifications' && (
+                <NotificationsScreen onOpenTrip={(id) => setScreen({ name: 'trip', id, from: 'trips' })} onChanged={pollNotifications} />
+              )}
+              {toast && (
+                <Pressable onPress={openToast} style={({ pressed }) => [s.toast, pressed && { opacity: 0.9 }]}>
+                  <Text style={s.toastTitle} numberOfLines={1}>
+                    🔔 {toast.n.title}
+                  </Text>
+                  <Text style={s.toastBody} numberOfLines={2}>
+                    {toast.n.body}
+                    {toast.more > 0 ? ` · và ${toast.more} thông báo khác` : ''}
+                  </Text>
+                </Pressable>
+              )}
             </View>
             {tab && (
               <View style={s.tabBar}>
@@ -172,6 +240,12 @@ const s = StyleSheet.create({
   backIcon: { color: '#fff', fontSize: 30, fontWeight: '600', marginTop: -4, marginLeft: -2 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.22)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  bell: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  bellBadge: { position: 'absolute', top: 2, right: 0, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.accent, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#fff' },
+  bellBadgeText: { color: '#fff', fontSize: 10.5, fontWeight: '800' },
+  toast: { position: 'absolute', top: 8, left: 10, right: 10, backgroundColor: '#0f1b2d', borderRadius: 16, padding: 14, elevation: 12, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
+  toastTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  toastBody: { color: 'rgba(255,255,255,0.85)', fontSize: 13.5, marginTop: 2 },
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 6, paddingBottom: 4 },
   tabItem: { flex: 1, alignItems: 'center', gap: 2 },
   tabIcon: { width: 52, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },

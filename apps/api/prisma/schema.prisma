@@ -40,6 +40,7 @@ model User {
   cashVouchers    CashVoucher[]    @relation("VoucherCreator")
   tripEvents      TripEvent[]
   decidedAdvances AdvanceRequest[] @relation("AdvanceDecider")
+  notifications   Notification[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -664,4 +665,25 @@ model AdvanceRequest {
 
   @@index([driverId])
   @@index([status])
+}
+
+// ───────────── Thông báo (chuông trên web văn phòng và app lái xe) ─────────────
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// BOOKING_NEW | BOOKING_CONFIRMED | COLLECTED | ADVANCE_NEW | TRIP_REJECTED | TRIP_NEW | TRIP_MOVED | TRIP_CHANGED | TRIP_CANCELLED | COLLECT_REQUEST | ADVANCE_DONE | COLLECT_SETTLED
+  type      String
+  title     String
+  body      String
+  /// Đường dẫn trên web (vd. /bookings/12)
+  link      String?
+  /// Chuyến liên quan (app lái xe mở chi tiết chuyến)
+  tripId    Int?
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
 }

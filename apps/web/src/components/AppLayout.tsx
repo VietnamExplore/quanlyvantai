@@ -36,6 +36,7 @@ import { ROLE } from '../labels';
 import type { Role } from '../types';
 import { BRAND } from '../theme';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { NotificationBell } from './NotificationBell';
 import { useSettings } from './common';
 import { logoUrl } from './PrintDoc';
 import { QUICK_ENTITIES, QuickCreateModal, type QuickEntity } from './QuickCreate';
@@ -313,6 +314,7 @@ export function AppLayout() {
             </div>
           </Flex>
           <Space size={isMobile ? 8 : 14}>
+            <NotificationBell />
             {quickItems.length > 0 && (
               <Dropdown menu={{ items: quickItems }} trigger={['click']} placement="bottomRight">
                 <Button type="primary" icon={<PlusOutlined />}>
