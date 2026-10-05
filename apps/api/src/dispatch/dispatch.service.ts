@@ -3,7 +3,7 @@ import { BookingStatus, DriverStatus, Ownership, Prisma, TripStatus, VehicleStat
 import { AuthUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
-import { AssignDto, DispatchQueryDto, PartnerCostDto, TripStatusDto } from './dispatch.dto';
+import { AssignDto, DispatchQueryDto, PartnerCostDto, PartnerExtraReviewDto, TripStatusDto } from './dispatch.dto';
 
 const TZ = 'Asia/Ho_Chi_Minh';
 const DISPATCHABLE: BookingStatus[] = [BookingStatus.XAC_NHAN, BookingStatus.HOAN_THANH];
@@ -397,6 +397,9 @@ export class DispatchService {
     const vat = trip.partnerInvoice ? (dto.partnerVatPercent ?? Number(trip.partnerVatPercent)) : 0;
     const note = `${label[dto.reason]}: ${dto.note.trim()}`;
     const issue = dto.reason === 'TRE_GIO' || dto.reason === 'KHONG_DON' ? dto.reason : trip.partnerIssue;
+    const up = dto.partnerExtraUp ?? Number(trip.partnerExtraUp);
+    const down = dto.partnerExtraDown ?? Number(trip.partnerExtraDown);
+    const extraChanged = up !== Number(trip.partnerExtraUp) || down !== Number(trip.partnerExtraDown);
     await this.prisma.$transaction([
       this.prisma.bookingTrip.update({
         where: { id },
@@ -407,8 +410,14 @@ export class DispatchService {
           partnerVatPercent: vat,
           partnerIssue: issue,
           partnerAdjustNote: note,
-          ...(dto.partnerExtraUp !== undefined && { partnerExtraUp: dto.partnerExtraUp }),
-          ...(dto.partnerExtraDown !== undefined && { partnerExtraDown: dto.partnerExtraDown }),
+          // Văn phòng tự nhập / sửa phát sinh = đã duyệt
+          ...(extraChanged && {
+            partnerExtraUp: up,
+            partnerExtraDown: down,
+            partnerExtraStatus: up || down ? 'DA_DUYET' : null,
+            partnerExtraReviewedBy: user.fullName,
+            partnerExtraReviewedAt: new Date(),
+          }),
         },
       }),
       this.prisma.tripEvent.create({
@@ -424,6 +433,45 @@ export class DispatchService {
       type: 'PARTNER_COST_ADJUSTED',
       title: `Điều chỉnh giá chuyến ${trip.booking.code}`,
       body: `${fmt(trip.pickupTime)} · giá thuê ${vnd(trip.partnerCost)} → ${vnd(dto.partnerCost)} · ${note}`,
+      tripId: id,
+    });
+    return this.getTrip(id);
+  }
+
+  /** Điều hành / Admin duyệt (có thể sửa số tiền) hoặc từ chối phát sinh nhà xe; báo nhà xe kết quả */
+  async reviewPartnerExtra(id: number, dto: PartnerExtraReviewDto, user: AuthUser) {
+    const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id }, include: { booking: { select: { code: true } }, partner: { select: { name: true } } } });
+    if (!trip.partnerId) throw new BadRequestException('Chuyến không giao cho nhà xe đối tác');
+    if (!trip.partnerExtraStatus) throw new BadRequestException('Chuyến không có phát sinh cần duyệt');
+    const note = dto.note?.trim() || null;
+    if (!dto.approve && !note) throw new BadRequestException('Nhập lý do từ chối phát sinh');
+    const up = dto.approve ? (dto.extraUp ?? Number(trip.partnerExtraUp)) : Number(trip.partnerExtraUp);
+    const down = dto.approve ? (dto.extraDown ?? Number(trip.partnerExtraDown)) : Number(trip.partnerExtraDown);
+    if (down > Number(trip.partnerCost ?? 0) + up) throw new BadRequestException('Phát sinh giảm lớn hơn giá thuê');
+    const vnd = (v: number) => `${v.toLocaleString('vi-VN')}đ`;
+    const amount = [up && `+${vnd(up)}`, down && `−${vnd(down)}`].filter(Boolean).join(' ') || '0đ';
+    const changed = up !== Number(trip.partnerExtraUp) || down !== Number(trip.partnerExtraDown);
+    const text = dto.approve
+      ? `Duyệt phát sinh nhà xe ${amount}${changed ? ` (nhà xe báo +${vnd(Number(trip.partnerExtraUp))} −${vnd(Number(trip.partnerExtraDown))})` : ''}`
+      : `Từ chối phát sinh nhà xe ${amount}`;
+    await this.prisma.$transaction([
+      this.prisma.bookingTrip.update({
+        where: { id },
+        data: {
+          partnerExtraUp: up,
+          partnerExtraDown: down,
+          partnerExtraStatus: dto.approve ? 'DA_DUYET' : 'TU_CHOI',
+          partnerExtraReviewNote: note,
+          partnerExtraReviewedBy: user.fullName,
+          partnerExtraReviewedAt: new Date(),
+        },
+      }),
+      this.prisma.tripEvent.create({ data: { tripId: id, status: trip.status, note: `${text}${note ? ` · ${note}` : ''}`, userId: user.id } }),
+    ]);
+    await this.push.notifyPartner(trip.partnerId, {
+      type: dto.approve ? 'PARTNER_EXTRA_APPROVED' : 'PARTNER_EXTRA_REJECTED',
+      title: `${dto.approve ? 'Đã duyệt' : 'Không duyệt'} phát sinh chuyến ${trip.booking.code}`,
+      body: `${fmt(trip.pickupTime)} · ${text}${note ? ` · ${note}` : ''}`,
       tripId: id,
     });
     return this.getTrip(id);

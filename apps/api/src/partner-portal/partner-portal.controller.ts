@@ -69,6 +69,8 @@ const tripSelect = {
   partnerExtraUp: true,
   partnerExtraDown: true,
   partnerExtraNote: true,
+  partnerExtraStatus: true,
+  partnerExtraReviewNote: true,
   assignedAt: true,
   vehicleType: { select: { name: true, seats: true } },
   service: { select: { name: true } },
@@ -279,9 +281,9 @@ export class PartnerPortalController {
     await this.prisma.$transaction(async (tx) => {
       await tx.bookingTrip.update({
         where: { id },
-        data: { status: dto.status, ...(dto.status === TripStatus.HOAN_THANH && { partnerExtraUp: up, partnerExtraDown: down, partnerExtraNote: up || down ? extraNote : null }) },
+        data: { status: dto.status, ...(dto.status === TripStatus.HOAN_THANH && { partnerExtraUp: up, partnerExtraDown: down, partnerExtraNote: up || down ? extraNote : null, partnerExtraStatus: up || down ? 'CHO_DUYET' : null, partnerExtraReviewNote: null, partnerExtraReviewedBy: null, partnerExtraReviewedAt: null }) },
       });
-      const extraText = up || down ? ` · phát sinh${up ? ` +${up.toLocaleString('vi-VN')}đ` : ''}${down ? ` −${down.toLocaleString('vi-VN')}đ` : ''} (${extraNote})` : '';
+      const extraText = up || down ? ` · phát sinh${up ? ` +${up.toLocaleString('vi-VN')}đ` : ''}${down ? ` −${down.toLocaleString('vi-VN')}đ` : ''} (${extraNote}) – chờ điều hành duyệt` : '';
       await tx.tripEvent.create({ data: { tripId: id, status: dto.status, note: `Nhà xe cập nhật (${user.fullName})${extraText}`, userId: user.id } });
       if (dto.status === TripStatus.HOAN_THANH) {
         const open = await tx.bookingTrip.count({ where: { bookingId: trip.bookingId, status: { notIn: [TripStatus.HOAN_THANH, TripStatus.HUY] } } });
@@ -292,8 +294,8 @@ export class PartnerPortalController {
       const ex = [up && `phát sinh tăng ${up.toLocaleString('vi-VN')}đ`, down && `phát sinh giảm ${down.toLocaleString('vi-VN')}đ`].filter(Boolean).join(', ');
       await this.notifyOffice(
         up || down ? 'PARTNER_EXTRA' : 'PARTNER_DONE',
-        up || down ? `Nhà xe hoàn thành, có phát sinh · ${trip.booking.code}` : `Nhà xe hoàn thành chuyến · ${trip.booking.code}`,
-        `${await this.partnerName(trip.partnerId)} · chuyến ${fmt(trip.pickupTime)}${ex ? ` · ${ex} (trước thuế) · ${extraNote}` : ''}`,
+        up || down ? `Phát sinh nhà xe chờ duyệt · ${trip.booking.code}` : `Nhà xe hoàn thành chuyến · ${trip.booking.code}`,
+        `${await this.partnerName(trip.partnerId)} · chuyến ${fmt(trip.pickupTime)}${ex ? ` · ${ex} (trước thuế) · ${extraNote} · cần duyệt để tính công nợ` : ''}`,
         trip,
       );
     }
@@ -307,7 +309,7 @@ export class PartnerPortalController {
     const [trips, payments] = await Promise.all([
       this.prisma.bookingTrip.findMany({
         where: { partnerId, status: { not: TripStatus.HUY }, booking: { status: { in: BILLABLE } } },
-        select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerPlate: true, partnerCost: true, partnerExtraUp: true, partnerExtraDown: true, partnerExtraNote: true, partnerInvoice: true, partnerVatPercent: true, status: true, booking: { select: { code: true } }, vehicleType: { select: { name: true } } },
+        select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerPlate: true, partnerCost: true, partnerExtraUp: true, partnerExtraDown: true, partnerExtraNote: true, partnerExtraStatus: true, partnerExtraReviewNote: true, partnerInvoice: true, partnerVatPercent: true, status: true, booking: { select: { code: true } }, vehicleType: { select: { name: true } } },
         orderBy: { pickupTime: 'desc' },
       }),
       this.prisma.partnerPayment.findMany({ where: { partnerId }, orderBy: { paidAt: 'desc' }, select: { id: true, amount: true, paidAt: true, method: true, reference: true, note: true } }),
@@ -319,7 +321,9 @@ export class PartnerPortalController {
     const totalNet = rows.reduce((s, t) => s + t.partnerNet, 0);
     const totalVat = rows.reduce((s, t) => s + t.partnerVat, 0);
     const totalCost = totalNet + totalVat;
+    // Phát sinh đang chờ văn phòng duyệt (chưa tính công nợ)
+    const pendingExtra = rows.filter((t) => t.partnerExtraStatus === 'CHO_DUYET').length;
     const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
-    return { tripCount: trips.length, totalNet, totalVat, totalCost, totalPaid, balance: totalCost - totalPaid, trips: rows, payments };
+    return { tripCount: trips.length, pendingExtra, totalNet, totalVat, totalCost, totalPaid, balance: totalCost - totalPaid, trips: rows, payments };
   }
 }

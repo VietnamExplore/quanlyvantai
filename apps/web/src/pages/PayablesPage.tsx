@@ -14,6 +14,7 @@ import { PAYMENT_METHOD, TRIP_STATUS } from '../labels';
 import type { Payment, TripStatus } from '../types';
 import { ResponsiveTable } from '../components/ResponsiveTable';
 import { PARTNER_ISSUE } from '../components/PartnerCostAdjust';
+import { EXTRA_STATUS, ExtraStatusTag, PartnerExtraReviewModal, type ExtraReviewValues } from '../components/PartnerExtraReview';
 
 interface PayTrip {
   id: number;
@@ -29,6 +30,8 @@ interface PayTrip {
   partnerExtraUp: string;
   partnerExtraDown: string;
   partnerExtraNote: string | null;
+  partnerExtraStatus: string | null;
+  partnerExtraReviewNote: string | null;
   /** Giá thuê chưa thuế / thuế / phải trả */
   partnerNet: number;
   partnerVat: number;
@@ -60,6 +63,9 @@ export default function PayablesPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [paying, setPaying] = useState<PayPartner | null>(null);
+  const canReview = hasRole('ADMIN', 'DIEU_HANH');
+  const [reviewing, setReviewing] = useState<(PayPartner['trips'][number] & { partnerName: string }) | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['/finance', 'payables'],
@@ -69,6 +75,21 @@ export default function PayablesPage() {
     queryClient.invalidateQueries({ queryKey: ['/finance'] });
     queryClient.invalidateQueries({ queryKey: ['/reports/summary'] });
   };
+
+  async function review(v: ExtraReviewValues) {
+    if (!reviewing) return;
+    setReviewBusy(true);
+    try {
+      await api(`/dispatch/trips/${reviewing.id}/partner-extra`, { method: 'POST', body: v });
+      message.success(v.approve ? 'Đã duyệt phát sinh' : 'Đã từ chối phát sinh');
+      setReviewing(null);
+      refresh();
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setReviewBusy(false);
+    }
+  }
 
   async function removePayment(id: number) {
     try {
@@ -85,8 +106,8 @@ export default function PayablesPage() {
       {
         name: 'Công nợ nhà xe',
         title: `CÔNG NỢ NHÀ XE ĐỐI TÁC – ngày ${dayjs().format('DD/MM/YYYY')}`,
-        headers: ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê', 'Phát sinh tăng', 'Phát sinh giảm', 'Lý do phát sinh', 'Chưa thuế', 'Thuế suất', 'Thuế GTGT', 'Phải trả', 'Trạng thái'],
-        sumColumns: [5, 6, 7, 9, 11, 12],
+        headers: ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê', 'Phát sinh tăng', 'Phát sinh giảm', 'Lý do phát sinh', 'Duyệt phát sinh', 'Chưa thuế', 'Thuế suất', 'Thuế GTGT', 'Phải trả', 'Trạng thái'],
+        sumColumns: [5, 6, 7, 10, 12, 13],
         totalLabel: 'Tổng cộng',
         rows: (data?.partners ?? []).flatMap((p) =>
           p.trips.map((t) => [
@@ -99,6 +120,7 @@ export default function PayablesPage() {
             Number(t.partnerExtraUp),
             Number(t.partnerExtraDown),
             t.partnerExtraNote ?? '',
+            t.partnerExtraStatus ? (EXTRA_STATUS[t.partnerExtraStatus]?.label ?? '') : '',
             t.partnerNet,
             t.partnerInvoice ? `${Number(t.partnerVatPercent)}%` : 'Không HĐ',
             t.partnerVat,
@@ -182,7 +204,22 @@ export default function PayablesPage() {
                               const up = Number(t.partnerExtraUp);
                               const down = Number(t.partnerExtraDown);
                               if (!up && !down) return '—';
-                              return <span title={t.partnerExtraNote ?? undefined}>{[up && `+${formatVnd(up)}`, down && `−${formatVnd(down)}`].filter(Boolean).join(' ')}</span>;
+                              const counted = t.partnerExtraStatus === 'DA_DUYET';
+                              return (
+                                <>
+                                  <span title={t.partnerExtraNote ?? undefined} style={counted ? undefined : { color: '#999', textDecoration: t.partnerExtraStatus === 'TU_CHOI' ? 'line-through' : undefined }}>
+                                    {[up && `+${formatVnd(up)}`, down && `−${formatVnd(down)}`].filter(Boolean).join(' ')}
+                                  </span>
+                                  <div>
+                                    <ExtraStatusTag status={t.partnerExtraStatus} note={t.partnerExtraReviewNote} />
+                                    {canReview && t.partnerExtraStatus === 'CHO_DUYET' && (
+                                      <Button size="small" type="link" style={{ padding: 0 }} onClick={() => setReviewing({ ...t, partnerName: p.name })}>
+                                        Duyệt
+                                      </Button>
+                                    )}
+                                  </div>
+                                </>
+                              );
                             },
                           },
                           { title: 'Chưa thuế', dataIndex: 'partnerNet', align: 'right', render: (v) => <Money value={v} /> },
@@ -282,6 +319,20 @@ export default function PayablesPage() {
           ]}
         />
       </Card>
+
+      <PartnerExtraReviewModal
+        open={!!reviewing}
+        title={`Duyệt phát sinh · ${reviewing?.partnerName ?? ''} · ${reviewing?.booking.code ?? ''}`}
+        partnerCost={Number(reviewing?.partnerCost ?? 0)}
+        extraUp={Number(reviewing?.partnerExtraUp ?? 0)}
+        extraDown={Number(reviewing?.partnerExtraDown ?? 0)}
+        extraNote={reviewing?.partnerExtraNote}
+        invoice={!!reviewing?.partnerInvoice}
+        vatPercent={Number(reviewing?.partnerVatPercent ?? 0)}
+        busy={reviewBusy}
+        onCancel={() => setReviewing(null)}
+        onSubmit={review}
+      />
 
       <PaymentModal
         open={!!paying}

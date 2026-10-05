@@ -9,6 +9,7 @@ import { useAuth } from '../auth';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { DATE_FORMAT, EnumTag, formatVnd } from '../components/common';
 import { NotificationBell } from '../components/NotificationBell';
+import { ExtraStatusTag } from '../components/PartnerExtraReview';
 import { CompleteTripModal, type ExtraValues } from '../components/partner/CompleteTripModal';
 import { NEXT_STEP, PartnerTripDetail } from '../components/partner/PartnerTripDetail';
 import type { PartnerTrip } from '../components/partner/types';
@@ -24,7 +25,7 @@ interface Summary {
   totalCost: number;
   totalPaid: number;
   balance: number;
-  trips: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; partnerPlate: string | null; partnerCost: string | null; partnerExtraUp: string; partnerExtraDown: string; partnerExtraNote: string | null; partnerInvoice: boolean; partnerVatPercent: string; partnerNet: number; partnerVat: number; partnerTotal: number; status: TripStatus; booking: { code: string }; vehicleType: { name: string } }[];
+  trips: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; partnerPlate: string | null; partnerCost: string | null; partnerExtraUp: string; partnerExtraDown: string; partnerExtraNote: string | null; partnerExtraStatus: string | null; partnerExtraReviewNote: string | null; partnerInvoice: boolean; partnerVatPercent: string; partnerNet: number; partnerVat: number; partnerTotal: number; status: TripStatus; booking: { code: string }; vehicleType: { name: string } }[];
   payments: { id: number; amount: string; paidAt: string; method: PaymentMethod; reference: string | null; note: string | null }[];
 }
 
@@ -389,7 +390,14 @@ function MoneyView({ summary }: { summary?: Summary }) {
                 const up = Number(t.partnerExtraUp);
                 const down = Number(t.partnerExtraDown);
                 if (!up && !down) return '—';
-                return <span title={t.partnerExtraNote ?? undefined}>{[up && `+${formatVnd(up)}`, down && `−${formatVnd(down)}`].filter(Boolean).join(' ')}</span>;
+                return (
+                  <>
+                    <span title={t.partnerExtraNote ?? undefined}>{[up && `+${formatVnd(up)}`, down && `−${formatVnd(down)}`].filter(Boolean).join(' ')}</span>
+                    <div>
+                      <ExtraStatusTag status={t.partnerExtraStatus} note={t.partnerExtraReviewNote} />
+                    </div>
+                  </>
+                );
               },
             },
             { title: 'Chưa thuế', dataIndex: 'partnerNet', align: 'right', render: (v) => `${formatVnd(v)}đ` },

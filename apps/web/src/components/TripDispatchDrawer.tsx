@@ -31,6 +31,7 @@ import { useAuth } from '../auth';
 import { fmtTime, routeText } from '../booking-utils';
 import { TripOdometer } from './TripOdometer';
 import { PARTNER_ISSUE, PartnerCostAdjust } from './PartnerCostAdjust';
+import { ExtraStatusTag, PartnerExtraReviewModal } from './PartnerExtraReview';
 import { useCopyText } from '../clipboard';
 import { buildDispatchText, NEXT_ACTION, TRIP_FLOW } from '../dispatch-utils';
 import { TRIP_STATUS } from '../labels';
@@ -167,6 +168,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
   }
 
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   async function post(path: string, body?: unknown, okMsg?: string) {
     setBusy(true);
@@ -497,7 +499,20 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                     <Descriptions.Item label="Phát sinh">
                       {Number(trip.partnerExtraUp ?? 0) > 0 && <Tag color="orange">+{Number(trip.partnerExtraUp).toLocaleString('vi-VN')}đ</Tag>}
                       {Number(trip.partnerExtraDown ?? 0) > 0 && <Tag color="green">−{Number(trip.partnerExtraDown).toLocaleString('vi-VN')}đ</Tag>}
+                      <ExtraStatusTag status={trip.partnerExtraStatus} note={trip.partnerExtraReviewNote} />
                       {trip.partnerExtraNote}
+                      {trip.partnerExtraStatus === 'CHO_DUYET' && <div style={{ fontSize: 12, color: '#b45309' }}>Chưa tính công nợ cho đến khi được duyệt</div>}
+                      {trip.partnerExtraReviewedBy && trip.partnerExtraStatus !== 'CHO_DUYET' && (
+                        <div style={{ fontSize: 12, color: '#64748b' }}>
+                          {trip.partnerExtraReviewedBy}
+                          {trip.partnerExtraReviewNote ? ` · ${trip.partnerExtraReviewNote}` : ''}
+                        </div>
+                      )}
+                      {canDispatch && trip.partnerExtraStatus && (
+                        <Button size="small" type={trip.partnerExtraStatus === 'CHO_DUYET' ? 'primary' : 'link'} style={{ marginTop: 4 }} onClick={() => setReviewOpen(true)}>
+                          {trip.partnerExtraStatus === 'CHO_DUYET' ? 'Duyệt phát sinh' : 'Duyệt lại'}
+                        </Button>
+                      )}
                     </Descriptions.Item>
                   )}
                   {(trip.partnerIssue || trip.partnerAdjustNote) && (
@@ -520,6 +535,21 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                   busy={busy}
                   onCancel={() => setAdjustOpen(false)}
                   onSubmit={(v) => post('partner-cost', v, 'Đã điều chỉnh giá nhà xe').then(() => setAdjustOpen(false))}
+                />
+              )}
+              {trip.partnerId && trip.partnerExtraStatus && (
+                <PartnerExtraReviewModal
+                  open={reviewOpen}
+                  title={`Duyệt phát sinh · ${trip.partner?.name ?? ''}`}
+                  partnerCost={Number(trip.partnerCost ?? 0)}
+                  extraUp={Number(trip.partnerExtraUp ?? 0)}
+                  extraDown={Number(trip.partnerExtraDown ?? 0)}
+                  extraNote={trip.partnerExtraNote}
+                  invoice={!!trip.partnerInvoice}
+                  vatPercent={Number(trip.partnerVatPercent ?? 0)}
+                  busy={busy}
+                  onCancel={() => setReviewOpen(false)}
+                  onSubmit={(v) => post('partner-extra', v, v.approve ? 'Đã duyệt phát sinh' : 'Đã từ chối phát sinh').then(() => setReviewOpen(false))}
                 />
               )}
               {trip.dispatchNote && <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>Ghi chú: {trip.dispatchNote}</Typography.Paragraph>}

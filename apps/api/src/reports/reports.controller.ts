@@ -216,6 +216,7 @@ export class ReportsController {
           partnerCost: true,
           partnerExtraUp: true,
           partnerExtraDown: true,
+          partnerExtraStatus: true,
           partnerPlate: true,
           partnerDriverName: true,
           costs: { select: { amount: true, byDriver: true, categoryCode: true } },
@@ -259,7 +260,7 @@ export class ReportsController {
     const trips = rows.map(({ costs, booking, amount, estimatedCost, partnerCost, ...t }) => {
       const subtotal = this.subtotal(booking.trips);
       const factor = subtotal > 0 ? Math.max(0, subtotal - Number(booking.discountAmount)) / subtotal : 0;
-      const { cost, known, actual } = tripCost({ partnerId: t.partnerId, partnerCost, partnerExtraUp: t.partnerExtraUp, partnerExtraDown: t.partnerExtraDown, estimatedCost, costs, fuelCost: t.fuelCost });
+      const { cost, known, actual } = tripCost({ partnerId: t.partnerId, partnerCost, partnerExtraUp: t.partnerExtraUp, partnerExtraDown: t.partnerExtraDown, partnerExtraStatus: t.partnerExtraStatus, estimatedCost, costs, fuelCost: t.fuelCost });
       // Giữ 2 số lẻ để tổng nhiều chuyến của cùng booking không lệch vài đồng do làm tròn
       const revenue = Math.round(Number(amount) * factor * 100) / 100;
       const { trips: _trips, discountAmount: _discount, ...b } = booking;
@@ -310,6 +311,7 @@ export class ReportsController {
         partnerCost: true,
           partnerExtraUp: true,
           partnerExtraDown: true,
+          partnerExtraStatus: true,
         costs: { select: { amount: true, categoryCode: true } },
         pickupTime: true,
         serviceType: true,

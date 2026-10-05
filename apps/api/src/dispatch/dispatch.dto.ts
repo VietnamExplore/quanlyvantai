@@ -53,6 +53,14 @@ export class TripStatusDto {
   @IsOptional() @IsString() note?: string;
 }
 
+/** Điều hành / Admin duyệt hoặc từ chối phát sinh nhà xe; khi duyệt có thể sửa lại số tiền */
+export class PartnerExtraReviewDto {
+  @IsBoolean() approve: boolean;
+  @IsOptional() @IsNumber() @Min(0) extraUp?: number;
+  @IsOptional() @IsNumber() @Min(0) extraDown?: number;
+  @IsOptional() @IsString() note?: string;
+}
+
 /** Lý do điều chỉnh giá nhà xe */
 export const PARTNER_ADJUST_REASONS = ['TRE_GIO', 'KHONG_DON', 'PHAT_SINH', 'KHAC'] as const;
 

@@ -31,6 +31,9 @@ export interface PartnerTrip {
   partnerExtraUp: string;
   partnerExtraDown: string;
   partnerExtraNote: string | null;
+  /** Duyệt phát sinh: CHO_DUYET | DA_DUYET | TU_CHOI (chỉ phát sinh đã duyệt mới tính công nợ) */
+  partnerExtraStatus: string | null;
+  partnerExtraReviewNote: string | null;
   vehicleType: { name: string; seats: number };
   service: { name: string } | null;
   booking: {

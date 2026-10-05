@@ -37,6 +37,7 @@ export const AUDIT_RULES: AuditRule[] = [
   r('POST', '/dispatch/trips/:id/unassign', 'Hủy điều xe', 'Trip', 'bookingTrip'),
   r('POST', '/dispatch/trips/:id/status', 'Đổi trạng thái chuyến', 'Trip', 'bookingTrip'),
   r('POST', '/dispatch/trips/:id/partner-cost', 'Điều chỉnh giá nhà xe', 'Trip', 'bookingTrip'),
+  r('POST', '/dispatch/trips/:id/partner-extra', 'Duyệt phát sinh nhà xe', 'Trip', 'bookingTrip'),
   { method: 'POST', path: '/dispatch/trips/:id/check', action: '', skip: true },
 
   // Tài chính
@@ -166,6 +167,8 @@ export const FIELD_LABEL: Record<string, string> = {
   partnerExtraUp: 'Phát sinh tăng nhà xe',
   partnerExtraDown: 'Phát sinh giảm nhà xe',
   partnerExtraNote: 'Lý do phát sinh nhà xe',
+  partnerExtraStatus: 'Duyệt phát sinh nhà xe',
+  partnerExtraReviewNote: 'Ghi chú duyệt phát sinh',
   invoiceRequired: 'Khách lấy hóa đơn',
   invoiceCompany: 'Tên đơn vị xuất hóa đơn',
   invoiceTaxCode: 'MST xuất hóa đơn',

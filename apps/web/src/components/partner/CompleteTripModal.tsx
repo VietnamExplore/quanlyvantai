@@ -49,7 +49,7 @@ export function CompleteTripModal({ trip, busy, onCancel, onSubmit }: { trip: Pa
       }
     >
       <Typography.Paragraph type="secondary">
-        Nếu chuyến có <b>giá phát sinh</b> (thêm giờ, thêm điểm, cầu đường… hoặc giảm giá), nhập số tiền <b>trước thuế</b> và lý do. Không có thì bấm "Không có phát sinh".
+        Nếu chuyến có <b>giá phát sinh</b> (thêm giờ, thêm điểm, cầu đường… hoặc giảm giá), nhập số tiền <b>trước thuế</b> và lý do. Phát sinh được <b>điều hành duyệt</b> rồi mới tính vào công nợ. Không có thì bấm "Không có phát sinh".
       </Typography.Paragraph>
       <Form form={form} layout="vertical">
         <Flex gap={12}>

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
-import { AssignDto, CheckDto, DispatchQueryDto, PartnerCostDto, TripStatusDto } from './dispatch.dto';
+import { AssignDto, CheckDto, DispatchQueryDto, PartnerCostDto, PartnerExtraReviewDto, TripStatusDto } from './dispatch.dto';
 import { DispatchService } from './dispatch.service';
 
 const DISPATCHERS = [Role.ADMIN, Role.DIEU_HANH];
@@ -44,6 +44,14 @@ export class DispatchController {
   @Roles(...DISPATCHERS)
   assign(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignDto, @CurrentUser() user: AuthUser) {
     return this.dispatch.assign(id, dto, user);
+  }
+
+  /** Duyệt / từ chối giá phát sinh nhà xe: chỉ phát sinh đã duyệt mới tính công nợ */
+  @Post('trips/:id/partner-extra')
+  @HttpCode(200)
+  @Roles(...DISPATCHERS)
+  partnerExtra(@Param('id', ParseIntPipe) id: number, @Body() dto: PartnerExtraReviewDto, @CurrentUser() user: AuthUser) {
+    return this.dispatch.reviewPartnerExtra(id, dto, user);
   }
 
   /** Điều chỉnh giá nhà xe (đón trễ, không đón khách, phát sinh…): được cả khi chuyến / booking đã hoàn thành */

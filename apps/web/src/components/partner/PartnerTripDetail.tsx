@@ -9,6 +9,7 @@ import { formatVnd } from '../common';
 import { APP_LABEL, chatUrl, guessApp, type ContactApp } from './contact';
 import { SignBoard } from './SignBoard';
 import type { PartnerTrip } from './types';
+import { ExtraStatusTag } from '../PartnerExtraReview';
 
 const LEADER: Record<string, string> = { HDV: 'Hướng dẫn viên', TRUONG_DOAN: 'Trưởng đoàn' };
 const GENDER: Record<string, string> = { NAM: 'Nam', NU: 'Nữ' };
@@ -275,7 +276,10 @@ export function PartnerTripDetail({
                 <div style={{ fontSize: 13, color: '#475569' }}>
                   Phát sinh{Number(t.partnerExtraUp) > 0 ? ` +${formatVnd(t.partnerExtraUp)}đ` : ''}
                   {Number(t.partnerExtraDown) > 0 ? ` −${formatVnd(t.partnerExtraDown)}đ` : ''}
-                  {t.partnerExtraNote ? ` · ${t.partnerExtraNote}` : ''}
+                  {t.partnerExtraNote ? ` · ${t.partnerExtraNote}` : ''}{' '}
+                  <ExtraStatusTag status={t.partnerExtraStatus} note={t.partnerExtraReviewNote} />
+                  {t.partnerExtraStatus === 'CHO_DUYET' && <div style={{ fontSize: 12, color: '#b45309' }}>Đang chờ văn phòng duyệt, chưa tính vào công nợ</div>}
+                  {t.partnerExtraStatus !== 'CHO_DUYET' && t.partnerExtraReviewNote && <div style={{ fontSize: 12 }}>Văn phòng: {t.partnerExtraReviewNote}</div>}
                 </div>
               )}
               {t.partnerAdjustNote && <div style={{ fontSize: 13, color: '#b45309' }}>⚠ Văn phòng điều chỉnh giá · {t.partnerAdjustNote}</div>}

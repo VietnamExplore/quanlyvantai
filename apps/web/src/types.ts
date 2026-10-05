@@ -265,6 +265,11 @@ export interface BookingTrip extends Ref {
   partnerExtraUp?: string | number;
   partnerExtraDown?: string | number;
   partnerExtraNote?: string | null;
+  /** Duyệt phát sinh: CHO_DUYET | DA_DUYET | TU_CHOI */
+  partnerExtraStatus?: string | null;
+  partnerExtraReviewNote?: string | null;
+  partnerExtraReviewedBy?: string | null;
+  partnerExtraReviewedAt?: string | null;
   /** Km đồng hồ và xăng theo định mức (xe công ty) */
   startKm?: number | null;
   endKm?: number | null;

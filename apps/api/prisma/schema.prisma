@@ -455,30 +455,35 @@ model BookingTrip {
   status            TripStatus  @default(CHO_DIEU)
 
   // ── Điều xe ──
-  vehicleId          Int? // Xe công ty
-  vehicle            Vehicle? @relation(fields: [vehicleId], references: [id])
-  driverId           Int? // Lái xe công ty
-  driver             Driver?  @relation(fields: [driverId], references: [id])
-  partnerId          Int? // Giao cho nhà xe đối tác
-  partner            Partner? @relation(fields: [partnerId], references: [id])
-  partnerPlate       String?
-  partnerDriverName  String?
-  partnerDriverPhone String?
-  partnerCost        Decimal? @db.Decimal(15, 0) // Giá thuê đối tác thực tế
+  vehicleId              Int? // Xe công ty
+  vehicle                Vehicle?  @relation(fields: [vehicleId], references: [id])
+  driverId               Int? // Lái xe công ty
+  driver                 Driver?   @relation(fields: [driverId], references: [id])
+  partnerId              Int? // Giao cho nhà xe đối tác
+  partner                Partner?  @relation(fields: [partnerId], references: [id])
+  partnerPlate           String?
+  partnerDriverName      String?
+  partnerDriverPhone     String?
+  partnerCost            Decimal?  @db.Decimal(15, 0) // Giá thuê đối tác thực tế
   /// Nhà xe đối tác phải xuất hóa đơn cho công ty (thông tin công ty + email nhận hóa đơn hiện trên cổng nhà xe)
-  partnerInvoice     Boolean  @default(false)
+  partnerInvoice         Boolean   @default(false)
   /// Thuế suất trên hóa đơn nhà xe xuất: giá thuê là giá chưa thuế, công nợ nhà xe = giá thuê × (1 + thuế suất)
-  partnerVatPercent  Decimal  @default(0) @db.Decimal(5, 2)
+  partnerVatPercent      Decimal   @default(0) @db.Decimal(5, 2)
   /// Sự cố của nhà xe ở chuyến này: TRE_GIO (đón trễ) | KHONG_DON (không đón khách) – ghi khi văn phòng điều chỉnh giá
-  partnerIssue       String?
+  partnerIssue           String?
   /// Ghi chú lần điều chỉnh giá nhà xe gần nhất (lý do, hiện cho nhà xe)
-  partnerAdjustNote  String?
+  partnerAdjustNote      String?
   /// Giá phát sinh nhà xe (trước thuế), nhập khi hoàn thành chuyến: công nợ = (giá thuê + tăng − giảm) × (1 + thuế suất)
-  partnerExtraUp     Decimal  @default(0) @db.Decimal(15, 0)
-  partnerExtraDown   Decimal  @default(0) @db.Decimal(15, 0)
-  partnerExtraNote   String?
-  partnerInvoiceNote String?
-  dispatchNote       String? // Ghi chú cho tài xế / nhà xe
+  partnerExtraUp         Decimal   @default(0) @db.Decimal(15, 0)
+  partnerExtraDown       Decimal   @default(0) @db.Decimal(15, 0)
+  partnerExtraNote       String?
+  /// Duyệt phát sinh: CHO_DUYET | DA_DUYET | TU_CHOI. Chỉ phát sinh DA_DUYET mới tính vào công nợ / lợi nhuận
+  partnerExtraStatus     String?
+  partnerExtraReviewNote String?
+  partnerExtraReviewedBy String?
+  partnerExtraReviewedAt DateTime?
+  partnerInvoiceNote     String?
+  dispatchNote           String? // Ghi chú cho tài xế / nhà xe
 
   /// Văn phòng nhờ lái xe thu tiền khách giúp
   collectAmount    Decimal?       @db.Decimal(15, 0)
