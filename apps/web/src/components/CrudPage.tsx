@@ -29,6 +29,8 @@ export interface CrudPageProps<T extends object> {
   newDefaults?: Record<string, unknown>;
   canEdit: boolean;
   canDelete?: boolean;
+  /** Câu hỏi xác nhận khi xóa (mặc định: "Xóa bản ghi này?") */
+  deleteConfirm?: string;
   searchPlaceholder?: string;
   modalWidth?: number;
 }
@@ -36,7 +38,7 @@ export interface CrudPageProps<T extends object> {
 export function CrudPage<T extends object>(props: CrudPageProps<T>) {
   const idField = (props.idField ?? 'id') as keyof T & string;
   const keyOf = (row: T) => String(row[idField]);
-  const { title, endpoint, columns, renderForm, renderFilters, dateFields = [], canEdit, canDelete } = props;
+  const { title, endpoint, columns, renderForm, renderFilters, dateFields = [], canEdit, canDelete, deleteConfirm } = props;
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
@@ -115,7 +117,7 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
             <Space size={0}>
               <Button type="text" icon={<EditOutlined />} onClick={() => openForm(row)} title="Sửa" />
               {canDelete && (
-                <Popconfirm title="Xóa bản ghi này?" okText="Xóa" cancelText="Hủy" onConfirm={() => remove.mutate(keyOf(row))}>
+                <Popconfirm title={deleteConfirm ? <div style={{ maxWidth: 320 }}>{deleteConfirm}</div> : "Xóa bản ghi này?"} okText="Xóa" cancelText="Hủy" onConfirm={() => remove.mutate(keyOf(row))}>
                   <Button type="text" danger icon={<DeleteOutlined />} title="Xóa" />
                 </Popconfirm>
               )}

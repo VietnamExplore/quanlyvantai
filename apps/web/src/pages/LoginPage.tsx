@@ -116,8 +116,8 @@ export default function LoginPage() {
           <div style={{ background: '#fff', borderRadius: 18, padding: 28, border: '1px solid #e9eef5', boxShadow: '0 10px 40px rgba(15,23,42,.08)' }}>
             {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 16 }} />}
             <Form layout="vertical" onFinish={onFinish} requiredMark={false}>
-              <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true, message: 'Nhập tên đăng nhập' }]}>
-                <Input size="large" prefix={<UserOutlined style={{ color: BRAND.muted }} />} placeholder="Tên đăng nhập" autoFocus autoComplete="username" />
+              <Form.Item name="username" label="Tên đăng nhập hoặc số điện thoại" rules={[{ required: true, message: 'Nhập tên đăng nhập hoặc số điện thoại' }]}>
+                <Input size="large" prefix={<UserOutlined style={{ color: BRAND.muted }} />} placeholder="Tên đăng nhập / số điện thoại" autoFocus autoComplete="username" />
               </Form.Item>
               <Form.Item name="password" label="Mật khẩu" rules={[{ required: true, message: 'Nhập mật khẩu' }]}>
                 <Input.Password size="large" prefix={<LockOutlined style={{ color: BRAND.muted }} />} placeholder="Mật khẩu" autoComplete="current-password" />

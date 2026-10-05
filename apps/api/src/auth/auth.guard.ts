@@ -39,7 +39,7 @@ export class AuthGuard implements CanActivate {
       where: { id: payload.sub },
       include: { driver: { select: { id: true } } },
     });
-    if (!user || !user.isActive) throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
+    if (!user || !user.isActive || user.deletedAt) throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
 
     const authUser: AuthUser = {
       id: user.id,

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { normalizePhone } from '../common/phone';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './users.dto';
 
@@ -23,6 +24,7 @@ export class UsersService {
   findAll(q?: string, role?: Role) {
     return this.prisma.user.findMany({
       where: {
+        deletedAt: null,
         ...(role && { roles: { has: role } }),
         ...(q && {
           OR: [
@@ -39,7 +41,7 @@ export class UsersService {
 
   salesStaff() {
     return this.prisma.user.findMany({
-      where: { isActive: true, roles: { has: Role.KINH_DOANH } },
+      where: { isActive: true, deletedAt: null, roles: { has: Role.KINH_DOANH } },
       select: { id: true, fullName: true },
       orderBy: { fullName: 'asc' },
     });
@@ -49,8 +51,81 @@ export class UsersService {
     return this.prisma.user.findUniqueOrThrow({ where: { id }, select: userSelect });
   }
 
+  /** Tên đăng nhập không phân biệt hoa thường: "HungLH" trùng "hunglh" */
+  private async assertUsernameFree(username: string, exceptId?: number) {
+    const dup = await this.prisma.user.findFirst({
+      where: { username: { equals: username.trim(), mode: 'insensitive' }, deletedAt: null, ...(exceptId && { id: { not: exceptId } }) },
+      select: { fullName: true },
+    });
+    if (dup) throw new BadRequestException(`Tên đăng nhập "${username.trim()}" đã được dùng cho ${dup.fullName}`);
+  }
+
+  /** Số điện thoại dùng để đăng nhập nên không được trùng giữa các tài khoản */
+  private async assertPhoneFree(phone: string | null | undefined, exceptId?: number) {
+    const p = normalizePhone(phone);
+    if (p.length < 9) return;
+    const others = await this.prisma.user.findMany({ where: { deletedAt: null, phone: { not: null }, ...(exceptId && { id: { not: exceptId } }) }, select: { phone: true, fullName: true, username: true } });
+    const dup = others.find((u) => normalizePhone(u.phone) === p);
+    if (dup) throw new BadRequestException(`Số điện thoại ${phone} đã đăng ký cho ${dup.fullName} (${dup.username}). Mỗi số chỉ dùng cho một tài khoản để đăng nhập.`);
+  }
+
+  /**
+   * Xóa người dùng: chưa có dữ liệu thì xóa hẳn; đã tạo booking, phiếu thu chi, điều xe… thì
+   * khóa + ẩn khỏi danh sách (giữ tên người tạo trên chứng từ cũ), giải phóng tên đăng nhập và SĐT.
+   */
+  async remove(id: number, currentUserId: number) {
+    if (id === currentUserId) throw new BadRequestException('Không thể tự xóa tài khoản của chính mình');
+    const u = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        username: true,
+        roles: true,
+        isActive: true,
+        deletedAt: true,
+        driver: { select: { id: true } },
+        _count: {
+          select: {
+            customers: true,
+            salesBookings: true,
+            createdBookings: true,
+            assignedTrips: true,
+            tripCosts: true,
+            payments: true,
+            partnerPayments: true,
+            cashVouchers: true,
+            tripEvents: true,
+            decidedAdvances: true,
+          },
+        },
+      },
+    });
+    if (!u || u.deletedAt) throw new BadRequestException('Không tìm thấy người dùng');
+    if (u.isActive && u.roles.includes(Role.ADMIN)) {
+      const admins = await this.prisma.user.count({ where: { isActive: true, deletedAt: null, roles: { has: Role.ADMIN }, id: { not: id } } });
+      if (!admins) throw new BadRequestException('Đây là Admin cuối cùng, không thể xóa');
+    }
+    const used = Object.values(u._count).some((n) => n > 0);
+    if (!used) {
+      await this.prisma.$transaction([
+        this.prisma.driver.updateMany({ where: { userId: id }, data: { userId: null } }),
+        this.prisma.user.delete({ where: { id } }),
+      ]);
+      return { deleted: true, kept: false };
+    }
+    await this.prisma.$transaction([
+      this.prisma.driver.updateMany({ where: { userId: id }, data: { userId: null } }),
+      this.prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date(), isActive: false, pushToken: null, phone: null, username: `${u.username}~xoa${id}` },
+      }),
+    ]);
+    return { deleted: true, kept: true };
+  }
+
   async create(dto: CreateUserDto) {
     const { password, driverId, ...data } = dto;
+    await this.assertUsernameFree(data.username);
+    await this.assertPhoneFree(data.phone);
     return this.prisma.user.create({
       data: {
         ...data,
@@ -67,6 +142,16 @@ export class UsersService {
     if (id === currentUserId && (dto.isActive === false || (dto.roles && !dto.roles.includes(Role.ADMIN)))) {
       throw new BadRequestException('Không thể tự khóa hoặc tự bỏ quyền Admin của chính mình');
     }
+    // Luôn giữ ít nhất một Admin đang hoạt động
+    if (dto.isActive === false || (dto.roles && !dto.roles.includes(Role.ADMIN))) {
+      const target = await this.prisma.user.findUnique({ where: { id }, select: { roles: true, isActive: true } });
+      if (target?.isActive && target.roles.includes(Role.ADMIN)) {
+        const admins = await this.prisma.user.count({ where: { isActive: true, deletedAt: null, roles: { has: Role.ADMIN }, id: { not: id } } });
+        if (!admins) throw new BadRequestException('Đây là Admin cuối cùng đang hoạt động, không thể khóa hoặc bỏ quyền Admin');
+      }
+    }
+    if (data.username !== undefined) await this.assertUsernameFree(data.username, id);
+    if (data.phone) await this.assertPhoneFree(data.phone, id);
     return this.prisma.user.update({
       where: { id },
       data: {

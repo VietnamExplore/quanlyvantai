@@ -13,6 +13,8 @@ export default function UsersPage() {
       title="Người dùng"
       endpoint="/users"
       canEdit
+      canDelete
+      deleteConfirm="Xóa người dùng này? Tài khoản đã có dữ liệu (booking, phiếu thu chi, điều xe…) sẽ được khóa và ẩn đi, chứng từ cũ vẫn giữ tên người tạo."
       searchPlaceholder="Tên đăng nhập, họ tên, SĐT"
       newDefaults={{ isActive: true, roles: [] }}
       toFormValues={(r) => ({ driverId: r.driver?.id ?? null, password: undefined })}
@@ -31,8 +33,18 @@ export default function UsersPage() {
       renderForm={({ editing }) => (
         <Row gutter={16}>
           <Col xs={24} md={12}>
-            <Form.Item name="username" label="Tên đăng nhập" extra="Nên dùng số điện thoại" rules={[{ required: !editing, message: 'Nhập tên đăng nhập' }]}>
-              <Input disabled={!!editing} autoComplete="off" />
+            <Form.Item
+              name="username"
+              label="Tên đăng nhập"
+              extra={editing ? 'Đổi tên: người dùng đăng nhập lần sau bằng tên mới (mật khẩu giữ nguyên)' : 'Nên dùng số điện thoại'}
+              normalize={(v?: string) => v?.replace(/\s/g, '')}
+              rules={[
+                { required: true, message: 'Nhập tên đăng nhập' },
+                { min: 3, message: 'Tối thiểu 3 ký tự' },
+                { max: 50, message: 'Tối đa 50 ký tự' },
+              ]}
+            >
+              <Input autoComplete="off" />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
@@ -51,7 +63,7 @@ export default function UsersPage() {
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="phone" label="SĐT">
+            <Form.Item name="phone" label="SĐT" extra="Người dùng đăng nhập được bằng số này (mỗi số chỉ cho một tài khoản)">
               <Input />
             </Form.Item>
           </Col>

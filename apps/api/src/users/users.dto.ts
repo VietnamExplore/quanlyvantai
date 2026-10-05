@@ -1,5 +1,6 @@
 import { OmitType, PartialType } from '@nestjs/mapped-types';
 import { Role } from '@prisma/client';
+import { Transform } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -10,12 +11,24 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 
+/** Tên đăng nhập: bỏ khoảng trắng hai đầu; không chứa dấu cách */
+const USERNAME_RULES = [
+  Transform(({ value }) => (typeof value === 'string' ? value.trim() : value)),
+  IsString(),
+  IsNotEmpty({ message: 'Tên đăng nhập không được để trống' }),
+  MinLength(3, { message: 'Tên đăng nhập tối thiểu 3 ký tự' }),
+  MaxLength(50, { message: 'Tên đăng nhập tối đa 50 ký tự' }),
+  Matches(/^\S+$/, { message: 'Tên đăng nhập không được có dấu cách' }),
+];
+const Username = (): PropertyDecorator => (target, key) => USERNAME_RULES.forEach((d) => d(target, key));
+
 export class CreateUserDto {
-  @IsString()
-  @IsNotEmpty()
+  @Username()
   username: string;
 
   @IsString()
@@ -50,6 +63,11 @@ export class CreateUserDto {
 }
 
 export class UpdateUserDto extends PartialType(OmitType(CreateUserDto, ['username', 'password'] as const)) {
+  /** Admin đổi tên đăng nhập (người dùng đăng nhập bằng tên mới, phiên đang mở không bị đăng xuất) */
+  @IsOptional()
+  @Username()
+  username?: string;
+
   /** Admin đặt lại mật khẩu cho người dùng. */
   @IsOptional()
   @IsString()

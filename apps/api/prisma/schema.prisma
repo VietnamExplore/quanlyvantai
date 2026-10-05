@@ -27,6 +27,8 @@ model User {
   roles           Role[]
   isActive        Boolean          @default(true)
   pushToken       String? // Expo push token của app lái xe
+  /// Admin đã xóa (tài khoản có dữ liệu cũ thì giữ lại để không mất lịch sử, ẩn khỏi danh sách)
+  deletedAt       DateTime?
   driver          Driver?
   customers       Customer[]       @relation("SalesOwner")
   salesBookings   Booking[]        @relation("BookingSales")
