@@ -1,4 +1,7 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, HttpCode, NotFoundException, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, HttpCode, NotFoundException, Param, ParseIntPipe, Post, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { existsSync } from 'fs';
+import { SIGN_DIR, signImage } from '../bookings/sign-file.controller';
 import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
@@ -63,12 +66,27 @@ const tripSelect = {
       leaderRole: true,
       leaderName: true,
       leaderPhone: true,
+      leaderApp: true,
+      leaderAppId: true,
       signTitle: true,
       signSubtitle: true,
-      passengers: { select: { seq: true, fullName: true, nationality: true, phone: true }, orderBy: { seq: 'asc' } },
+      signFileType: true,
+      // Đoàn khách: chỉ họ tên, quốc tịch (không SĐT, giấy tờ của từng khách)
+      passengers: { select: { seq: true, fullName: true, gender: true, nationality: true }, orderBy: { seq: 'asc' } },
+      // Tên trên bảng đón khi chưa nhập dòng chính: tên khách hàng / người liên hệ
+      customer: { select: { name: true } },
+      contactName: true,
     },
   },
 } satisfies Prisma.BookingTripSelect;
+
+type RawTrip = Prisma.BookingTripGetPayload<{ select: typeof tripSelect }>;
+
+/** Bỏ thông tin khách hàng (công ty / người đặt) trước khi gửi cho nhà xe; chỉ dùng để điền sẵn dòng chính bảng đón */
+function clean(t: RawTrip) {
+  const { customer, contactName, ...booking } = t.booking;
+  return { ...t, booking: { ...booking, signTitle: booking.signTitle || customer?.name || contactName } };
+}
 
 const fmt = (d: Date) => {
   const p = Object.fromEntries(
@@ -124,14 +142,26 @@ export class PartnerPortalController {
       this.prisma.bookingTrip.groupBy({ by: ['status'], where: { partnerId, status: { in: ACTIVE } }, _count: true }),
     ]);
     const n = (s: TripStatus) => counts.find((c) => c.status === s)?._count ?? 0;
-    return { items, counts: { new: n(TripStatus.DA_GAN), active: ACTIVE.filter((s) => s !== TripStatus.DA_GAN).reduce((t, s) => t + n(s), 0) } };
+    return { items: items.map(clean), counts: { new: n(TripStatus.DA_GAN), active: ACTIVE.filter((s) => s !== TripStatus.DA_GAN).reduce((t, s) => t + n(s), 0) } };
+  }
+
+  /** Ảnh bảng đón khách gửi (PDF tự chuyển trang đầu thành ảnh) */
+  @Get('trips/:id/sign-file')
+  async signFile(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const trip = await this.prisma.bookingTrip.findFirst({ where: { id, partnerId: this.partnerId(user) }, select: { booking: { select: { signFile: true, signFileType: true } } } });
+    const b = trip?.booking;
+    if (!b?.signFile || !existsSync(`${SIGN_DIR}/${b.signFile}`)) throw new NotFoundException('Booking chưa có file bảng đón');
+    const img = await signImage(b.signFile, b.signFileType);
+    res.setHeader('Content-Type', img.type);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.sendFile(img.file, { root: SIGN_DIR });
   }
 
   @Get('trips/:id')
   async trip(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
     const trip = await this.prisma.bookingTrip.findFirst({ where: { id, partnerId: this.partnerId(user) }, select: tripSelect });
     if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
-    return trip;
+    return clean(trip);
   }
 
   /** Nhận chuyến (có thể nhập luôn xe & tài xế) */
