@@ -60,6 +60,7 @@ const tripSelect = {
   partnerInvoice: true,
   partnerInvoiceNote: true,
   partnerVatPercent: true,
+  partnerAdjustNote: true,
   assignedAt: true,
   vehicleType: { select: { name: true, seats: true } },
   service: { select: { name: true } },

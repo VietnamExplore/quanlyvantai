@@ -25,6 +25,8 @@ export interface PartnerTrip {
   partnerInvoice: boolean;
   partnerInvoiceNote: string | null;
   partnerVatPercent: string;
+  /** Văn phòng điều chỉnh giá: lý do */
+  partnerAdjustNote: string | null;
   vehicleType: { name: string; seats: number };
   service: { name: string } | null;
   booking: {

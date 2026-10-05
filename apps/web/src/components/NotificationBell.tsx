@@ -35,6 +35,7 @@ const ICON: Record<string, string> = {
   PARTNER_REJECTED: '⛔',
   PARTNER_VEHICLE: '🚐',
   PARTNER_DONE: '🏁',
+  PARTNER_COST_ADJUSTED: '💲',
 };
 
 const POLL_MS = 30_000;

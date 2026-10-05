@@ -469,6 +469,10 @@ model BookingTrip {
   partnerInvoice     Boolean  @default(false)
   /// Thuế suất trên hóa đơn nhà xe xuất: giá thuê là giá chưa thuế, công nợ nhà xe = giá thuê × (1 + thuế suất)
   partnerVatPercent  Decimal  @default(0) @db.Decimal(5, 2)
+  /// Sự cố của nhà xe ở chuyến này: TRE_GIO (đón trễ) | KHONG_DON (không đón khách) – ghi khi văn phòng điều chỉnh giá
+  partnerIssue       String?
+  /// Ghi chú lần điều chỉnh giá nhà xe gần nhất (lý do, hiện cho nhà xe)
+  partnerAdjustNote  String?
   partnerInvoiceNote String?
   dispatchNote       String? // Ghi chú cho tài xế / nhà xe
 

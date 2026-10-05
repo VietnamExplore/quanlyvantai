@@ -271,6 +271,7 @@ export function PartnerTripDetail({
                   + VAT {Number(t.partnerVatPercent)}% = <b>{formatVnd(Math.round(Number(t.partnerCost) * (1 + Number(t.partnerVatPercent) / 100)))}đ</b>
                 </div>
               )}
+              {t.partnerAdjustNote && <div style={{ fontSize: 13, color: '#b45309' }}>⚠ Văn phòng điều chỉnh giá · {t.partnerAdjustNote}</div>}
             </span>
           </div>
         )}

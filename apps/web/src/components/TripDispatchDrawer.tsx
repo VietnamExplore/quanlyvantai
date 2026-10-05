@@ -30,6 +30,7 @@ import { api, ApiError } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime, routeText } from '../booking-utils';
 import { TripOdometer } from './TripOdometer';
+import { PARTNER_ISSUE, PartnerCostAdjust } from './PartnerCostAdjust';
 import { useCopyText } from '../clipboard';
 import { buildDispatchText, NEXT_ACTION, TRIP_FLOW } from '../dispatch-utils';
 import { TRIP_STATUS } from '../labels';
@@ -164,6 +165,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       setBusy(false);
     }
   }
+
+  const [adjustOpen, setAdjustOpen] = useState(false);
 
   async function post(path: string, body?: unknown, okMsg?: string) {
     setBusy(true);
@@ -484,8 +487,31 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                   )}
                   <Descriptions.Item label="Giá thuê">
                     <Money value={trip.partnerCost} /> · lãi <Money value={amount - Number(trip.partnerCost ?? 0)} strong />
+                    {canDispatch && (
+                      <Button size="small" type="link" onClick={() => setAdjustOpen(true)}>
+                        Điều chỉnh giá nhà xe
+                      </Button>
+                    )}
                   </Descriptions.Item>
+                  {(trip.partnerIssue || trip.partnerAdjustNote) && (
+                    <Descriptions.Item label="Điều chỉnh">
+                      {trip.partnerIssue && PARTNER_ISSUE[trip.partnerIssue] && <Tag color={PARTNER_ISSUE[trip.partnerIssue].color}>{PARTNER_ISSUE[trip.partnerIssue].label}</Tag>}
+                      {trip.partnerAdjustNote}
+                    </Descriptions.Item>
+                  )}
                 </Descriptions>
+              )}
+              {trip.partnerId && (
+                <PartnerCostAdjust
+                  open={adjustOpen}
+                  partnerName={trip.partner?.name ?? ''}
+                  currentCost={Number(trip.partnerCost ?? 0)}
+                  invoice={!!trip.partnerInvoice}
+                  vatPercent={Number(trip.partnerVatPercent ?? 0)}
+                  busy={busy}
+                  onCancel={() => setAdjustOpen(false)}
+                  onSubmit={(v) => post('partner-cost', v, 'Đã điều chỉnh giá nhà xe').then(() => setAdjustOpen(false))}
+                />
               )}
               {trip.dispatchNote && <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>Ghi chú: {trip.dispatchNote}</Typography.Paragraph>}
               {canDispatch && !closed && !changing && (

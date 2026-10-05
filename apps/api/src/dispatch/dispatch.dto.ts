@@ -1,6 +1,6 @@
 import { TripStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, Min, Max, IsNotEmpty } from 'class-validator';
 
 export class DispatchQueryDto {
   /** YYYY-MM-DD */
@@ -51,4 +51,23 @@ export class TripStatusDto {
   status: (typeof MANUAL_STATUSES)[number];
 
   @IsOptional() @IsString() note?: string;
+}
+
+/** Lý do điều chỉnh giá nhà xe */
+export const PARTNER_ADJUST_REASONS = ['TRE_GIO', 'KHONG_DON', 'PHAT_SINH', 'KHAC'] as const;
+
+/** Admin / Điều hành điều chỉnh giá giao nhà xe (kể cả chuyến / booking đã hoàn thành) */
+export class PartnerCostDto {
+  @IsNumber({}, { message: 'Giá thuê không hợp lệ' })
+  @Min(0, { message: 'Giá thuê không được âm' })
+  partnerCost: number;
+
+  @IsOptional() @IsNumber() @Min(0) @Max(100) partnerVatPercent?: number;
+
+  @IsIn(PARTNER_ADJUST_REASONS, { message: 'Chọn lý do điều chỉnh' })
+  reason: (typeof PARTNER_ADJUST_REASONS)[number];
+
+  @IsString()
+  @IsNotEmpty({ message: 'Nhập ghi chú điều chỉnh' })
+  note: string;
 }

@@ -1,6 +1,6 @@
 import { DeleteOutlined, DollarOutlined, DownloadOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Col, Flex, Popconfirm, Row, Statistic, Tabs, Typography } from 'antd';
+import { App, Button, Card, Col, Flex, Popconfirm, Row, Statistic, Tabs, Typography, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -13,6 +13,7 @@ import { downloadExcel } from '../excel';
 import { PAYMENT_METHOD, TRIP_STATUS } from '../labels';
 import type { Payment, TripStatus } from '../types';
 import { ResponsiveTable } from '../components/ResponsiveTable';
+import { PARTNER_ISSUE } from '../components/PartnerCostAdjust';
 
 interface PayTrip {
   id: number;
@@ -23,6 +24,8 @@ interface PayTrip {
   partnerCost: string | null;
   partnerInvoice: boolean;
   partnerVatPercent: string;
+  partnerIssue?: string | null;
+  partnerAdjustNote?: string | null;
   /** Giá thuê chưa thuế / thuế / phải trả */
   partnerNet: number;
   partnerVat: number;
@@ -150,7 +153,20 @@ export default function PayablesPage() {
                           { title: 'Booking', render: (_, t) => <Link to={`/bookings/${t.booking.id}`}>{t.booking.code}</Link> },
                           { title: 'Hành trình', render: (_, t) => [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → ') },
                           { title: 'Xe', render: (_, t) => t.partnerPlate ?? t.vehicleType.name },
-                          { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={TRIP_STATUS} value={v} /> },
+                          {
+                            title: 'Trạng thái',
+                            dataIndex: 'status',
+                            render: (v, t) => (
+                              <>
+                                <EnumTag labels={TRIP_STATUS} value={v} />
+                                {t.partnerIssue && PARTNER_ISSUE[t.partnerIssue] && (
+                                  <Tag color={PARTNER_ISSUE[t.partnerIssue].color} title={t.partnerAdjustNote ?? undefined}>
+                                    {PARTNER_ISSUE[t.partnerIssue].label}
+                                  </Tag>
+                                )}
+                              </>
+                            ),
+                          },
                           { title: 'Giá thuê (chưa thuế)', dataIndex: 'partnerNet', align: 'right', render: (v) => <Money value={v} /> },
                           {
                             title: 'Thuế',

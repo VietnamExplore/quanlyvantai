@@ -257,6 +257,8 @@ export class FinanceService implements OnModuleInit {
             partnerCost: true,
             partnerInvoice: true,
             partnerVatPercent: true,
+            partnerIssue: true,
+            partnerAdjustNote: true,
             status: true,
             booking: { select: { id: true, code: true } },
             vehicleType: { select: { name: true } },

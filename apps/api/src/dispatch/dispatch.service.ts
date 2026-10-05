@@ -3,7 +3,7 @@ import { BookingStatus, DriverStatus, Ownership, Prisma, TripStatus, VehicleStat
 import { AuthUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
-import { AssignDto, DispatchQueryDto, TripStatusDto } from './dispatch.dto';
+import { AssignDto, DispatchQueryDto, PartnerCostDto, TripStatusDto } from './dispatch.dto';
 
 const TZ = 'Asia/Ho_Chi_Minh';
 const DISPATCHABLE: BookingStatus[] = [BookingStatus.XAC_NHAN, BookingStatus.HOAN_THANH];
@@ -383,6 +383,42 @@ export class DispatchService {
         tripId,
       });
     }
+  }
+
+  /**
+   * Điều chỉnh giá giao nhà xe sau khi đã giao (kể cả chuyến / booking đã hoàn thành):
+   * đón trễ, không đón khách, phát sinh… Ghi lịch sử chuyến, đánh dấu sự cố nhà xe, báo nhà xe.
+   */
+  async adjustPartnerCost(id: number, dto: PartnerCostDto, user: AuthUser) {
+    const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id }, include: { booking: { select: { code: true } }, partner: { select: { name: true } } } });
+    if (!trip.partnerId) throw new BadRequestException('Chuyến không giao cho nhà xe đối tác');
+    const label: Record<PartnerCostDto['reason'], string> = { TRE_GIO: 'Nhà xe đón trễ', KHONG_DON: 'Nhà xe không đón khách', PHAT_SINH: 'Thay đổi lịch trình / phát sinh', KHAC: 'Khác' };
+    const vnd = (v: unknown) => `${Number(v ?? 0).toLocaleString('vi-VN')}đ`;
+    const vat = trip.partnerInvoice ? (dto.partnerVatPercent ?? Number(trip.partnerVatPercent)) : 0;
+    const note = `${label[dto.reason]}: ${dto.note.trim()}`;
+    const issue = dto.reason === 'TRE_GIO' || dto.reason === 'KHONG_DON' ? dto.reason : trip.partnerIssue;
+    await this.prisma.$transaction([
+      this.prisma.bookingTrip.update({
+        where: { id },
+        // Giá thuê nhà xe là chi phí thực của chuyến
+        data: { partnerCost: dto.partnerCost, estimatedCost: dto.partnerCost, partnerVatPercent: vat, partnerIssue: issue, partnerAdjustNote: note },
+      }),
+      this.prisma.tripEvent.create({
+        data: {
+          tripId: id,
+          status: trip.status,
+          note: `Điều chỉnh giá nhà xe ${trip.partner?.name ?? ''}: ${vnd(trip.partnerCost)} → ${vnd(dto.partnerCost)}${trip.partnerInvoice && vat !== Number(trip.partnerVatPercent) ? ` (VAT ${Number(trip.partnerVatPercent)}% → ${vat}%)` : ''} · ${note}`,
+          userId: user.id,
+        },
+      }),
+    ]);
+    await this.push.notifyPartner(trip.partnerId, {
+      type: 'PARTNER_COST_ADJUSTED',
+      title: `Điều chỉnh giá chuyến ${trip.booking.code}`,
+      body: `${fmt(trip.pickupTime)} · giá thuê ${vnd(trip.partnerCost)} → ${vnd(dto.partnerCost)} · ${note}`,
+      tripId: id,
+    });
+    return this.getTrip(id);
   }
 
   async unassign(id: number, user: AuthUser) {
