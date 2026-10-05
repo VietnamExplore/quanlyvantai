@@ -5,6 +5,7 @@ import {
   BookOutlined,
   TagsOutlined,
   WalletOutlined,
+  DollarOutlined,
   CalendarOutlined,
   CarOutlined,
   FileTextOutlined,
@@ -25,9 +26,11 @@ import {
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Button, Drawer, Dropdown, Flex, Grid, Layout, Menu, Space } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { Avatar, Badge, Button, Drawer, Dropdown, Flex, Grid, Layout, Menu, Space } from 'antd';
 import { useState, type ReactNode, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { api } from '../api';
 import { useAuth } from '../auth';
 import { ROLE } from '../labels';
 import type { Role } from '../types';
@@ -59,6 +62,7 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
       { key: '/finance/receivables', label: 'Công nợ khách hàng', icon: <WalletOutlined /> },
       { key: '/finance/payables', label: 'Công nợ nhà xe', icon: <ShopOutlined />, roles: ['ADMIN', 'KE_TOAN', 'DIEU_HANH'] },
       { key: '/finance/ledger', label: 'Sổ thu chi', icon: <BookOutlined />, roles: ['ADMIN', 'KE_TOAN', 'DIEU_HANH'] },
+      { key: '/finance/advances', label: 'Tạm ứng lái xe', icon: <DollarOutlined />, roles: ['ADMIN', 'KE_TOAN'] },
     ],
   },
   {
@@ -199,8 +203,25 @@ export function AppLayout() {
       .map(([e, icon, label]) => ({ key: e, icon, label, onClick: () => setQuickEntity(e) })),
   ];
 
+  // Số đề nghị tạm ứng chờ duyệt: hiện cạnh menu, tự cập nhật mỗi phút
+  const canApprove = hasRole('ADMIN', 'KE_TOAN');
+  const { data: advancePending } = useQuery({
+    queryKey: ['/advance-requests', 'pending-count'],
+    queryFn: () => api<{ count: number }>('/advance-requests/pending-count'),
+    enabled: canApprove,
+    refetchInterval: 60_000,
+  });
+  const badge = (key: string, label: string) =>
+    key === '/finance/advances' && advancePending?.count ? (
+      <Flex justify="space-between" align="center" gap={8}>
+        {label}
+        <Badge count={advancePending.count} size="small" />
+      </Flex>
+    ) : (
+      label
+    );
   const items = NAV_GROUPS.filter((g) => !g.roles || hasRole(...g.roles)).map((g, i) => {
-    const children = g.items.filter((n) => !n.roles || hasRole(...n.roles)).map(({ key, label, icon }) => ({ key, label, icon }));
+    const children = g.items.filter((n) => !n.roles || hasRole(...n.roles)).map(({ key, label, icon }) => ({ key, label: badge(key, label), icon }));
     return g.label ? { type: 'group' as const, key: `g${i}`, label: g.label, children } : { type: 'group' as const, key: `g${i}`, children };
   });
   const matched = NAV.filter((n) => (n.key === '/' ? pathname === '/' : pathname.startsWith(n.key))).sort((a, b) => b.key.length - a.key.length);

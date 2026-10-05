@@ -19,6 +19,7 @@ import type { Response } from 'express';
 import { existsSync } from 'fs';
 import { BookingStatus, PaymentMethod, Prisma, Role, TripStatus, VoucherType } from '@prisma/client';
 import { IsBoolean, IsDateString, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
+import { AdvancesService } from '../advances/advances.service';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { CreateTripCostDto } from '../finance/finance.dto';
 import { FinanceService } from '../finance/finance.service';
@@ -54,6 +55,16 @@ class CollectDto {
 
   @IsIn([PaymentMethod.TIEN_MAT, PaymentMethod.CHUYEN_KHOAN], { message: 'Hình thức không hợp lệ' })
   method: PaymentMethod;
+}
+
+class AdvanceDto {
+  @IsNumber({}, { message: 'Số tiền không hợp lệ' })
+  @Min(10000, { message: 'Số tiền tạm ứng tối thiểu 10.000đ' })
+  amount: number;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Nhập lý do tạm ứng' })
+  reason: string;
 }
 
 class FuelDto {
@@ -129,6 +140,7 @@ export class DriverAppController {
     private readonly prisma: PrismaService,
     private readonly finance: FinanceService,
     private readonly payroll: PayrollService,
+    private readonly advances: AdvancesService,
   ) {}
 
   private driverId(user: AuthUser) {
@@ -344,6 +356,8 @@ export class DriverAppController {
         commission: row.commission,
         total: row.total,
         reimbursement: row.reimbursement,
+        advanceTaken: row.advanceTaken,
+        loans: row.loans,
         netPay: row.netPay,
         completedTrips: row.completedTrips,
         pendingTrips: row.pendingTrips,
@@ -353,6 +367,24 @@ export class DriverAppController {
       holding: holdingCash.map((h) => ({ tripId: h.id, amount: Number(h.collectedAmount), collectedAt: h.collectedAt, pickupTime: h.pickupTime, bookingCode: h.booking.code })),
       holdingTotal: holdingCash.reduce((s, h) => s + Number(h.collectedAmount), 0),
     };
+  }
+
+  // ───── Đề nghị tạm ứng ─────
+
+  @Get('advances')
+  myAdvances(@CurrentUser() user: AuthUser) {
+    return this.advances.listMine(this.driverId(user));
+  }
+
+  @Post('advances')
+  createAdvance(@CurrentUser() user: AuthUser, @Body() dto: AdvanceDto) {
+    return this.advances.create(this.driverId(user), dto.amount, dto.reason);
+  }
+
+  @Post('advances/:id/cancel')
+  @HttpCode(200)
+  cancelAdvance(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    return this.advances.cancel(this.driverId(user), id);
   }
 
   // ───── Xăng dầu (phiếu chi riêng, không gắn chuyến) ─────
@@ -365,7 +397,7 @@ export class DriverAppController {
     const [y, m] = month.split('-').map(Number);
     const [items, vehicles, me] = await Promise.all([
       this.prisma.cashVoucher.findMany({
-        where: { driverId, date: { gte: new Date(Date.UTC(y, m - 1, 1)), lt: new Date(Date.UTC(y, m, 1)) } },
+        where: { driverId, advanceRequest: { is: null }, date: { gte: new Date(Date.UTC(y, m - 1, 1)), lt: new Date(Date.UTC(y, m, 1)) } },
         select: { id: true, code: true, date: true, amount: true, liters: true, odometerKm: true, driverPaid: true, note: true, receiptFile: true, vehicle: { select: { id: true, plateNumber: true } } },
         orderBy: [{ date: 'desc' }, { id: 'desc' }],
       }),
@@ -404,8 +436,8 @@ export class DriverAppController {
   }
 
   private async ownFuel(user: AuthUser, id: number) {
-    const v = await this.prisma.cashVoucher.findUnique({ where: { id } });
-    if (!v || v.driverId !== this.driverId(user)) throw new NotFoundException('Không tìm thấy phiếu xăng');
+    const v = await this.prisma.cashVoucher.findUnique({ where: { id }, include: { advanceRequest: { select: { id: true } } } });
+    if (!v || v.driverId !== this.driverId(user) || v.advanceRequest) throw new NotFoundException('Không tìm thấy phiếu xăng');
     return v;
   }
 

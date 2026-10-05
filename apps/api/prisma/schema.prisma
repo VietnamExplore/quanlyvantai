@@ -37,6 +37,7 @@ model User {
   partnerPayments PartnerPayment[] @relation("PartnerPaymentCreator")
   cashVouchers    CashVoucher[]    @relation("VoucherCreator")
   tripEvents      TripEvent[]
+  decidedAdvances AdvanceRequest[] @relation("AdvanceDecider")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -105,26 +106,27 @@ enum DriverStatus {
 }
 
 model Driver {
-  id                Int            @id @default(autoincrement())
+  id                Int              @id @default(autoincrement())
   fullName          String
   phone             String
   idCardNumber      String?
   licenseClass      String?
   licenseNumber     String?
-  licenseExpiry     DateTime?      @db.Date
-  healthCheckExpiry DateTime?      @db.Date
+  licenseExpiry     DateTime?        @db.Date
+  healthCheckExpiry DateTime?        @db.Date
   partnerId         Int? // null = lái xe công ty
-  partner           Partner?       @relation(fields: [partnerId], references: [id])
-  status            DriverStatus   @default(DANG_LAM)
-  userId            Int?           @unique
-  user              User?          @relation(fields: [userId], references: [id])
+  partner           Partner?         @relation(fields: [partnerId], references: [id])
+  status            DriverStatus     @default(DANG_LAM)
+  userId            Int?             @unique
+  user              User?            @relation(fields: [userId], references: [id])
   defaultVehicles   Vehicle[]
   trips             BookingTrip[]
   salaries          DriverSalary[]
   fuelVouchers      CashVoucher[]
+  advanceRequests   AdvanceRequest[]
   notes             String?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 }
 
 /// Mức lương lái xe công ty theo thời gian: lương cứng / tháng + % doanh thu chuyến đã chạy.
@@ -586,36 +588,66 @@ enum VoucherType {
 
 /// Phiếu thu / phiếu chi lập tay trong sổ thu chi, gắn với xe (công ty hoặc đối tác)
 model CashVoucher {
-  id           Int           @id @default(autoincrement())
-  code         String        @unique // PT2610-0001 / PC2610-0001
-  type         VoucherType
-  date         DateTime      @db.Date
-  categoryCode String?
-  category     CostCategory? @relation(fields: [categoryCode], references: [code], onUpdate: Cascade)
-  title        String? // Khoản mục tự ghi (khi không chọn loại chi phí)
-  vehicleId    Int?
-  vehicle      Vehicle?      @relation(fields: [vehicleId], references: [id])
-  partnerId    Int?
-  partner      Partner?      @relation(fields: [partnerId], references: [id])
-  counterparty String? // Người nộp / người nhận
-  amount       Decimal       @db.Decimal(15, 0)
-  method       PaymentMethod @default(TIEN_MAT)
-  reference    String?
-  note         String?
+  id             Int             @id @default(autoincrement())
+  code           String          @unique // PT2610-0001 / PC2610-0001
+  type           VoucherType
+  date           DateTime        @db.Date
+  categoryCode   String?
+  category       CostCategory?   @relation(fields: [categoryCode], references: [code], onUpdate: Cascade)
+  title          String? // Khoản mục tự ghi (khi không chọn loại chi phí)
+  vehicleId      Int?
+  vehicle        Vehicle?        @relation(fields: [vehicleId], references: [id])
+  partnerId      Int?
+  partner        Partner?        @relation(fields: [partnerId], references: [id])
+  counterparty   String? // Người nộp / người nhận
+  amount         Decimal         @db.Decimal(15, 0)
+  method         PaymentMethod   @default(TIEN_MAT)
+  reference      String?
+  note           String?
   /// Xăng dầu lái xe nhập trên app
-  driverId     Int?
-  driver       Driver?       @relation(fields: [driverId], references: [id])
-  liters       Decimal?      @db.Decimal(8, 2)
-  odometerKm   Int?
-  driverPaid   Boolean       @default(false) // Lái xe tự ứng tiền → hoàn ứng trong lương
-  receiptFile  String?
-  receiptType  String?
-  createdById  Int
-  createdBy    User          @relation("VoucherCreator", fields: [createdById], references: [id])
-  createdAt    DateTime      @default(now())
+  driverId       Int?
+  driver         Driver?         @relation(fields: [driverId], references: [id])
+  liters         Decimal?        @db.Decimal(8, 2)
+  odometerKm     Int?
+  driverPaid     Boolean         @default(false) // Lái xe tự ứng tiền → hoàn ứng trong lương
+  receiptFile    String?
+  receiptType    String?
+  /// Phiếu chi tạm ứng lập từ đề nghị của lái xe
+  advanceRequest AdvanceRequest?
+  createdById    Int
+  createdBy      User            @relation("VoucherCreator", fields: [createdById], references: [id])
+  createdAt      DateTime        @default(now())
 
   @@index([date])
   @@index([vehicleId])
   @@index([partnerId])
   @@index([driverId])
+}
+
+// ───────────── Lái xe đề nghị tạm ứng ─────────────
+
+enum AdvanceStatus {
+  CHO_DUYET // Lái xe vừa gửi, chờ văn phòng
+  DA_CHI // Văn phòng đã duyệt và chi tiền (có phiếu chi)
+  TU_CHOI
+  DA_HUY // Lái xe tự hủy khi chưa duyệt
+}
+
+model AdvanceRequest {
+  id           Int           @id @default(autoincrement())
+  driverId     Int
+  driver       Driver        @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  amount       Decimal       @db.Decimal(15, 0) // Số tiền lái xe xin ứng
+  reason       String
+  status       AdvanceStatus @default(CHO_DUYET)
+  decidedAt    DateTime?
+  decidedById  Int?
+  decidedBy    User?         @relation("AdvanceDecider", fields: [decidedById], references: [id])
+  decisionNote String? // Lý do từ chối / ghi chú khi chi
+  voucherId    Int?          @unique
+  voucher      CashVoucher?  @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+
+  @@index([driverId])
+  @@index([status])
 }

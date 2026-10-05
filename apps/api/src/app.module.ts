@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { AdvancesModule } from './advances/advances.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
@@ -46,6 +47,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     CustomersModule,
     LocationsModule,
     AlertsModule,
+    AdvancesModule,
     PricingModule,
     SettingsModule,
     BookingsModule,

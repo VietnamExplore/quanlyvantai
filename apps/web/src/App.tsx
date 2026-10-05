@@ -2,6 +2,7 @@ import { Button, Flex, Result, Spin } from 'antd';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth';
 import { AppLayout } from './components/AppLayout';
+import AdvancesPage from './pages/AdvancesPage';
 import BookingEditPage from './pages/BookingEditPage';
 import BookingsPage from './pages/BookingsPage';
 import CostCategoriesPage from './pages/CostCategoriesPage';
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="finance/receivables" element={<ReceivablesPage />} />
         {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/payables" element={<PayablesPage />} />}
         {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/ledger" element={<LedgerPage />} />}
+        {hasRole('ADMIN', 'KE_TOAN') && <Route path="finance/advances" element={<AdvancesPage />} />}
         {hasRole('ADMIN') && <Route path="users" element={<UsersPage />} />}
         {hasRole('ADMIN') && <Route path="settings" element={<SettingsPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />

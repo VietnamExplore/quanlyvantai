@@ -16,13 +16,14 @@ const subtotal = (trips: { amount: Prisma.Decimal; status: TripStatus }[]) =>
   trips.filter((t) => t.status !== TripStatus.HUY).reduce((s, t) => s + Number(t.amount), 0);
 
 /**
- * Lương lái xe công ty trong khoảng ngày = lương cứng + % doanh số; thực nhận = lương + hoàn ứng.
+ * Lương lái xe công ty trong khoảng ngày = lương cứng + % doanh số; thực nhận = lương + hoàn ứng − tạm ứng.
  * - Lương cứng tính theo tháng; kỳ không trọn tháng thì tính theo số ngày (lương × số ngày / số ngày của tháng).
  * - Doanh số = doanh thu (đã phân bổ giảm giá, chưa VAT) các chuyến lái xe đã HOÀN THÀNH
  *   (xe công ty, booking đã xác nhận / hoàn thành), theo ngày đón.
  * - Chuyến đã qua giờ đón nhưng chưa bấm hoàn thành: chưa tính, trả về để cảnh báo.
  * - Hoàn ứng = chi phí lái xe tự nhập trên app (byDriver) của các chuyến lái xe chạy trong kỳ
  *   + phiếu chi xăng dầu lái xe tự ứng tiền (theo ngày đổ xăng).
+ * - Tạm ứng = phiếu chi lập từ đề nghị tạm ứng của lái xe (theo ngày chi), trừ vào thực nhận.
  * - Mỗi tháng dùng mức lương có hiệu lực của tháng đó (bảng DriverSalary).
  * Dùng chung cho báo cáo lương (web) và mục Thu nhập trên app lái xe.
  */
@@ -42,7 +43,7 @@ export class PayrollService {
       partnerId: null,
       booking: { status: { in: REVENUE_STATUSES } },
     };
-    const [drivers, salaries, trips, pending, advances, fuel] = await Promise.all([
+    const [drivers, salaries, trips, pending, advances, fuel, loans] = await Promise.all([
       this.prisma.driver.findMany({ where: { partnerId: null, ...(driverId && { id: driverId }) }, select: { id: true, fullName: true, phone: true, status: true }, orderBy: { fullName: 'asc' } }),
       this.prisma.driverSalary.findMany({ where: { driver: { partnerId: null }, ...(driverId && { driverId }) }, orderBy: { effectiveFrom: 'desc' } }),
       this.prisma.bookingTrip.findMany({
@@ -88,6 +89,12 @@ export class PayrollService {
         select: { id: true, code: true, amount: true, date: true, note: true, liters: true, driverId: true, vehicle: { select: { plateNumber: true } } },
         orderBy: { date: 'asc' },
       }),
+      // Tạm ứng đã chi cho lái xe (trừ lương)
+      this.prisma.cashVoucher.findMany({
+        where: { driverId: driverId ?? { not: null }, type: 'CHI', advanceRequest: { isNot: null }, date: dateRange },
+        select: { id: true, code: true, amount: true, date: true, driverId: true, advanceRequest: { select: { id: true, reason: true } } },
+        orderBy: { date: 'asc' },
+      }),
     ]);
 
     // Các tháng (có thể chỉ một phần tháng) nằm trong kỳ
@@ -128,6 +135,12 @@ export class PayrollService {
       advanceSum.set(key, (advanceSum.get(key) ?? 0) + Number(v.amount));
     }
 
+    const loanSum = new Map<string, number>();
+    for (const v of loans) {
+      const key = `${v.driverId}|${v.date.toISOString().slice(0, 7)}`;
+      loanSum.set(key, (loanSum.get(key) ?? 0) + Number(v.amount));
+    }
+
     const rows = drivers.map((d) => {
       const detail = months.map((m) => {
         const rate = rateFor(d.id, m.month);
@@ -137,10 +150,11 @@ export class PayrollService {
         const baseAmount = Math.round((baseSalary * m.days) / m.daysInMonth);
         const commission = Math.round((r.revenue * commissionPercent) / 100);
         const reimbursement = Math.round(advanceSum.get(`${d.id}|${m.month}`) ?? 0);
+        const advanceTaken = Math.round(loanSum.get(`${d.id}|${m.month}`) ?? 0);
         const total = baseAmount + commission;
-        return { ...m, hasRate: !!rate, baseSalary, commissionPercent, baseAmount, trips: r.trips, revenue: Math.round(r.revenue), commission, total, reimbursement, netPay: total + reimbursement };
+        return { ...m, hasRate: !!rate, baseSalary, commissionPercent, baseAmount, trips: r.trips, revenue: Math.round(r.revenue), commission, total, reimbursement, advanceTaken, netPay: total + reimbursement - advanceTaken };
       });
-      const sum = (k: 'baseAmount' | 'revenue' | 'commission' | 'trips' | 'total' | 'reimbursement' | 'netPay') => detail.reduce((s, x) => s + x[k], 0);
+      const sum = (k: 'baseAmount' | 'revenue' | 'commission' | 'trips' | 'total' | 'reimbursement' | 'advanceTaken' | 'netPay') => detail.reduce((s, x) => s + x[k], 0);
       const last = detail[detail.length - 1];
       const myPending = pending.filter((t) => t.driverId === d.id);
       return {
@@ -157,7 +171,12 @@ export class PayrollService {
         commission: sum('commission'),
         total: sum('total'),
         reimbursement: sum('reimbursement'),
+        advanceTaken: sum('advanceTaken'),
         netPay: sum('netPay'),
+        // Các lần tạm ứng đã chi (trừ lương)
+        loans: loans
+          .filter((v) => v.driverId === d.id)
+          .map((v) => ({ id: v.id, code: v.code, amount: Number(v.amount), date: v.date, reason: v.advanceRequest?.reason ?? null })),
         months: detail,
         pendingTrips: myPending.map((t) => ({ id: t.id, pickupTime: t.pickupTime, status: t.status, booking: t.booking })),
         // Chuyến đã hoàn thành kèm doanh số và tiền % (dùng cho app lái xe)
@@ -210,7 +229,7 @@ export class PayrollService {
     return {
       from,
       to,
-      drivers: driverId ? rows : rows.filter((r) => r.status !== 'NGHI_VIEC' || r.trips > 0 || r.reimbursement > 0 || r.pendingTrips.length > 0),
+      drivers: driverId ? rows : rows.filter((r) => r.status !== 'NGHI_VIEC' || r.trips > 0 || r.reimbursement > 0 || r.advanceTaken > 0 || r.pendingTrips.length > 0),
     };
   }
 }

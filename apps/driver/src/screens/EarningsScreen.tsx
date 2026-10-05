@@ -4,6 +4,7 @@ import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react
 import { api } from '../api';
 import { BRAND, colors, fmtDate, fmtTime } from '../theme';
 import { Card, MonthSwitcher, Section, thisMonth } from '../ui';
+import { AdvanceCard } from './AdvanceCard';
 
 const vnd = (v: number) => `${Math.round(v).toLocaleString('vi-VN')}đ`;
 
@@ -20,6 +21,8 @@ interface Earnings {
   commission?: number;
   total?: number;
   reimbursement?: number;
+  /** Tạm ứng đã nhận trong tháng (trừ lương) */
+  advanceTaken?: number;
   netPay?: number;
   completedTrips?: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; service: string | null; bookingCode: string; revenue: number; commission: number }[];
   pendingTrips?: { id: number; pickupTime: string; booking: { code: string } }[];
@@ -102,7 +105,8 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
             <Line label="Lương cứng" hint={d.baseSalary ? `${vnd(d.baseSalary)}/tháng, tính theo ngày làm` : undefined} value={vnd(d.baseAmount ?? 0)} />
             <Line label={`Hoa hồng ${d.commissionPercent ?? 0}% doanh số`} hint={`${d.trips ?? 0} chuyến · doanh số ${vnd(d.revenue ?? 0)}`} value={vnd(d.commission ?? 0)} />
             <Line label="Tổng lương" value={vnd(d.total ?? 0)} strong />
-            <Line label="Hoàn tiền bạn đã ứng" hint="Chi phí chuyến + xăng bạn tự trả" value={`+ ${vnd(d.reimbursement ?? 0)}`} color={colors.success} />
+            <Line label="Hoàn tiền bạn chi hộ" hint="Chi phí chuyến + xăng bạn tự trả" value={`+ ${vnd(d.reimbursement ?? 0)}`} color={colors.success} />
+            {(d.advanceTaken ?? 0) > 0 && <Line label="Trừ tạm ứng đã nhận" value={`− ${vnd(d.advanceTaken!)}`} color={colors.danger} />}
             <Line label="Thực nhận" value={vnd(d.netPay ?? 0)} strong color={colors.primary} />
             <Text style={s.foot}>Số liệu tạm tính theo chuyến đã hoàn thành. Văn phòng chốt lương cuối tháng.</Text>
           </Card>
@@ -119,6 +123,8 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
           )}
         </>
       )}
+
+      {d && !d.partner && <AdvanceCard netPay={isNow ? (d.netPay ?? 0) : null} onChanged={load} />}
 
       {d && d.holdingTotal > 0 && (
         <Card style={s.holdCard}>
@@ -158,7 +164,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
 
       {d && !d.partner && (d.advances?.length ?? 0) > 0 && (
         <Card>
-          <Section icon="🧾" title="Khoản bạn đã ứng (được hoàn)" />
+          <Section icon="🧾" title="Khoản bạn chi hộ (được hoàn)" />
           {d.advances!.map((a, i) => (
             <View key={i} style={s.trip}>
               <View style={{ flex: 1 }}>
