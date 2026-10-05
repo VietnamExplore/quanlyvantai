@@ -342,6 +342,8 @@ export class BookingsService {
         dropoffAddress: t.dropoffAddress?.trim() || null,
         flightNumber: t.flightNumber?.trim().toUpperCase() || null,
         departureFlight: t.departureFlight?.trim().toUpperCase() || null,
+        collectAmount: t.collectAmount ? t.collectAmount : null,
+        collectNote: t.collectNote?.trim() || null,
         passengers: t.passengers,
         vehicleTypeId: t.vehicleTypeId,
         routePriceId: t.routePriceId ?? null,

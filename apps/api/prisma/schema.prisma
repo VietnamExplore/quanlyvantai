@@ -36,7 +36,7 @@ model User {
   payments        Payment[]        @relation("PaymentCreator")
   partnerPayments PartnerPayment[] @relation("PartnerPaymentCreator")
   cashVouchers    CashVoucher[]    @relation("VoucherCreator")
-  tripEvents     TripEvent[]
+  tripEvents      TripEvent[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -121,6 +121,7 @@ model Driver {
   defaultVehicles   Vehicle[]
   trips             BookingTrip[]
   salaries          DriverSalary[]
+  fuelVouchers      CashVoucher[]
   notes             String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
@@ -434,21 +435,31 @@ model BookingTrip {
 
   // ── Điều xe ──
   vehicleId          Int? // Xe công ty
-  vehicle            Vehicle?    @relation(fields: [vehicleId], references: [id])
+  vehicle            Vehicle? @relation(fields: [vehicleId], references: [id])
   driverId           Int? // Lái xe công ty
-  driver             Driver?     @relation(fields: [driverId], references: [id])
+  driver             Driver?  @relation(fields: [driverId], references: [id])
   partnerId          Int? // Giao cho nhà xe đối tác
-  partner            Partner?    @relation(fields: [partnerId], references: [id])
+  partner            Partner? @relation(fields: [partnerId], references: [id])
   partnerPlate       String?
   partnerDriverName  String?
   partnerDriverPhone String?
-  partnerCost        Decimal?    @db.Decimal(15, 0) // Giá thuê đối tác thực tế
+  partnerCost        Decimal? @db.Decimal(15, 0) // Giá thuê đối tác thực tế
   dispatchNote       String? // Ghi chú cho tài xế / nhà xe
-  assignedAt         DateTime?
-  assignedById       Int?
-  assignedBy         User?       @relation("TripAssigner", fields: [assignedById], references: [id])
-  events             TripEvent[]
-  costs              TripCost[]
+
+  /// Văn phòng nhờ lái xe thu tiền khách giúp
+  collectAmount    Decimal?       @db.Decimal(15, 0)
+  collectNote      String?
+  collectedAt      DateTime? // Lái xe bấm "đã thu tiền"
+  collectedAmount  Decimal?       @db.Decimal(15, 0)
+  collectMethod    PaymentMethod?
+  collectPaymentId Int?           @unique // Phiếu thu tự tạo khi lái xe xác nhận
+  collectPayment   Payment?       @relation("TripCollect", fields: [collectPaymentId], references: [id], onDelete: SetNull)
+  collectSettledAt DateTime? // Văn phòng đã nhận lại tiền từ lái xe
+  assignedAt       DateTime?
+  assignedById     Int?
+  assignedBy       User?          @relation("TripAssigner", fields: [assignedById], references: [id])
+  events           TripEvent[]
+  costs            TripCost[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -500,14 +511,14 @@ enum PaymentMethod {
 
 /// Danh mục loại chi phí chuyến (xăng dầu, cầu đường…)
 model CostCategory {
-  code      String     @id
-  name      String
-  sortOrder Int        @default(0)
-  isActive  Boolean    @default(true)
+  code          String        @id
+  name          String
+  sortOrder     Int           @default(0)
+  isActive      Boolean       @default(true)
   /// Lái xe được chọn loại này khi nhập chi phí trên app (lương, tạm ứng… thì tắt)
-  driverVisible Boolean @default(true)
-  costs     TripCost[]
-  vouchers  CashVoucher[]
+  driverVisible Boolean       @default(true)
+  costs         TripCost[]
+  vouchers      CashVoucher[]
 }
 
 /// Chi phí thực tế phát sinh của chuyến
@@ -533,6 +544,7 @@ model TripCost {
 
 /// Phiếu thu tiền khách (số âm = hoàn tiền)
 model Payment {
+  collectTrip BookingTrip?  @relation("TripCollect")
   id          Int           @id @default(autoincrement())
   bookingId   Int
   booking     Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -590,6 +602,14 @@ model CashVoucher {
   method       PaymentMethod @default(TIEN_MAT)
   reference    String?
   note         String?
+  /// Xăng dầu lái xe nhập trên app
+  driverId     Int?
+  driver       Driver?       @relation(fields: [driverId], references: [id])
+  liters       Decimal?      @db.Decimal(8, 2)
+  odometerKm   Int?
+  driverPaid   Boolean       @default(false) // Lái xe tự ứng tiền → hoàn ứng trong lương
+  receiptFile  String?
+  receiptType  String?
   createdById  Int
   createdBy    User          @relation("VoucherCreator", fields: [createdById], references: [id])
   createdAt    DateTime      @default(now())
@@ -597,4 +617,5 @@ model CashVoucher {
   @@index([date])
   @@index([vehicleId])
   @@index([partnerId])
+  @@index([driverId])
 }

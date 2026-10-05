@@ -332,6 +332,8 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
       dropoffAddress: v.dropoffAddress || null,
       flightNumber: v.flightNumber?.trim().toUpperCase() || null,
       departureFlight: v.departureFlight?.trim().toUpperCase() || null,
+      collectAmount: v.collectAmount || null,
+      collectNote: v.collectNote?.trim() || null,
       itinerary: v.itinerary || null,
       notes: v.notes || null,
       days: !rentalOption || rentalOption === "DAY" ? v.days || 1 : 1,
@@ -615,6 +617,20 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               normalize={(v?: string) => v?.toUpperCase()}
             >
               <Input placeholder="VD: VJ636" prefix="✈" allowClear />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="collectAmount"
+              label="Nhờ lái xe thu tiền khách"
+              tooltip="Số tiền lái xe thu giúp công ty khi đón / trả khách. App lái xe sẽ nhắc thu và có nút xác nhận đã thu; xác nhận xong phần mềm tự tạo phiếu thu."
+            >
+              <MoneyInput placeholder="Không thu" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={16}>
+            <Form.Item name="collectNote" label="Ghi chú thu tiền">
+              <Input placeholder="VD: thu đủ tiền xe trước khi trả khách, khách trả USD quy đổi…" allowClear />
             </Form.Item>
           </Col>
           <Col span={24}>

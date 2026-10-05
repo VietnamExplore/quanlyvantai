@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
@@ -147,6 +147,25 @@ export class FinanceController {
   @Roles(...ACCOUNTING)
   updateVoucher(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateVoucherDto) {
     return this.finance.updateVoucher(id, dto);
+  }
+
+  @Get('vouchers/:id/receipt')
+  @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
+  async voucherReceipt(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    sendReceipt(res, await this.prisma.cashVoucher.findUnique({ where: { id }, select: { receiptFile: true, receiptType: true } }));
+  }
+
+  /** Văn phòng đã nhận lại tiền lái xe thu hộ khách (settled = false để hủy xác nhận) */
+  @Post('trips/:id/collect-settle')
+  @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
+  async settleCollect(@Param('id', ParseIntPipe) id: number, @Body() body: { settled?: boolean }) {
+    const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id } });
+    if (!trip.collectedAt) throw new BadRequestException('Lái xe chưa xác nhận thu tiền');
+    return this.prisma.bookingTrip.update({
+      where: { id },
+      data: { collectSettledAt: body.settled === false ? null : new Date() },
+      select: { id: true, collectSettledAt: true },
+    });
   }
 
   @Delete('vouchers/:id')

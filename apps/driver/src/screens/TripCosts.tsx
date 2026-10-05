@@ -8,10 +8,10 @@ import { Button, Card, styles as ui } from '../ui';
 
 const vnd = (v: number | string) => `${Number(v).toLocaleString('vi-VN')}đ`;
 
-type Photo = { uri: string; name: string; type: string };
+export type Photo = { uri: string; name: string; type: string };
 
 /** Chụp ảnh hóa đơn (camera) hoặc chọn ảnh có sẵn trong máy; ảnh được nén nhẹ cho nhanh */
-async function pickPhoto(source: 'camera' | 'library'): Promise<Photo | null> {
+export async function pickPhoto(source: 'camera' | 'library'): Promise<Photo | null> {
   const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.6 };
   if (source === 'camera') {
     const perm = await ImagePicker.requestCameraPermissionsAsync();

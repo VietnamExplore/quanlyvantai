@@ -48,6 +48,19 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
   const canDispatch = hasRole('ADMIN', 'DIEU_HANH');
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
+
+  /** Văn phòng đã nhận lại tiền lái xe thu hộ khách */
+  async function settleCollect(settled: boolean) {
+    if (!trip) return;
+    try {
+      await api(`/trips/${trip.id}/collect-settle`, { method: 'POST', body: { settled } });
+      message.success(settled ? 'Đã ghi nhận văn phòng nhận tiền' : 'Đã hủy xác nhận');
+      queryClient.invalidateQueries({ queryKey: ['/dispatch'] });
+      queryClient.invalidateQueries({ queryKey: ['/bookings'] });
+    } catch (e) {
+      message.error((e as Error).message);
+    }
+  }
   const [companyForm] = Form.useForm();
   const [partnerForm] = Form.useForm();
   const [changing, setChanging] = useState(false);
@@ -388,6 +401,34 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
             </Descriptions.Item>
             {trip.itinerary && <Descriptions.Item label="Lịch trình"><div style={{ whiteSpace: 'pre-wrap' }}>{trip.itinerary}</div></Descriptions.Item>}
             {trip.notes && <Descriptions.Item label="Ghi chú">{trip.notes}</Descriptions.Item>}
+            {!!trip.collectAmount && (
+              <Descriptions.Item label="Nhờ lái xe thu">
+                <Space direction="vertical" size={4}>
+                  <span>
+                    <b>{Number(trip.collectAmount).toLocaleString('vi-VN')} đ</b>
+                    {trip.collectNote && <Typography.Text type="secondary"> · {trip.collectNote}</Typography.Text>}
+                  </span>
+                  {!trip.collectedAt ? (
+                    <Tag color="orange">Lái xe chưa thu</Tag>
+                  ) : (
+                    <Space wrap>
+                      <Tag color="gold">
+                        Lái xe đã thu {Number(trip.collectedAmount).toLocaleString('vi-VN')} đ ({trip.collectMethod === 'CHUYEN_KHOAN' ? 'chuyển khoản' : 'tiền mặt'}) lúc {dayjs(trip.collectedAt).format('HH:mm DD/MM')}
+                      </Tag>
+                      {trip.collectSettledAt ? (
+                        <Tag color="green">Văn phòng đã nhận tiền {dayjs(trip.collectSettledAt).format('DD/MM')}</Tag>
+                      ) : (
+                        <Popconfirm title="Xác nhận văn phòng đã nhận lại tiền từ lái xe?" okText="Đã nhận" cancelText="Không" onConfirm={() => settleCollect(true)}>
+                          <Button size="small" type="primary" ghost>
+                            Đã nhận tiền từ lái xe
+                          </Button>
+                        </Popconfirm>
+                      )}
+                    </Space>
+                  )}
+                </Space>
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="Giá bán / chi phí">
               <Money value={trip.amount} strong /> / {trip.estimatedCost === null ? <Typography.Text type="warning">chưa có chi phí</Typography.Text> : <Money value={trip.estimatedCost} />}
             </Descriptions.Item>

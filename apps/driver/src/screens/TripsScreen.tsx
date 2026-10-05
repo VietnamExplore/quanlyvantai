@@ -76,6 +76,13 @@ function TripCard({ trip, onPress, now }: { trip: Trip; onPress: () => void; now
         {trip.vehicle && <Chip text={`🚐 ${trip.vehicle.plateNumber}`} />}
         {trip.flightNumber && <Chip tone="blue" text={`✈ Đón ${trip.flightNumber}`} />}
         {trip.departureFlight && <Chip tone="blue" text={`✈ Tiễn ${trip.departureFlight}`} />}
+        {!!trip.collectAmount && (
+          <View style={[s.collect, trip.collectedAt && s.collectDone]}>
+            <Text style={[s.collectText, trip.collectedAt && { color: colors.success }]}>
+              {trip.collectedAt ? `✅ Đã thu ${Number(trip.collectedAmount).toLocaleString("vi-VN")}đ` : `💵 Thu khách ${Number(trip.collectAmount).toLocaleString("vi-VN")}đ`}
+            </Text>
+          </View>
+        )}
       </View>
     </Card>
   );
@@ -127,6 +134,8 @@ export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
     };
   }, [load]);
 
+  const toCollect = trips.filter((t) => !!t.collectAmount && !t.collectedAt && t.status !== "HUY");
+
   // Nhóm chuyến theo ngày đón: Hôm nay / Ngày mai / các ngày sau
   const sections: { key: string; title: string; data: Trip[] }[] = [];
   for (const t of trips) {
@@ -151,6 +160,13 @@ export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
           ))}
         </View>
       </View>
+
+      {tab === "active" && toCollect.length > 0 && (
+        <Pressable onPress={() => onOpen(toCollect[0].id)} style={s.banner}>
+          <Text style={s.bannerText}>💵  {toCollect.length} chuyến cần thu tiền khách · {toCollect.reduce((x, t) => x + Number(t.collectAmount), 0).toLocaleString("vi-VN")}đ</Text>
+          <Text style={s.bannerHint}>Bấm để mở chuyến gần nhất ›</Text>
+        </Pressable>
+      )}
 
       {error && (
         <Pressable onPress={() => load()} style={s.errorBox}>
@@ -209,6 +225,12 @@ const s = StyleSheet.create({
   line: { width: 2, flex: 1, minHeight: 18, backgroundColor: '#d5deea', marginVertical: 3 },
   place: { fontSize: 15.5, color: colors.text, fontWeight: '500', lineHeight: 21 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  collect: { backgroundColor: '#fff3e2', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 },
+  collectDone: { backgroundColor: '#e7f7ee' },
+  collectText: { fontSize: 13, fontWeight: '800', color: '#b45309' },
+  banner: { backgroundColor: '#fffbeb', borderWidth: 1.5, borderColor: '#fbbf24', borderRadius: 14, padding: 12, marginHorizontal: 12, marginTop: 10 },
+  bannerText: { fontSize: 15, fontWeight: '800', color: '#b45309' },
+  bannerHint: { fontSize: 12.5, color: colors.text2, marginTop: 2 },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyText: { fontSize: 16, color: colors.text2, marginTop: 12, fontWeight: '600' },
   emptyHint: { fontSize: 13, color: colors.muted, marginTop: 4 },

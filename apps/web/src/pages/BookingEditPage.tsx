@@ -676,6 +676,15 @@ export default function BookingEditPage() {
                     {t.departureFlight && (
                       <Tag color="purple" style={{ marginLeft: 4 }}>✈ Tiễn {t.departureFlight}</Tag>
                     )}
+                    {!!t.collectAmount && (() => {
+                      const saved = booking?.trips.find((x) => x.id === t.id);
+                      return (
+                        <Tag color={saved?.collectedAt ? (saved.collectSettledAt ? 'green' : 'gold') : 'orange'} style={{ marginLeft: 4 }}>
+                          💵 Lái xe thu {Number(t.collectAmount).toLocaleString("vi-VN")}đ
+                          {saved?.collectedAt ? (saved.collectSettledAt ? " · đã nộp VP" : " · đã thu, chưa nộp") : ""}
+                        </Tag>
+                      );
+                    })()}
                     {t.itinerary && (
                       <>
                         <br />

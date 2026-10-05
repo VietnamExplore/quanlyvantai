@@ -168,3 +168,39 @@ export const styles = StyleSheet.create({
   label: { fontSize: 13.5, color: colors.text2, marginBottom: 6, fontWeight: '600' },
   error: { color: colors.danger, fontSize: 14, marginBottom: 12 },
 });
+
+/** Tháng hiện tại dạng YYYY-MM (giờ máy) */
+export const thisMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+/** Chuyển tháng: ‹ Tháng 10/2026 › (không cho đi quá tháng hiện tại) */
+export function MonthSwitcher({ month, onChange }: { month: string; onChange: (m: string) => void }) {
+  const [y, m] = month.split('-').map(Number);
+  const shift = (n: number) => {
+    const d = new Date(y, m - 1 + n, 1);
+    onChange(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+  const atNow = month >= thisMonth();
+  return (
+    <View style={monthStyles.month}>
+      <Pressable onPress={() => shift(-1)} hitSlop={10} style={monthStyles.monthBtn}>
+        <Text style={monthStyles.monthArrow}>‹</Text>
+      </Pressable>
+      <Text style={monthStyles.monthText}>
+        Tháng {m}/{y}
+      </Text>
+      <Pressable onPress={() => !atNow && shift(1)} hitSlop={10} style={[monthStyles.monthBtn, atNow && { opacity: 0.3 }]}>
+        <Text style={monthStyles.monthArrow}>›</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const monthStyles = StyleSheet.create({
+  month: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 14, padding: 6, marginBottom: 12, ...shadow },
+  monthBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  monthArrow: { fontSize: 26, color: colors.primary, fontWeight: '700', marginTop: -3 },
+  monthText: { fontSize: 17, fontWeight: '800', color: colors.text },
+});

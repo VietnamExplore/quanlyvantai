@@ -237,6 +237,13 @@ export interface BookingTrip extends Ref {
   dropoffAddress: string | null;
   flightNumber: string | null;
   departureFlight: string | null;
+  /** Nhờ lái xe thu tiền khách giúp */
+  collectAmount?: string | null;
+  collectNote?: string | null;
+  collectedAt?: string | null;
+  collectedAmount?: string | null;
+  collectMethod?: 'TIEN_MAT' | 'CHUYEN_KHOAN' | null;
+  collectSettledAt?: string | null;
   passengers: number;
   vehicleTypeId: number;
   vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number; names?: VehicleType['names'] };

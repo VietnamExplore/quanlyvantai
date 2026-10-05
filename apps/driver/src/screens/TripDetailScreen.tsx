@@ -6,6 +6,7 @@ import { BRAND, colors, dayLabel, fmtDate, fmtHour, fmtTime, NEXT_STEP, SERVICE 
 import type { Passenger, Trip } from '../types';
 import { Button, Card, Chip, QuickAction, Row, Section, StatusBadge, styles as ui } from '../ui';
 import { contactGuest, APP_LABEL, guessApp, pickupMessage } from '../contact';
+import { CollectCard } from './CollectCard';
 import { ContactCard, ContactChooser, type GuestContact } from './ContactCard';
 import { SignScreen } from './SignScreen';
 import { TripCosts } from './TripCosts';
@@ -201,6 +202,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
             </View>
           )}
         </Card>
+
+        <CollectCard trip={trip} onChanged={setTrip} />
 
         {guestContact && (
           <View onLayout={(e) => setContactY(e.nativeEvent.layout.y)}>

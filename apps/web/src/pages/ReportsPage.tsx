@@ -81,15 +81,16 @@ interface PayMonth {
 }
 
 interface DriverAdvance {
-  id: number;
+  id: string;
   amount: number;
   spentAt: string;
   note: string | null;
   category: string;
-  tripId: number;
+  tripId: number | null;
   pickupTime: string;
-  tripStatus: TripStatus;
-  booking: { id: number; code: string };
+  tripStatus: TripStatus | null;
+  /** null = khoản xăng dầu lái xe tự ứng (không gắn chuyến) */
+  booking: { id: number; code: string } | null;
 }
 
 interface DriverPay {
@@ -1002,10 +1003,14 @@ function DriverPayDetail({ pay, trips, multiMonth }: { pay: DriverPay; trips: Re
               {
                 title: 'Chuyến',
                 render: (_, c) => (
-                  <>
-                    <Link to={`/bookings/${c.booking.id}`}>{c.booking.code}</Link> · {dayjs(c.pickupTime).format('DD/MM HH:mm')}{' '}
-                    {c.tripStatus === 'HUY' && <Tag>Chuyến hủy</Tag>}
-                  </>
+                  c.booking ? (
+                    <>
+                      <Link to={`/bookings/${c.booking.id}`}>{c.booking.code}</Link> · {dayjs(c.pickupTime).format('DD/MM HH:mm')}{' '}
+                      {c.tripStatus === 'HUY' && <Tag>Chuyến hủy</Tag>}
+                    </>
+                  ) : (
+                    <Typography.Text type="secondary">Không theo chuyến</Typography.Text>
+                  )
                 ),
               },
               { title: 'Ghi chú', dataIndex: 'note' },
@@ -1092,7 +1097,7 @@ function payrollSheets(pay: DriverPayReport, trips: ReportTrip[], rangeText: str
       sumColumns: [6],
       totalLabel: 'Tổng cộng',
       rows: pay.drivers.flatMap((d) =>
-        d.advances.map((c) => [d.fullName, dayjs(c.spentAt).format('DD/MM/YYYY'), c.category, c.booking.code, dayjs(c.pickupTime).format('DD/MM/YYYY HH:mm'), c.note, c.amount]),
+        d.advances.map((c) => [d.fullName, dayjs(c.spentAt).format('DD/MM/YYYY'), c.category, c.booking?.code ?? '', c.booking ? dayjs(c.pickupTime).format('DD/MM/YYYY HH:mm') : '', c.note, c.amount]),
       ),
     },
   ];

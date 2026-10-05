@@ -5,6 +5,8 @@ import { ActivityIndicator, BackHandler, Image, Pressable, StyleSheet, Text, Vie
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { api, loadSession, setToken, setUnauthorizedHandler } from './src/api';
 import { clearKnownTrips, onNotificationOpen, setupNotifications } from './src/notify';
+import { EarningsScreen } from './src/screens/EarningsScreen';
+import { FuelScreen } from './src/screens/FuelScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { TripDetailScreen } from './src/screens/TripDetailScreen';
@@ -20,7 +22,16 @@ const initials = (name: string) => {
 };
 import type { AuthUser } from './src/types';
 
-type Screen = { name: 'trips' } | { name: 'trip'; id: number } | { name: 'profile' };
+type Tab = 'trips' | 'fuel' | 'earnings';
+type Screen = { name: Tab } | { name: 'trip'; id: number; from: Tab } | { name: 'profile' };
+
+/** Thanh tab dưới cùng */
+const TABS: { key: Tab; icon: string; label: string; title: string }[] = [
+  { key: 'trips', icon: '🚐', label: 'Chuyến', title: 'Chuyến của tôi' },
+  { key: 'fuel', icon: '⛽', label: 'Xăng dầu', title: 'Xăng dầu' },
+  { key: 'earnings', icon: '💰', label: 'Thu nhập', title: 'Thu nhập của tôi' },
+];
+const isTab = (n: Screen['name']): n is Tab => n === 'trips' || n === 'fuel' || n === 'earnings';
 
 export default function App() {
   const [booting, setBooting] = useState(true);
@@ -47,14 +58,14 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     setupNotifications().catch(() => undefined);
-    return onNotificationOpen((tripId) => setScreen({ name: 'trip', id: tripId }));
+    return onNotificationOpen((tripId) => setScreen({ name: 'trip', id: tripId, from: 'trips' }));
   }, [user]);
 
   // Nút Back của Android: quay về danh sách thay vì thoát app
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (screen.name !== 'trips') {
-        setScreen({ name: 'trips' });
+        setScreen({ name: screen.name === 'trip' ? screen.from : 'trips' });
         return true;
       }
       return false;
@@ -82,6 +93,9 @@ export default function App() {
   }
 
   const title = screen.name === 'trip' ? 'Chi tiết chuyến' : screen.name === 'profile' ? 'Tài khoản' : 'Chuyến xe';
+  const tab = isTab(screen.name) ? screen.name : null;
+  const back = () => setScreen({ name: screen.name === 'trip' ? screen.from : 'trips' });
+  const openTrip = (id: number, from: Tab) => setScreen({ name: 'trip', id, from });
 
   return (
     <SafeAreaProvider>
@@ -93,25 +107,25 @@ export default function App() {
           <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <SafeAreaView edges={['top']}>
               <View style={s.header}>
-                {screen.name === 'trips' ? (
+                {tab ? (
                   <View style={s.brand}>
                     <View style={s.brandLogo}>
                       <Image source={LOGO} style={{ width: 32, height: 32 }} resizeMode="contain" />
                     </View>
                     <View>
                       <Text style={s.brandName}>{BRAND.company}</Text>
-                      <Text style={s.headerTitle}>Chuyến của tôi</Text>
+                      <Text style={s.headerTitle}>{TABS.find((t) => t.key === tab)!.title}</Text>
                     </View>
                   </View>
                 ) : (
                   <>
-                    <Pressable onPress={() => setScreen({ name: 'trips' })} hitSlop={12} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.7 }]}>
+                    <Pressable onPress={back} hitSlop={12} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.7 }]}>
                       <Text style={s.backIcon}>‹</Text>
                     </Pressable>
                     <Text style={[s.headerTitle, { flex: 1 }]}>{title}</Text>
                   </>
                 )}
-                {screen.name === 'trips' && (
+                {tab && (
                   <Pressable onPress={() => setScreen({ name: 'profile' })} hitSlop={10} style={({ pressed }) => [s.avatar, pressed && { opacity: 0.8 }]}>
                     <Text style={s.avatarText}>{initials(user.fullName)}</Text>
                   </Pressable>
@@ -120,9 +134,25 @@ export default function App() {
             </SafeAreaView>
           </LinearGradient>
           <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['bottom']}>
-            {screen.name === 'trips' && <TripsScreen onOpen={(id) => setScreen({ name: 'trip', id })} />}
-            {screen.name === 'trip' && <TripDetailScreen key={screen.id} tripId={screen.id} onBack={() => setScreen({ name: 'trips' })} />}
-            {screen.name === 'profile' && <ProfileScreen user={user} onLogout={logout} />}
+            <View style={{ flex: 1 }}>
+              {screen.name === 'trips' && <TripsScreen onOpen={(id) => openTrip(id, 'trips')} />}
+              {screen.name === 'fuel' && <FuelScreen />}
+              {screen.name === 'earnings' && <EarningsScreen onOpenTrip={(id) => openTrip(id, 'earnings')} />}
+              {screen.name === 'trip' && <TripDetailScreen key={screen.id} tripId={screen.id} onBack={back} />}
+              {screen.name === 'profile' && <ProfileScreen user={user} onLogout={logout} />}
+            </View>
+            {tab && (
+              <View style={s.tabBar}>
+                {TABS.map((t) => (
+                  <Pressable key={t.key} onPress={() => setScreen({ name: t.key })} style={s.tabItem}>
+                    <View style={[s.tabIcon, tab === t.key && s.tabIconActive]}>
+                      <Text style={{ fontSize: 20 }}>{t.icon}</Text>
+                    </View>
+                    <Text style={[s.tabLabel, tab === t.key && s.tabLabelActive]}>{t.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </SafeAreaView>
         </View>
       )}
@@ -142,4 +172,10 @@ const s = StyleSheet.create({
   backIcon: { color: '#fff', fontSize: 30, fontWeight: '600', marginTop: -4, marginLeft: -2 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.22)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 6, paddingBottom: 4 },
+  tabItem: { flex: 1, alignItems: 'center', gap: 2 },
+  tabIcon: { width: 52, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  tabIconActive: { backgroundColor: colors.primarySoft },
+  tabLabel: { fontSize: 12, fontWeight: '600', color: colors.muted },
+  tabLabelActive: { color: colors.primary, fontWeight: '800' },
 });

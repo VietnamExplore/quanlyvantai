@@ -17,13 +17,14 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { existsSync } from 'fs';
-import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
-import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { BookingStatus, PaymentMethod, Prisma, Role, TripStatus, VoucherType } from '@prisma/client';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { CreateTripCostDto } from '../finance/finance.dto';
 import { FinanceService } from '../finance/finance.service';
 import { receiptUpload, removeReceipt, sendReceipt } from '../finance/receipts';
 import { SIGN_DIR, signImage } from '../bookings/sign-file.controller';
+import { PayrollService, vnDate } from '../reports/payroll.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Bước kế tiếp hợp lệ mà lái xe được bấm */
@@ -45,6 +46,30 @@ class RejectDto {
   @IsNotEmpty({ message: 'Vui lòng nhập lý do' })
   reason: string;
 }
+
+class CollectDto {
+  @IsNumber({}, { message: 'Số tiền không hợp lệ' })
+  @Min(1, { message: 'Số tiền phải lớn hơn 0' })
+  amount: number;
+
+  @IsIn([PaymentMethod.TIEN_MAT, PaymentMethod.CHUYEN_KHOAN], { message: 'Hình thức không hợp lệ' })
+  method: PaymentMethod;
+}
+
+class FuelDto {
+  @IsDateString({}, { message: 'Ngày không hợp lệ' }) date: string;
+  @IsInt({ message: 'Chưa chọn xe' }) vehicleId: number;
+  @IsNumber({}, { message: 'Số tiền không hợp lệ' })
+  @Min(1, { message: 'Số tiền phải lớn hơn 0' })
+  amount: number;
+  @IsOptional() @IsNumber({}, { message: 'Số lít không hợp lệ' }) liters?: number | null;
+  @IsOptional() @IsInt({ message: 'Số km không hợp lệ' }) odometerKm?: number | null;
+  /** Lái xe tự trả tiền → văn phòng hoàn lại trong lương */
+  @IsOptional() @IsBoolean() driverPaid?: boolean;
+  @IsOptional() @IsString() note?: string | null;
+}
+
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 class PushTokenDto {
   @IsOptional()
@@ -68,6 +93,11 @@ const driverTripSelect = {
   itinerary: true,
   notes: true,
   dispatchNote: true,
+  collectAmount: true,
+  collectNote: true,
+  collectedAt: true,
+  collectedAmount: true,
+  collectMethod: true,
   vehicleType: { select: { name: true } },
   service: { select: { name: true } },
   vehicle: { select: { plateNumber: true } },
@@ -98,6 +128,7 @@ export class DriverAppController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly finance: FinanceService,
+    private readonly payroll: PayrollService,
   ) {}
 
   private driverId(user: AuthUser) {
@@ -246,6 +277,170 @@ export class DriverAppController {
     const cost = await this.prisma.tripCost.findUnique({ where: { id }, include: { trip: true } });
     if (!cost || cost.trip.driverId !== this.driverId(user)) throw new NotFoundException('Không tìm thấy chi phí');
     sendReceipt(res, cost);
+  }
+
+  // ───── Thu tiền khách giúp công ty ─────
+
+  /** Lái xe xác nhận đã thu tiền khách: tự tạo phiếu thu cho booking (văn phòng nhận lại tiền sau) */
+  @Post('trips/:id/collect')
+  @HttpCode(200)
+  async collect(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CollectDto) {
+    const trip = await this.prisma.bookingTrip.findFirst({
+      where: { id, driverId: this.driverId(user) },
+      include: { driver: { select: { fullName: true } }, booking: { select: { id: true, code: true } } },
+    });
+    if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
+    if (!trip.collectAmount) throw new BadRequestException('Chuyến này văn phòng không nhờ thu tiền');
+    if (trip.collectedAt) throw new BadRequestException('Chuyến này đã xác nhận thu tiền rồi');
+    if (trip.status === TripStatus.DA_GAN || trip.status === TripStatus.HUY) throw new BadRequestException('Hãy nhận chuyến trước khi xác nhận thu tiền');
+    await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.create({
+        data: {
+          bookingId: trip.bookingId,
+          amount: dto.amount,
+          method: dto.method,
+          paidAt: new Date(`${vnDate(new Date())}T00:00:00Z`),
+          note: `Lái xe ${trip.driver?.fullName ?? ''} thu hộ – chuyến ${trip.seq}`,
+          createdById: user.id,
+        },
+      });
+      await tx.bookingTrip.update({
+        where: { id },
+        data: { collectedAt: new Date(), collectedAmount: dto.amount, collectMethod: dto.method, collectPaymentId: payment.id },
+      });
+      await tx.tripEvent.create({ data: { tripId: id, status: trip.status, note: `Lái xe đã thu tiền khách: ${dto.amount.toLocaleString('vi-VN')} đ`, userId: user.id } });
+    });
+    return this.trip(user, id);
+  }
+
+  // ───── Thu nhập (lương + doanh số) ─────
+
+  /** Thu nhập của lái xe trong tháng: lương cứng, doanh số, tiền %, hoàn ứng + tiền thu hộ chưa nộp */
+  @Get('earnings')
+  async earnings(@CurrentUser() user: AuthUser, @Query('month') monthQ?: string) {
+    const driverId = this.driverId(user);
+    const today = vnDate(new Date());
+    const month = monthQ && MONTH_RE.test(monthQ) ? monthQ : today.slice(0, 7);
+    const [y, m] = month.split('-').map(Number);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const res = await this.payroll.compute(`${month}-01`, `${month}-${String(last).padStart(2, '0')}`, driverId);
+    const row = res.drivers[0];
+    const holding = await this.prisma.bookingTrip.findMany({
+      where: { driverId, collectedAt: { not: null }, collectSettledAt: null },
+      select: { id: true, collectedAmount: true, collectedAt: true, collectMethod: true, pickupTime: true, booking: { select: { code: true } } },
+      orderBy: { collectedAt: 'asc' },
+    });
+    const holdingCash = holding.filter((h) => h.collectMethod === PaymentMethod.TIEN_MAT);
+    return {
+      month,
+      partner: !row,
+      ...(row && {
+        hasRate: !row.missingRate,
+        baseSalary: row.baseSalary,
+        commissionPercent: row.commissionPercent,
+        baseAmount: row.baseAmount,
+        trips: row.trips,
+        revenue: row.revenue,
+        commission: row.commission,
+        total: row.total,
+        reimbursement: row.reimbursement,
+        netPay: row.netPay,
+        completedTrips: row.completedTrips,
+        pendingTrips: row.pendingTrips,
+        advances: row.advances.map((a) => ({ category: a.category, amount: a.amount, date: a.spentAt, note: a.note, bookingCode: a.booking?.code ?? null })),
+      }),
+      // Tiền mặt thu hộ khách, lái xe đang giữ, chưa nộp lại văn phòng
+      holding: holdingCash.map((h) => ({ tripId: h.id, amount: Number(h.collectedAmount), collectedAt: h.collectedAt, pickupTime: h.pickupTime, bookingCode: h.booking.code })),
+      holdingTotal: holdingCash.reduce((s, h) => s + Number(h.collectedAmount), 0),
+    };
+  }
+
+  // ───── Xăng dầu (phiếu chi riêng, không gắn chuyến) ─────
+
+  /** Nhật ký đổ xăng của lái xe trong tháng + danh sách xe chọn được */
+  @Get('fuel')
+  async fuel(@CurrentUser() user: AuthUser, @Query('month') monthQ?: string) {
+    const driverId = this.driverId(user);
+    const month = monthQ && MONTH_RE.test(monthQ) ? monthQ : vnDate(new Date()).slice(0, 7);
+    const [y, m] = month.split('-').map(Number);
+    const [items, vehicles, me] = await Promise.all([
+      this.prisma.cashVoucher.findMany({
+        where: { driverId, date: { gte: new Date(Date.UTC(y, m - 1, 1)), lt: new Date(Date.UTC(y, m, 1)) } },
+        select: { id: true, code: true, date: true, amount: true, liters: true, odometerKm: true, driverPaid: true, note: true, receiptFile: true, vehicle: { select: { id: true, plateNumber: true } } },
+        orderBy: [{ date: 'desc' }, { id: 'desc' }],
+      }),
+      this.prisma.vehicle.findMany({ where: { ownership: 'CONG_TY', status: { not: 'NGUNG_HOAT_DONG' } }, select: { id: true, plateNumber: true }, orderBy: { plateNumber: 'asc' } }),
+      this.prisma.driver.findUnique({ where: { id: driverId }, select: { defaultVehicles: { select: { id: true } } } }),
+    ]);
+    return {
+      month,
+      items: items.map((v) => ({ ...v, amount: Number(v.amount), liters: v.liters === null ? null : Number(v.liters), hasReceipt: !!v.receiptFile, receiptFile: undefined })),
+      vehicles,
+      defaultVehicleId: me?.defaultVehicles[0]?.id ?? null,
+    };
+  }
+
+  @Post('fuel')
+  async addFuel(@CurrentUser() user: AuthUser, @Body() dto: FuelDto) {
+    const driverId = this.driverId(user);
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: dto.vehicleId } });
+    if (!vehicle || vehicle.ownership !== 'CONG_TY') throw new BadRequestException('Chỉ ghi xăng cho xe của công ty');
+    const v = await this.finance.createVoucher(
+      {
+        type: VoucherType.CHI,
+        date: dto.date,
+        amount: dto.amount,
+        categoryCode: (await this.prisma.costCategory.findUnique({ where: { code: 'XANG_DAU' } })) ? 'XANG_DAU' : null,
+        title: 'Xăng dầu',
+        vehicleId: dto.vehicleId,
+        counterparty: user.fullName,
+        method: dto.driverPaid ? PaymentMethod.TIEN_MAT : PaymentMethod.KHAC,
+        note: dto.note?.trim() || null,
+      },
+      user,
+      { driverId, liters: dto.liters ?? null, odometerKm: dto.odometerKm ?? null, driverPaid: !!dto.driverPaid },
+    );
+    return { id: v.id, code: v.code };
+  }
+
+  private async ownFuel(user: AuthUser, id: number) {
+    const v = await this.prisma.cashVoucher.findUnique({ where: { id } });
+    if (!v || v.driverId !== this.driverId(user)) throw new NotFoundException('Không tìm thấy phiếu xăng');
+    return v;
+  }
+
+  /** Lái xe chỉ xóa phiếu xăng do mình nhập, trong vòng 3 ngày */
+  @Post('fuel/:id/delete')
+  @HttpCode(200)
+  async removeFuel(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    const v = await this.ownFuel(user, id);
+    if (v.createdById !== user.id) throw new BadRequestException('Phiếu này do văn phòng nhập, không xóa được');
+    if (Date.now() - v.createdAt.getTime() > 3 * 86_400_000) throw new BadRequestException('Phiếu đã quá 3 ngày, liên hệ văn phòng để sửa');
+    await this.prisma.cashVoucher.delete({ where: { id } });
+    removeReceipt(v.receiptFile);
+    return { ok: true };
+  }
+
+  @Post('fuel/:id/receipt')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', receiptUpload))
+  async fuelReceipt(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Chưa chọn ảnh');
+    let v;
+    try {
+      v = await this.ownFuel(user, id);
+    } catch (e) {
+      removeReceipt(file.filename);
+      throw e;
+    }
+    await this.prisma.cashVoucher.update({ where: { id }, data: { receiptFile: file.filename, receiptType: file.mimetype } });
+    removeReceipt(v.receiptFile);
+    return { ok: true };
+  }
+
+  @Get('fuel/:id/receipt')
+  async fuelReceiptFile(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    sendReceipt(res, await this.ownFuel(user, id));
   }
 
   @Post('push-token')

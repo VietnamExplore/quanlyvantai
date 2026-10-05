@@ -53,6 +53,9 @@ export class TripDto {
   @IsOptional() @IsString() flightNumber?: string | null;
   /** Số hiệu chuyến bay tiễn (khách về) */
   @IsOptional() @IsString() departureFlight?: string | null;
+  /** Nhờ lái xe thu tiền khách giúp (đ) */
+  @IsOptional() @IsNumber({}, { message: 'Số tiền thu hộ không hợp lệ' }) @Min(0) collectAmount?: number | null;
+  @IsOptional() @IsString() collectNote?: string | null;
 
   @IsInt() @Min(1, { message: 'Số khách phải từ 1 trở lên' }) passengers: number;
   @IsInt() vehicleTypeId: number;

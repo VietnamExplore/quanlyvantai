@@ -16,6 +16,8 @@ export interface TripDraft {
   dropoffAddress: string | null;
   flightNumber: string | null;
   departureFlight: string | null;
+  collectAmount?: number | null;
+  collectNote?: string | null;
   passengers: number;
   vehicleTypeId: number;
   vehicleTypeName?: string;
@@ -51,6 +53,8 @@ export function fromTrip(t: BookingTrip): TripDraft {
     dropoffAddress: t.dropoffAddress,
     flightNumber: t.flightNumber,
     departureFlight: t.departureFlight,
+    collectAmount: t.collectAmount ? Number(t.collectAmount) : null,
+    collectNote: t.collectNote ?? null,
     passengers: t.passengers,
     vehicleTypeId: t.vehicleTypeId,
     vehicleTypeName: t.vehicleType.name,

@@ -33,6 +33,7 @@ const VOUCHER_INCLUDE = {
   vehicle: { select: { plateNumber: true, ownership: true } },
   partner: { select: { name: true } },
   createdBy: { select: { fullName: true } },
+  driver: { select: { fullName: true } },
 } satisfies Prisma.CashVoucherInclude;
 
 @Injectable()
@@ -374,7 +375,15 @@ export class FinanceService implements OnModuleInit {
         date: vnYmd(v.date),
         category: v.category?.name ?? v.title ?? (v.type === VoucherType.THU ? 'Thu khác' : 'Chi khác'),
         amount: Number(v.amount),
-        description: [v.code, v.counterparty].filter(Boolean).join(' · '),
+        description: [
+          v.code,
+          v.driver ? `Lái xe ${v.driver.fullName}${v.driverPaid ? ' (tự ứng)' : ''}` : v.counterparty,
+          v.liters ? `${Number(v.liters).toLocaleString('vi-VN')} lít` : null,
+          v.odometerKm ? `${v.odometerKm.toLocaleString('vi-VN')} km` : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        hasReceipt: !!v.receiptFile,
         bookingId: null,
         method: v.method,
         reference: v.reference,
@@ -424,7 +433,8 @@ export class FinanceService implements OnModuleInit {
     return `${prefix}${String(last ? Number(last.code.slice(prefix.length)) + 1 : 1).padStart(4, '0')}`;
   }
 
-  async createVoucher(dto: CreateVoucherDto, user: AuthUser) {
+  /** extra: thông tin xăng dầu khi lái xe nhập trên app (lái xe, số lít, số km, tự ứng tiền) */
+  async createVoucher(dto: CreateVoucherDto, user: AuthUser, extra: { driverId?: number; liters?: number | null; odometerKm?: number | null; driverPaid?: boolean } = {}) {
     const refs = await this.voucherRefs(dto);
     const date = dateOnly(dto.date);
     for (let attempt = 0; ; attempt++) {
@@ -441,6 +451,7 @@ export class FinanceService implements OnModuleInit {
             method: dto.method,
             reference: dto.reference || null,
             note: dto.note || null,
+            ...extra,
             createdById: user.id,
           },
           include: VOUCHER_INCLUDE,

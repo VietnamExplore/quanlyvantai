@@ -4,7 +4,7 @@ import { App, Button, Card, Col, DatePicker, Flex, Popconfirm, Row, Segmented, S
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, apiBlob } from '../api';
 import { useAuth } from '../auth';
 import { VoucherModal, type Voucher } from '../components/VoucherModal';
 import { DATE_FORMAT, EnumTag, formatVnd } from '../components/common';
@@ -32,6 +32,8 @@ interface Entry {
   reference: string | null;
   note: string | null;
   by: string;
+  /** Phiếu có ảnh hóa đơn (VD: hóa đơn xăng lái xe chụp) */
+  hasReceipt?: boolean;
 }
 
 /** Nhóm theo xe; khoản của đối tác chưa gắn xe thì gom theo nhà xe */
@@ -85,6 +87,15 @@ export default function LedgerPage() {
     queryClient.invalidateQueries({ queryKey: ['/finance'] });
     queryClient.invalidateQueries({ queryKey: ['/reports'] });
   };
+
+  async function viewReceipt(id: number) {
+    try {
+      const blob = await apiBlob(`/vouchers/${id}/receipt`);
+      window.open(URL.createObjectURL(blob), '_blank');
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  }
 
   async function editVoucher(id: number) {
     try {
@@ -229,6 +240,16 @@ export default function LedgerPage() {
                   <Typography.Link onClick={() => editVoucher(e.id)}>{e.description}</Typography.Link>
                 ) : (
                   e.description
+                ),
+            },
+            {
+              title: '',
+              width: 40,
+              render: (_, e) =>
+                e.source === 'VOUCHER' && e.hasReceipt && (
+                  <Button size="small" type="text" title="Xem ảnh hóa đơn" onClick={() => viewReceipt(e.id)}>
+                    📷
+                  </Button>
                 ),
             },
             {

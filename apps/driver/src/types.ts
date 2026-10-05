@@ -24,6 +24,12 @@ export interface Trip {
   itinerary: string | null;
   notes: string | null;
   dispatchNote: string | null;
+  /** Văn phòng nhờ lái xe thu tiền khách (đ) */
+  collectAmount?: string | null;
+  collectNote?: string | null;
+  collectedAt?: string | null;
+  collectedAmount?: string | null;
+  collectMethod?: 'TIEN_MAT' | 'CHUYEN_KHOAN' | null;
   vehicleType: { name: string };
   service?: { name: string };
   vehicle: { plateNumber: string } | null;
