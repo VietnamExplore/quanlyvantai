@@ -197,6 +197,24 @@ export default function SettingsPage() {
               <Input.TextArea rows={2} />
             </Form.Item>
           </Col>
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="fuelNormPer100km"
+              label="Định mức xăng dầu chung (lít/100km)"
+              tooltip="Áp dụng cho lái xe chưa có định mức riêng (sửa định mức riêng ở trang Lái xe). Bỏ trống = 11 lít/100km."
+            >
+              <Input placeholder="11" inputMode="decimal" suffix="L/100km" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="fuelPrice"
+              label="Giá xăng dầu (đ/lít)"
+              tooltip="Dùng tính chi phí xăng từng chuyến = số km × định mức × giá. Bỏ trống = giá bình quân các lần đổ xăng 60 ngày gần đây."
+            >
+              <Input placeholder="Giá bình quân các lần đổ xăng" inputMode="numeric" suffix="đ/lít" />
+            </Form.Item>
+          </Col>
           <Col span={24}>
             <Form.Item name="quoteFooter" label="Ghi chú cuối báo giá" extra="Điều khoản giá bao gồm / không bao gồm, hiệu lực báo giá, chính sách hủy…">
               <Input.TextArea rows={5} />

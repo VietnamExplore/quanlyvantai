@@ -28,6 +28,7 @@ import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api';
 import { useAuth } from '../auth';
 import { fmtTime, routeText } from '../booking-utils';
+import { TripOdometer } from './TripOdometer';
 import { buildDispatchText, NEXT_ACTION, TRIP_FLOW } from '../dispatch-utils';
 import { TRIP_STATUS } from '../labels';
 import type { DispatchOptions, DispatchTrip, Partner } from '../types';
@@ -465,6 +466,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
               )}
             </Card>
           )}
+
+          {trip.vehicle && trip.status !== 'CHO_DIEU' && <TripOdometer trip={trip} canEdit={hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH')} />}
 
           {flowIndex >= 0 && (
             <>

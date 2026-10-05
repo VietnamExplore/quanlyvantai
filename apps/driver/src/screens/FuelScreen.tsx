@@ -22,6 +22,13 @@ interface FuelItem {
 
 interface FuelData {
   month: string;
+  /** Định mức áp dụng cho lái xe (lít/100km) */
+  norm: number;
+  price: number | null;
+  /** Km chạy các chuyến hoàn thành trong tháng và lít / tiền xăng theo định mức */
+  kmTotal: number;
+  normLiters: number;
+  normCost: number;
   items: FuelItem[];
   vehicles: { id: number; plateNumber: string }[];
   defaultVehicleId: number | null;
@@ -158,6 +165,33 @@ export function FuelScreen() {
         </View>
       </View>
 
+      {data && (
+        <Card>
+          <Section icon="📏" title={`Định mức của bạn: ${data.norm} L/100km`} />
+          <View style={s.stats}>
+            <View style={s.normCell}>
+              <Text style={s.statLabel}>Km chạy (chuyến)</Text>
+              <Text style={s.statValue}>{data.kmTotal.toLocaleString('vi-VN')} km</Text>
+            </View>
+            <View style={s.normCell}>
+              <Text style={s.statLabel}>Lít theo định mức</Text>
+              <Text style={s.statValue}>{data.normLiters.toLocaleString('vi-VN')} L</Text>
+            </View>
+            <View style={s.normCell}>
+              <Text style={s.statLabel}>Lít thực đổ</Text>
+              <Text style={[s.statValue, totalLiters > data.normLiters && data.normLiters > 0 && { color: colors.danger }]}>{totalLiters ? `${totalLiters.toLocaleString('vi-VN')} L` : '—'}</Text>
+            </View>
+          </View>
+          {data.normLiters > 0 && totalLiters > 0 && (
+            <Text style={[s.normNote, { color: totalLiters > data.normLiters ? colors.danger : colors.success }]}>
+              {totalLiters > data.normLiters
+                ? `Vượt định mức ${(Math.round((totalLiters - data.normLiters) * 100) / 100).toLocaleString('vi-VN')} L`
+                : `Tiết kiệm ${(Math.round((data.normLiters - totalLiters) * 100) / 100).toLocaleString('vi-VN')} L so với định mức`}
+            </Text>
+          )}
+        </Card>
+      )}
+
       {!adding && <Button title="GHI ĐỔ XĂNG" icon="⛽" size="lg" onPress={openForm} style={{ marginBottom: 12 }} />}
 
       {adding && (
@@ -258,6 +292,8 @@ export function FuelScreen() {
 const s = StyleSheet.create({
   stats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   stat: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12 },
+  normCell: { flex: 1, backgroundColor: '#f4f7fc', borderRadius: 12, padding: 10 },
+  normNote: { fontSize: 13.5, fontWeight: '700', marginTop: -4 },
   statLabel: { fontSize: 12, color: colors.muted, fontWeight: '600' },
   statValue: { fontSize: 16, color: colors.text, fontWeight: '800', marginTop: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },

@@ -23,6 +23,7 @@ import { AdvancesService } from '../advances/advances.service';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { CreateTripCostDto } from '../finance/finance.dto';
 import { FinanceService } from '../finance/finance.service';
+import { OdometerService } from '../finance/odometer.service';
 import { receiptUpload, removeReceipt, sendReceipt } from '../finance/receipts';
 import { SIGN_DIR, signImage } from '../bookings/sign-file.controller';
 import { PayrollService, vnDate } from '../reports/payroll.service';
@@ -40,6 +41,15 @@ const ACTIVE: TripStatus[] = [TripStatus.DA_GAN, TripStatus.TAI_XE_NHAN, TripSta
 class DriverStatusDto {
   @IsIn(Object.values(NEXT))
   status: TripStatus;
+
+  /** Km đồng hồ: bắt đầu (chỉ khi xe chưa có km kết thúc chuyến trước) / kết thúc (khi hoàn thành) */
+  @IsOptional() @IsInt({ message: 'Số km không hợp lệ' }) @Min(0) startKm?: number;
+  @IsOptional() @IsInt({ message: 'Số km không hợp lệ' }) @Min(0) endKm?: number;
+}
+
+class OdometerDto {
+  @IsOptional() @IsInt({ message: 'Số km không hợp lệ' }) @Min(0) startKm?: number;
+  @IsInt({ message: 'Số km không hợp lệ' }) @Min(0) endKm: number;
 }
 
 class RejectDto {
@@ -109,9 +119,15 @@ const driverTripSelect = {
   collectedAt: true,
   collectedAmount: true,
   collectMethod: true,
+  startKm: true,
+  endKm: true,
+  fuelNorm: true,
+  fuelLiters: true,
+  fuelCost: true,
+  vehicleId: true,
   vehicleType: { select: { name: true } },
   service: { select: { name: true } },
-  vehicle: { select: { plateNumber: true } },
+  vehicle: { select: { plateNumber: true, ownership: true } },
   booking: {
     select: {
       code: true,
@@ -141,6 +157,7 @@ export class DriverAppController {
     private readonly finance: FinanceService,
     private readonly payroll: PayrollService,
     private readonly advances: AdvancesService,
+    private readonly odometer: OdometerService,
   ) {}
 
   private driverId(user: AuthUser) {
@@ -170,7 +187,13 @@ export class DriverAppController {
   async trip(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
     const trip = await this.prisma.bookingTrip.findFirst({ where: { id, driverId: this.driverId(user) }, select: driverTripSelect });
     if (!trip) throw new NotFoundException('Không tìm thấy chuyến, có thể chuyến đã được giao cho xe khác');
-    return trip;
+    // Xe công ty: km bắt đầu tự lấy từ km kết thúc chuyến trước của xe
+    const companyCar = trip.vehicle?.ownership === 'CONG_TY';
+    return {
+      ...trip,
+      trackKm: companyCar,
+      suggestStartKm: companyCar && trip.startKm === null ? await this.odometer.previousEndKm({ id: trip.id, vehicleId: trip.vehicleId, pickupTime: trip.pickupTime }) : null,
+    };
   }
 
   @Post('trips/:id/status')
@@ -179,6 +202,20 @@ export class DriverAppController {
     const trip = await this.prisma.bookingTrip.findFirst({ where: { id, driverId: this.driverId(user) } });
     if (!trip) throw new NotFoundException('Không tìm thấy chuyến, có thể chuyến đã được giao cho xe khác');
     if (NEXT[trip.status] !== dto.status) throw new BadRequestException('Trạng thái chuyến đã thay đổi, vui lòng tải lại');
+
+    // Xe công ty: ghi km đồng hồ lúc bắt đầu đi đón và lúc hoàn thành
+    const vehicle = trip.vehicleId ? await this.prisma.vehicle.findUnique({ where: { id: trip.vehicleId }, select: { ownership: true } }) : null;
+    if (vehicle?.ownership === 'CONG_TY') {
+      if (dto.status === TripStatus.DANG_DEN_DON && trip.startKm === null) {
+        const startKm = dto.startKm ?? (await this.odometer.previousEndKm(trip));
+        if (startKm === null) throw new BadRequestException('Nhập số km trên đồng hồ xe lúc bắt đầu chuyến');
+        await this.odometer.record(id, { startKm });
+      }
+      if (dto.status === TripStatus.HOAN_THANH) {
+        if (dto.endKm === undefined) throw new BadRequestException('Nhập số km trên đồng hồ xe lúc kết thúc chuyến');
+        await this.odometer.record(id, { endKm: dto.endKm, ...(trip.startKm === null && dto.startKm !== undefined && { startKm: dto.startKm }) });
+      }
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.bookingTrip.update({ where: { id }, data: { status: dto.status } });
@@ -190,6 +227,18 @@ export class DriverAppController {
         }
       }
     });
+    return this.trip(user, id);
+  }
+
+  /** Lái xe sửa km kết thúc (trong 7 ngày); km bắt đầu chỉ nhập được khi xe chưa có km chuyến trước */
+  @Post('trips/:id/odometer')
+  @HttpCode(200)
+  async odometerFix(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: OdometerDto) {
+    const trip = await this.prisma.bookingTrip.findFirst({ where: { id, driverId: this.driverId(user) } });
+    if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
+    if (trip.status !== TripStatus.HOAN_THANH) throw new BadRequestException('Chỉ sửa km của chuyến đã hoàn thành');
+    if (Date.now() - trip.pickupTime.getTime() > 7 * 86_400_000) throw new BadRequestException('Chuyến đã quá 7 ngày, liên hệ văn phòng để sửa km');
+    await this.odometer.record(id, { endKm: dto.endKm, ...(trip.startKm === null && dto.startKm !== undefined && { startKm: dto.startKm }) });
     return this.trip(user, id);
   }
 
@@ -404,8 +453,19 @@ export class DriverAppController {
       this.prisma.vehicle.findMany({ where: { ownership: 'CONG_TY', status: { not: 'NGUNG_HOAT_DONG' } }, select: { id: true, plateNumber: true }, orderBy: { plateNumber: 'asc' } }),
       this.prisma.driver.findUnique({ where: { id: driverId }, select: { defaultVehicles: { select: { id: true } } } }),
     ]);
+    const run = await this.prisma.bookingTrip.findMany({
+      where: { driverId, status: TripStatus.HOAN_THANH, endKm: { not: null }, pickupTime: { gte: new Date(`${month}-01T00:00:00+07:00`), lt: new Date(Date.UTC(y, m, 1) - 7 * 3600_000) } },
+      select: { startKm: true, endKm: true, fuelLiters: true, fuelCost: true },
+    });
+    const cfg = await this.odometer.config();
+    const myNorm = await this.prisma.driver.findUnique({ where: { id: driverId }, select: { fuelNorm: true } });
     return {
       month,
+      norm: myNorm?.fuelNorm ? Number(myNorm.fuelNorm) : cfg.defaultNorm,
+      price: cfg.price,
+      kmTotal: run.reduce((s, t) => s + (t.endKm! - (t.startKm ?? t.endKm!)), 0),
+      normLiters: Math.round(run.reduce((s, t) => s + Number(t.fuelLiters ?? 0), 0) * 100) / 100,
+      normCost: run.reduce((s, t) => s + Number(t.fuelCost ?? 0), 0),
       items: items.map((v) => ({ ...v, amount: Number(v.amount), liters: v.liters === null ? null : Number(v.liters), hasReceipt: !!v.receiptFile, receiptFile: undefined })),
       vehicles,
       defaultVehicleId: me?.defaultVehicles[0]?.id ?? null,

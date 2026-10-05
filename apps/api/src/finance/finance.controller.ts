@@ -14,6 +14,7 @@ import {
   UpdateVoucherDto,
 } from './finance.dto';
 import { FinanceService } from './finance.service';
+import { OdometerService } from './odometer.service';
 import { removeReceipt, sendReceipt } from './receipts';
 
 const ACCOUNTING = [Role.ADMIN, Role.KE_TOAN];
@@ -24,6 +25,7 @@ export class FinanceController {
   constructor(
     private readonly finance: FinanceService,
     private readonly prisma: PrismaService,
+    private readonly odometer: OdometerService,
   ) {}
 
   // ───── Loại chi phí ─────
@@ -166,6 +168,32 @@ export class FinanceController {
       data: { collectSettledAt: body.settled === false ? null : new Date() },
       select: { id: true, collectSettledAt: true },
     });
+  }
+
+  /** Văn phòng sửa km bắt đầu / kết thúc, định mức xăng của chuyến (null = xóa) */
+  @Post('trips/:id/odometer')
+  @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
+  async tripOdometer(@Param('id', ParseIntPipe) id: number, @Body() body: { startKm?: unknown; endKm?: unknown; fuelNorm?: unknown }) {
+    const num = (v: unknown, name: string, max: number) => {
+      if (v === undefined) return undefined;
+      if (v === null || v === '') return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0 || n > max) throw new BadRequestException(`${name} không hợp lệ`);
+      return n;
+    };
+    const km = (v: number | null | undefined) => (v === null || v === undefined ? v : Math.round(v));
+    await this.odometer.record(id, {
+      startKm: km(num(body.startKm, 'Km bắt đầu', 9_999_999)),
+      endKm: km(num(body.endKm, 'Km kết thúc', 9_999_999)),
+      fuelNorm: num(body.fuelNorm, 'Định mức', 100),
+    });
+    return this.prisma.bookingTrip.findUnique({ where: { id }, select: { id: true, startKm: true, endKm: true, fuelNorm: true, fuelPrice: true, fuelLiters: true, fuelCost: true } });
+  }
+
+  /** Định mức chung + giá xăng đang áp dụng */
+  @Get('fuel-config')
+  fuelConfig() {
+    return this.odometer.config();
   }
 
   @Delete('vouchers/:id')

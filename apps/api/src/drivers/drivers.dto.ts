@@ -33,6 +33,14 @@ export class CreateDriverDto {
   status?: DriverStatus;
 
   @IsOptional() @IsString() notes?: string;
+
+  /** Định mức xăng dầu riêng (lít/100km), null = dùng định mức chung */
+  @Transform(({ value }) => (value === '' ? null : typeof value === 'string' ? Number(value) : value))
+  @IsOptional()
+  @IsNumber({}, { message: 'Định mức xăng không hợp lệ' })
+  @Min(1, { message: 'Định mức xăng phải từ 1 lít/100km' })
+  @Max(100, { message: 'Định mức xăng tối đa 100 lít/100km' })
+  fuelNorm?: number | null;
 }
 
 export class UpdateDriverDto extends PartialType(CreateDriverDto) {}

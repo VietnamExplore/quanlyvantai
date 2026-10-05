@@ -30,6 +30,15 @@ export interface Trip {
   collectedAt?: string | null;
   collectedAmount?: string | null;
   collectMethod?: 'TIEN_MAT' | 'CHUYEN_KHOAN' | null;
+  /** Xe công ty: ghi km đồng hồ, tính xăng theo định mức */
+  trackKm?: boolean;
+  /** Km bắt đầu tự lấy (km kết thúc chuyến trước của xe), null = lái xe phải nhập */
+  suggestStartKm?: number | null;
+  startKm?: number | null;
+  endKm?: number | null;
+  fuelNorm?: string | null;
+  fuelLiters?: string | null;
+  fuelCost?: string | null;
   vehicleType: { name: string };
   service?: { name: string };
   vehicle: { plateNumber: string } | null;

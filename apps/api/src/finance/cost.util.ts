@@ -4,7 +4,9 @@ export interface TripCostInput {
   partnerId: number | null;
   partnerCost: Num;
   estimatedCost: Num;
-  costs: { amount: Num }[];
+  costs: { amount: Num; categoryCode?: string | null }[];
+  /** Chi phí xăng theo định mức (km × định mức × giá) */
+  fuelCost?: Num;
 }
 
 /**
@@ -15,6 +17,11 @@ export interface TripCostInput {
 export function tripCost(t: TripCostInput) {
   const extra = t.costs.reduce((s, c) => s + Number(c.amount ?? 0), 0);
   if (t.partnerId) return { cost: Number(t.partnerCost ?? 0) + extra, actual: true, known: true };
+  // Xe công ty đã ghi km: xăng tính theo định mức (bỏ khoản xăng nhập tay của chuyến để không tính trùng)
+  if (t.fuelCost !== null && t.fuelCost !== undefined) {
+    const others = t.costs.filter((c) => c.categoryCode !== 'XANG_DAU').reduce((s, c) => s + Number(c.amount ?? 0), 0);
+    return { cost: Number(t.fuelCost) + others, actual: true, known: true };
+  }
   if (t.costs.length) return { cost: extra, actual: true, known: true };
   if (t.estimatedCost !== null && t.estimatedCost !== undefined) return { cost: Number(t.estimatedCost), actual: false, known: true };
   return { cost: 0, actual: false, known: false };

@@ -1,6 +1,6 @@
 import { QuickSelect } from '../components/QuickCreate';
 import { DollarOutlined } from '@ant-design/icons';
-import { Button, Col, DatePicker, Form, Input, Row, Select, Tag, Typography } from 'antd';
+import { Button, Col, DatePicker, Form, Input, InputNumber, Row, Select, Tag, Typography } from 'antd';
 import { useState } from 'react';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
@@ -42,6 +42,7 @@ export default function DriversPage() {
         { title: 'Hạn bằng lái', dataIndex: 'licenseExpiry', render: (v) => <ExpiryCell value={v} /> },
         { title: 'Hạn khám SK', dataIndex: 'healthCheckExpiry', render: (v) => <ExpiryCell value={v} /> },
         { title: 'Xe mặc định', render: (_, r) => r.defaultVehicles.map((v) => v.plateNumber).join(', ') },
+        { title: 'Định mức xăng', dataIndex: 'fuelNorm', render: (v, r) => (r.partner ? '' : v ? `${Number(v)} L/100km` : <Typography.Text type="secondary">Chung</Typography.Text>) },
         { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={DRIVER_STATUS} value={v} /> },
         ...(canSalary
           ? [
@@ -110,6 +111,15 @@ export default function DriversPage() {
           <Col xs={12} md={6}>
             <Form.Item name="healthCheckExpiry" label="Hạn khám sức khỏe">
               <DatePicker format={DATE_FORMAT} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="fuelNorm"
+              label="Định mức xăng dầu (lít/100km)"
+              tooltip="Bỏ trống = dùng định mức chung ở Thông tin công ty (mặc định 11). Áp dụng cho các chuyến ghi km từ lúc lưu."
+            >
+              <InputNumber min={1} max={100} step={0.5} placeholder="Định mức chung" style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>

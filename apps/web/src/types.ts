@@ -64,6 +64,8 @@ export interface Driver extends Ref {
   user: { id: number; username: string; isActive: boolean } | null;
   defaultVehicles: { id: number; plateNumber: string }[];
   notes: string | null;
+  /** Định mức xăng riêng (lít/100km), null = định mức chung */
+  fuelNorm: string | null;
 }
 
 export interface Partner extends Ref {
@@ -244,6 +246,13 @@ export interface BookingTrip extends Ref {
   collectedAmount?: string | null;
   collectMethod?: 'TIEN_MAT' | 'CHUYEN_KHOAN' | null;
   collectSettledAt?: string | null;
+  /** Km đồng hồ và xăng theo định mức (xe công ty) */
+  startKm?: number | null;
+  endKm?: number | null;
+  fuelNorm?: string | null;
+  fuelPrice?: string | null;
+  fuelLiters?: string | null;
+  fuelCost?: string | null;
   passengers: number;
   vehicleTypeId: number;
   vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number; names?: VehicleType['names'] };

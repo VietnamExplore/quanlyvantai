@@ -40,6 +40,9 @@ export const SETTING_KEYS = [
   ...(['en', 'ko', 'zh', 'ja'] as const).flatMap((l) => [`companyName_${l}`, `companyAddress_${l}`, `bankInfo_${l}`] as const),
   // Dịch vụ dịch tự động: claude | google | deepl
   PROVIDER_KEY,
+  // Định mức xăng dầu chung (lít/100km) và giá xăng dầu (đ/lít) để tính chi phí từng chuyến
+  'fuelNormPer100km',
+  'fuelPrice',
 ] as const;
 
 /** Logo công ty: apps/api/uploads/logo (đổi bằng biến môi trường UPLOAD_DIR); tên file lưu ở cài đặt "companyLogo" */

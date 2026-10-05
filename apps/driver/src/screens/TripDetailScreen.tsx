@@ -7,6 +7,7 @@ import type { Passenger, Trip } from '../types';
 import { Button, Card, Chip, QuickAction, Row, Section, StatusBadge, styles as ui } from '../ui';
 import { contactGuest, APP_LABEL, guessApp, pickupMessage } from '../contact';
 import { CollectCard } from './CollectCard';
+import { KmModal, OdometerCard } from './OdometerCard';
 import { ContactCard, ContactChooser, type GuestContact } from './ContactCard';
 import { SignScreen } from './SignScreen';
 import { TripCosts } from './TripCosts';
@@ -47,6 +48,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   const [reason, setReason] = useState('');
   const [signOpen, setSignOpen] = useState(false);
   const [allPax, setAllPax] = useState(false);
+  // Hỏi km đồng hồ: lúc bắt đầu đi đón / lúc hoàn thành / sửa km kết thúc
+  const [kmMode, setKmMode] = useState<'start' | 'end' | 'fix' | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [contactY, setContactY] = useState(0);
   // Không mở được ứng dụng của khách: cho chọn cách khác
@@ -70,23 +73,43 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
 
   const next = trip ? NEXT_STEP[trip.status] : undefined;
 
+  async function changeStatus(body: Record<string, unknown>) {
+    if (!trip || !next) return;
+    setBusy(true);
+    try {
+      setTrip(await api<Trip>(`/driver/trips/${trip.id}/status`, { method: 'POST', body: { status: next.status, ...body } }));
+      setKmMode(null);
+    } catch (e) {
+      Alert.alert('Không cập nhật được', (e as Error).message);
+      load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveKm(body: { startKm?: number; endKm?: number }) {
+    if (kmMode !== 'fix') return changeStatus(body);
+    setBusy(true);
+    try {
+      setTrip(await api<Trip>(`/driver/trips/${trip!.id}/odometer`, { method: 'POST', body }));
+      setKmMode(null);
+    } catch (e) {
+      Alert.alert('Không lưu được', (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function advance() {
     if (!trip || !next) return;
+    // Xe công ty: bắt đầu đi đón → ghi km bắt đầu; hoàn thành → nhập km kết thúc
+    if (trip.trackKm && next.status === 'DANG_DEN_DON' && trip.startKm == null) return setKmMode('start');
+    if (trip.trackKm && next.status === 'HOAN_THANH') return setKmMode('end');
     Alert.alert(next.label, next.confirm, [
       { text: 'Không', style: 'cancel' },
       {
         text: 'Đồng ý',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            setTrip(await api<Trip>(`/driver/trips/${trip.id}/status`, { method: 'POST', body: { status: next.status } }));
-          } catch (e) {
-            Alert.alert('Không cập nhật được', (e as Error).message);
-            load();
-          } finally {
-            setBusy(false);
-          }
-        },
+        onPress: () => changeStatus({}),
       },
     ]);
   }
@@ -247,6 +270,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           </Card>
         )}
 
+        <OdometerCard trip={trip} onEditEnd={trip.status === 'HOAN_THANH' ? () => setKmMode('fix') : undefined} />
+
         {trip.status !== 'DA_GAN' && <TripCosts tripId={trip.id} canAdd={trip.status !== 'HUY'} />}
       </ScrollView>
 
@@ -265,6 +290,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
 
       {signOpen && <SignScreen trip={trip} onClose={() => setSignOpen(false)} />}
       {choosing && <ContactChooser contact={choosing} onClose={() => setChoosing(null)} />}
+      <KmModal trip={trip} mode={kmMode === 'start' ? 'start' : 'end'} visible={!!kmMode} busy={busy} onClose={() => setKmMode(null)} onSubmit={saveKm} />
 
       <Modal visible={rejectOpen} transparent animationType="fade" onRequestClose={() => setRejectOpen(false)}>
         <View style={s.modalBg}>

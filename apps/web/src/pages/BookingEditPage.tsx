@@ -64,6 +64,7 @@ import {
   useSettings,
 } from "../components/common";
 import { TripModal } from "../components/TripModal";
+import { odometerText } from '../components/TripOdometer';
 import {
   BOOKING_STATUS,
   TRIP_STATUS,
@@ -676,6 +677,11 @@ export default function BookingEditPage() {
                     {t.departureFlight && (
                       <Tag color="purple" style={{ marginLeft: 4 }}>✈ Tiễn {t.departureFlight}</Tag>
                     )}
+                    {(() => {
+                      const saved = booking?.trips.find((x) => x.id === t.id);
+                      const km = saved && odometerText(saved);
+                      return km ? <Tag color="cyan" style={{ marginLeft: 4 }}>🛣 {km}</Tag> : null;
+                    })()}
                     {!!t.collectAmount && (() => {
                       const saved = booking?.trips.find((x) => x.id === t.id);
                       return (
