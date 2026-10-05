@@ -619,20 +619,6 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               <Input placeholder="VD: VJ636" prefix="✈" allowClear />
             </Form.Item>
           </Col>
-          <Col xs={24} md={8}>
-            <Form.Item
-              name="collectAmount"
-              label="Nhờ lái xe thu tiền khách"
-              tooltip="Số tiền lái xe thu giúp công ty khi đón / trả khách. App lái xe sẽ nhắc thu và có nút xác nhận đã thu; xác nhận xong phần mềm tự tạo phiếu thu."
-            >
-              <MoneyInput placeholder="Không thu" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={16}>
-            <Form.Item name="collectNote" label="Ghi chú thu tiền">
-              <Input placeholder="VD: thu đủ tiền xe trước khi trả khách, khách trả USD quy đổi…" allowClear />
-            </Form.Item>
-          </Col>
           <Col span={24}>
             <Form.Item
               name="itinerary"
@@ -803,6 +789,33 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
             Thành tiền: <Money value={amount} />
           </Typography.Title>
         </Flex>
+
+        <Divider titlePlacement="start" style={{ margin: "16px 0 12px" }}>
+          Nhờ lái xe thu tiền khách
+        </Divider>
+        <Row gutter={16}>
+          <Col xs={24} md={10}>
+            <Form.Item
+              name="collectAmount"
+              label="Số tiền lái xe thu"
+              tooltip="Số tiền lái xe thu giúp công ty khi đón / trả khách. App lái xe sẽ nhắc thu và có nút xác nhận đã thu; xác nhận xong phần mềm tự tạo phiếu thu."
+              extra={
+                amount > 0 && (
+                  <Typography.Link onClick={() => form.setFieldValue("collectAmount", amount)}>
+                    Thu bằng thành tiền ({amount.toLocaleString("vi-VN")}đ)
+                  </Typography.Link>
+                )
+              }
+            >
+              <MoneyInput placeholder="Không thu" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={14}>
+            <Form.Item name="collectNote" label="Ghi chú thu tiền">
+              <Input placeholder="VD: thu đủ tiền xe trước khi trả khách, khách trả USD quy đổi…" allowClear />
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Modal>
   );
