@@ -271,6 +271,13 @@ export function PartnerTripDetail({
                   + VAT {Number(t.partnerVatPercent)}% = <b>{formatVnd(Math.round(Number(t.partnerCost) * (1 + Number(t.partnerVatPercent) / 100)))}đ</b>
                 </div>
               )}
+              {(Number(t.partnerExtraUp) > 0 || Number(t.partnerExtraDown) > 0) && (
+                <div style={{ fontSize: 13, color: '#475569' }}>
+                  Phát sinh{Number(t.partnerExtraUp) > 0 ? ` +${formatVnd(t.partnerExtraUp)}đ` : ''}
+                  {Number(t.partnerExtraDown) > 0 ? ` −${formatVnd(t.partnerExtraDown)}đ` : ''}
+                  {t.partnerExtraNote ? ` · ${t.partnerExtraNote}` : ''}
+                </div>
+              )}
               {t.partnerAdjustNote && <div style={{ fontSize: 13, color: '#b45309' }}>⚠ Văn phòng điều chỉnh giá · {t.partnerAdjustNote}</div>}
             </span>
           </div>

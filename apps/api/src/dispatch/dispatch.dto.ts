@@ -63,6 +63,9 @@ export class PartnerCostDto {
   partnerCost: number;
 
   @IsOptional() @IsNumber() @Min(0) @Max(100) partnerVatPercent?: number;
+  /** Sửa phát sinh nhà xe đã nhập (trước thuế) */
+  @IsOptional() @IsNumber() @Min(0) partnerExtraUp?: number;
+  @IsOptional() @IsNumber() @Min(0) partnerExtraDown?: number;
 
   @IsIn(PARTNER_ADJUST_REASONS, { message: 'Chọn lý do điều chỉnh' })
   reason: (typeof PARTNER_ADJUST_REASONS)[number];

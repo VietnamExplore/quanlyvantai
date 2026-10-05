@@ -4,7 +4,7 @@ import { existsSync } from 'fs';
 import { SIGN_DIR, signImage } from '../bookings/sign-file.controller';
 import { BookingStatus, Prisma, Role, TripStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength, IsNumber, Min } from 'class-validator';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { partnerPayable } from '../finance/cost.util';
 import { PrismaService } from '../prisma/prisma.service';
@@ -34,6 +34,11 @@ class VehicleDto {
 
 class StatusDto {
   @IsIn(Object.values(NEXT)) status: TripStatus;
+
+  /** Khi hoàn thành: giá phát sinh tăng / giảm (trước thuế) và lý do */
+  @IsOptional() @IsNumber({}, { message: 'Số tiền phát sinh không hợp lệ' }) @Min(0) extraUp?: number;
+  @IsOptional() @IsNumber({}, { message: 'Số tiền phát sinh không hợp lệ' }) @Min(0) extraDown?: number;
+  @IsOptional() @IsString() extraNote?: string;
 }
 
 /** Thông tin chuyến nhà xe được xem: không có giá bán cho khách, tài chính công ty, giấy tờ tùy thân khách */
@@ -61,6 +66,9 @@ const tripSelect = {
   partnerInvoiceNote: true,
   partnerVatPercent: true,
   partnerAdjustNote: true,
+  partnerExtraUp: true,
+  partnerExtraDown: true,
+  partnerExtraNote: true,
   assignedAt: true,
   vehicleType: { select: { name: true, seats: true } },
   service: { select: { name: true } },
@@ -263,16 +271,31 @@ export class PartnerPortalController {
     if (dto.status === TripStatus.DANG_DEN_DON && (!trip.partnerPlate || !trip.partnerDriverName)) {
       throw new BadRequestException('Nhập biển số xe và tên tài xế trước khi bắt đầu chuyến');
     }
+    const up = dto.status === TripStatus.HOAN_THANH ? Math.round(dto.extraUp ?? 0) : 0;
+    const down = dto.status === TripStatus.HOAN_THANH ? Math.round(dto.extraDown ?? 0) : 0;
+    const extraNote = dto.extraNote?.trim() || null;
+    if ((up || down) && !extraNote) throw new BadRequestException('Nhập lý do phát sinh');
+    if (down > Number(trip.partnerCost ?? 0) + up) throw new BadRequestException('Phát sinh giảm lớn hơn giá thuê');
     await this.prisma.$transaction(async (tx) => {
-      await tx.bookingTrip.update({ where: { id }, data: { status: dto.status } });
-      await tx.tripEvent.create({ data: { tripId: id, status: dto.status, note: `Nhà xe cập nhật (${user.fullName})`, userId: user.id } });
+      await tx.bookingTrip.update({
+        where: { id },
+        data: { status: dto.status, ...(dto.status === TripStatus.HOAN_THANH && { partnerExtraUp: up, partnerExtraDown: down, partnerExtraNote: up || down ? extraNote : null }) },
+      });
+      const extraText = up || down ? ` · phát sinh${up ? ` +${up.toLocaleString('vi-VN')}đ` : ''}${down ? ` −${down.toLocaleString('vi-VN')}đ` : ''} (${extraNote})` : '';
+      await tx.tripEvent.create({ data: { tripId: id, status: dto.status, note: `Nhà xe cập nhật (${user.fullName})${extraText}`, userId: user.id } });
       if (dto.status === TripStatus.HOAN_THANH) {
         const open = await tx.bookingTrip.count({ where: { bookingId: trip.bookingId, status: { notIn: [TripStatus.HOAN_THANH, TripStatus.HUY] } } });
         if (open === 0) await tx.booking.updateMany({ where: { id: trip.bookingId, status: BookingStatus.XAC_NHAN }, data: { status: BookingStatus.HOAN_THANH } });
       }
     });
     if (dto.status === TripStatus.HOAN_THANH) {
-      await this.notifyOffice('PARTNER_DONE', `Nhà xe hoàn thành chuyến · ${trip.booking.code}`, `${await this.partnerName(trip.partnerId)} · chuyến ${fmt(trip.pickupTime)}`, trip);
+      const ex = [up && `phát sinh tăng ${up.toLocaleString('vi-VN')}đ`, down && `phát sinh giảm ${down.toLocaleString('vi-VN')}đ`].filter(Boolean).join(', ');
+      await this.notifyOffice(
+        up || down ? 'PARTNER_EXTRA' : 'PARTNER_DONE',
+        up || down ? `Nhà xe hoàn thành, có phát sinh · ${trip.booking.code}` : `Nhà xe hoàn thành chuyến · ${trip.booking.code}`,
+        `${await this.partnerName(trip.partnerId)} · chuyến ${fmt(trip.pickupTime)}${ex ? ` · ${ex} (trước thuế) · ${extraNote}` : ''}`,
+        trip,
+      );
     }
     return this.trip(user, id);
   }
@@ -284,7 +307,7 @@ export class PartnerPortalController {
     const [trips, payments] = await Promise.all([
       this.prisma.bookingTrip.findMany({
         where: { partnerId, status: { not: TripStatus.HUY }, booking: { status: { in: BILLABLE } } },
-        select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerPlate: true, partnerCost: true, partnerInvoice: true, partnerVatPercent: true, status: true, booking: { select: { code: true } }, vehicleType: { select: { name: true } } },
+        select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerPlate: true, partnerCost: true, partnerExtraUp: true, partnerExtraDown: true, partnerExtraNote: true, partnerInvoice: true, partnerVatPercent: true, status: true, booking: { select: { code: true } }, vehicleType: { select: { name: true } } },
         orderBy: { pickupTime: 'desc' },
       }),
       this.prisma.partnerPayment.findMany({ where: { partnerId }, orderBy: { paidAt: 'desc' }, select: { id: true, amount: true, paidAt: true, method: true, reference: true, note: true } }),

@@ -16,6 +16,8 @@ const REASONS = [
 
 export interface PartnerCostValues {
   partnerCost: number;
+  partnerExtraUp?: number;
+  partnerExtraDown?: number;
   partnerVatPercent?: number;
   reason: string;
   note: string;
@@ -31,10 +33,14 @@ export function PartnerCostAdjust({
   currentCost,
   invoice,
   vatPercent,
+  extraUp = 0,
+  extraDown = 0,
   busy,
   onCancel,
   onSubmit,
 }: {
+  extraUp?: number;
+  extraDown?: number;
   open: boolean;
   partnerName: string;
   currentCost: number;
@@ -46,8 +52,8 @@ export function PartnerCostAdjust({
 }) {
   const [form] = Form.useForm<PartnerCostValues>();
   useEffect(() => {
-    if (open) form.setFieldsValue({ partnerCost: currentCost, partnerVatPercent: vatPercent, reason: undefined, note: undefined });
-  }, [open, currentCost, vatPercent, form]);
+    if (open) form.setFieldsValue({ partnerCost: currentCost, partnerVatPercent: vatPercent, partnerExtraUp: extraUp, partnerExtraDown: extraDown, reason: undefined, note: undefined });
+  }, [open, currentCost, vatPercent, extraUp, extraDown, form]);
   const reason = Form.useWatch('reason', form);
   const cost = Form.useWatch('partnerCost', form);
 
@@ -75,6 +81,14 @@ export function PartnerCostAdjust({
         <Form.Item name="partnerCost" label="Giá thuê mới (chưa thuế)" rules={[{ required: true, message: 'Nhập giá thuê' }]}>
           <MoneyInput style={{ width: '100%' }} />
         </Form.Item>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Form.Item name="partnerExtraUp" label="Phát sinh tăng (trước thuế)" style={{ flex: 1 }}>
+            <MoneyInput style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="partnerExtraDown" label="Phát sinh giảm (trước thuế)" style={{ flex: 1 }}>
+            <MoneyInput style={{ width: '100%' }} />
+          </Form.Item>
+        </div>
         {invoice && (
           <Form.Item name="partnerVatPercent" label="Thuế suất hóa đơn nhà xe">
             <Select options={[0, 5, 8, 10].map((x) => ({ value: x, label: `${x}%` }))} style={{ width: 140 }} />

@@ -493,6 +493,13 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                       </Button>
                     )}
                   </Descriptions.Item>
+                  {(Number(trip.partnerExtraUp ?? 0) > 0 || Number(trip.partnerExtraDown ?? 0) > 0) && (
+                    <Descriptions.Item label="Phát sinh">
+                      {Number(trip.partnerExtraUp ?? 0) > 0 && <Tag color="orange">+{Number(trip.partnerExtraUp).toLocaleString('vi-VN')}đ</Tag>}
+                      {Number(trip.partnerExtraDown ?? 0) > 0 && <Tag color="green">−{Number(trip.partnerExtraDown).toLocaleString('vi-VN')}đ</Tag>}
+                      {trip.partnerExtraNote}
+                    </Descriptions.Item>
+                  )}
                   {(trip.partnerIssue || trip.partnerAdjustNote) && (
                     <Descriptions.Item label="Điều chỉnh">
                       {trip.partnerIssue && PARTNER_ISSUE[trip.partnerIssue] && <Tag color={PARTNER_ISSUE[trip.partnerIssue].color}>{PARTNER_ISSUE[trip.partnerIssue].label}</Tag>}
@@ -508,6 +515,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                   currentCost={Number(trip.partnerCost ?? 0)}
                   invoice={!!trip.partnerInvoice}
                   vatPercent={Number(trip.partnerVatPercent ?? 0)}
+                  extraUp={Number(trip.partnerExtraUp ?? 0)}
+                  extraDown={Number(trip.partnerExtraDown ?? 0)}
                   busy={busy}
                   onCancel={() => setAdjustOpen(false)}
                   onSubmit={(v) => post('partner-cost', v, 'Đã điều chỉnh giá nhà xe').then(() => setAdjustOpen(false))}

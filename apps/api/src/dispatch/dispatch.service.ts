@@ -401,7 +401,15 @@ export class DispatchService {
       this.prisma.bookingTrip.update({
         where: { id },
         // Giá thuê nhà xe là chi phí thực của chuyến
-        data: { partnerCost: dto.partnerCost, estimatedCost: dto.partnerCost, partnerVatPercent: vat, partnerIssue: issue, partnerAdjustNote: note },
+        data: {
+          partnerCost: dto.partnerCost,
+          estimatedCost: dto.partnerCost,
+          partnerVatPercent: vat,
+          partnerIssue: issue,
+          partnerAdjustNote: note,
+          ...(dto.partnerExtraUp !== undefined && { partnerExtraUp: dto.partnerExtraUp }),
+          ...(dto.partnerExtraDown !== undefined && { partnerExtraDown: dto.partnerExtraDown }),
+        },
       }),
       this.prisma.tripEvent.create({
         data: {

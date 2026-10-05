@@ -27,6 +27,10 @@ export interface PartnerTrip {
   partnerVatPercent: string;
   /** Văn phòng điều chỉnh giá: lý do */
   partnerAdjustNote: string | null;
+  /** Phát sinh (trước thuế) nhà xe nhập khi hoàn thành */
+  partnerExtraUp: string;
+  partnerExtraDown: string;
+  partnerExtraNote: string | null;
   vehicleType: { name: string; seats: number };
   service: { name: string } | null;
   booking: {

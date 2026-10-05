@@ -473,6 +473,10 @@ model BookingTrip {
   partnerIssue       String?
   /// Ghi chú lần điều chỉnh giá nhà xe gần nhất (lý do, hiện cho nhà xe)
   partnerAdjustNote  String?
+  /// Giá phát sinh nhà xe (trước thuế), nhập khi hoàn thành chuyến: công nợ = (giá thuê + tăng − giảm) × (1 + thuế suất)
+  partnerExtraUp     Decimal  @default(0) @db.Decimal(15, 0)
+  partnerExtraDown   Decimal  @default(0) @db.Decimal(15, 0)
+  partnerExtraNote   String?
   partnerInvoiceNote String?
   dispatchNote       String? // Ghi chú cho tài xế / nhà xe
 

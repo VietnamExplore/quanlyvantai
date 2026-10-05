@@ -26,6 +26,9 @@ interface PayTrip {
   partnerVatPercent: string;
   partnerIssue?: string | null;
   partnerAdjustNote?: string | null;
+  partnerExtraUp: string;
+  partnerExtraDown: string;
+  partnerExtraNote: string | null;
   /** Giá thuê chưa thuế / thuế / phải trả */
   partnerNet: number;
   partnerVat: number;
@@ -82,8 +85,8 @@ export default function PayablesPage() {
       {
         name: 'Công nợ nhà xe',
         title: `CÔNG NỢ NHÀ XE ĐỐI TÁC – ngày ${dayjs().format('DD/MM/YYYY')}`,
-        headers: ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê (chưa thuế)', 'Thuế suất', 'Thuế GTGT', 'Phải trả', 'Trạng thái'],
-        sumColumns: [5, 7, 8],
+        headers: ['Nhà xe', 'Ngày chạy', 'Booking', 'Hành trình', 'Biển số', 'Giá thuê', 'Phát sinh tăng', 'Phát sinh giảm', 'Lý do phát sinh', 'Chưa thuế', 'Thuế suất', 'Thuế GTGT', 'Phải trả', 'Trạng thái'],
+        sumColumns: [5, 6, 7, 9, 11, 12],
         totalLabel: 'Tổng cộng',
         rows: (data?.partners ?? []).flatMap((p) =>
           p.trips.map((t) => [
@@ -92,6 +95,10 @@ export default function PayablesPage() {
             t.booking.code,
             [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → '),
             t.partnerPlate,
+            Number(t.partnerCost ?? 0),
+            Number(t.partnerExtraUp),
+            Number(t.partnerExtraDown),
+            t.partnerExtraNote ?? '',
             t.partnerNet,
             t.partnerInvoice ? `${Number(t.partnerVatPercent)}%` : 'Không HĐ',
             t.partnerVat,
@@ -167,7 +174,18 @@ export default function PayablesPage() {
                               </>
                             ),
                           },
-                          { title: 'Giá thuê (chưa thuế)', dataIndex: 'partnerNet', align: 'right', render: (v) => <Money value={v} /> },
+                          { title: 'Giá thuê', dataIndex: 'partnerCost', align: 'right', render: (v) => <Money value={v} /> },
+                          {
+                            title: 'Phát sinh',
+                            align: 'right',
+                            render: (_, t) => {
+                              const up = Number(t.partnerExtraUp);
+                              const down = Number(t.partnerExtraDown);
+                              if (!up && !down) return '—';
+                              return <span title={t.partnerExtraNote ?? undefined}>{[up && `+${formatVnd(up)}`, down && `−${formatVnd(down)}`].filter(Boolean).join(' ')}</span>;
+                            },
+                          },
+                          { title: 'Chưa thuế', dataIndex: 'partnerNet', align: 'right', render: (v) => <Money value={v} /> },
                           {
                             title: 'Thuế',
                             dataIndex: 'partnerVat',

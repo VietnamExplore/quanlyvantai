@@ -261,6 +261,10 @@ export interface BookingTrip extends Ref {
   partnerIssue?: string | null;
   /** Lý do điều chỉnh giá nhà xe gần nhất */
   partnerAdjustNote?: string | null;
+  /** Phát sinh nhà xe (trước thuế) */
+  partnerExtraUp?: string | number;
+  partnerExtraDown?: string | number;
+  partnerExtraNote?: string | null;
   /** Km đồng hồ và xăng theo định mức (xe công ty) */
   startKm?: number | null;
   endKm?: number | null;

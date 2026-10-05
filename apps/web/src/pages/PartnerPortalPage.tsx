@@ -9,6 +9,7 @@ import { useAuth } from '../auth';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { DATE_FORMAT, EnumTag, formatVnd } from '../components/common';
 import { NotificationBell } from '../components/NotificationBell';
+import { CompleteTripModal, type ExtraValues } from '../components/partner/CompleteTripModal';
 import { NEXT_STEP, PartnerTripDetail } from '../components/partner/PartnerTripDetail';
 import type { PartnerTrip } from '../components/partner/types';
 import { ResponsiveTable } from '../components/ResponsiveTable';
@@ -23,7 +24,7 @@ interface Summary {
   totalCost: number;
   totalPaid: number;
   balance: number;
-  trips: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; partnerPlate: string | null; partnerCost: string | null; partnerInvoice: boolean; partnerVatPercent: string; partnerNet: number; partnerVat: number; partnerTotal: number; status: TripStatus; booking: { code: string }; vehicleType: { name: string } }[];
+  trips: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; partnerPlate: string | null; partnerCost: string | null; partnerExtraUp: string; partnerExtraDown: string; partnerExtraNote: string | null; partnerInvoice: boolean; partnerVatPercent: string; partnerNet: number; partnerVat: number; partnerTotal: number; status: TripStatus; booking: { code: string }; vehicleType: { name: string } }[];
   payments: { id: number; amount: string; paidAt: string; method: PaymentMethod; reference: string | null; note: string | null }[];
 }
 
@@ -57,6 +58,7 @@ export default function PartnerPortalPage() {
   const [openId, setOpenId] = useState<number | null>(null);
   const [vehicleFor, setVehicleFor] = useState<{ trip: PartnerTrip; accept: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [completing, setCompleting] = useState<PartnerTrip | null>(null);
   const [vehicleForm] = Form.useForm<{ partnerPlate?: string; partnerDriverName?: string; partnerDriverPhone?: string }>();
 
   const { data: me } = useQuery({ queryKey: ['/partner/me'], queryFn: () => api<{ name: string }>('/partner/me') });
@@ -137,9 +139,20 @@ export default function PartnerPortalPage() {
     });
   }
 
+  async function complete(v: ExtraValues) {
+    if (!completing) return;
+    const body = { status: 'HOAN_THANH', extraUp: v.extraUp || 0, extraDown: v.extraDown || 0, extraNote: v.extraNote?.trim() || undefined };
+    if (await run(() => api(`/partner/trips/${completing.id}/status`, { method: 'POST', body }), 'Đã hoàn thành chuyến')) setCompleting(null);
+  }
+
   function advance(trip: PartnerTrip) {
     const next = NEXT_STEP[trip.status];
     if (!next) return;
+    // Hoàn thành: hiện bảng nhập giá phát sinh
+    if (next.status === 'HOAN_THANH') {
+      setCompleting(trip);
+      return;
+    }
     modal.confirm({
       title: `${next.label}?`,
       content: `${trip.booking.code} · ${dayjs(trip.pickupTime).format('HH:mm DD/MM')}`,
@@ -268,6 +281,7 @@ export default function PartnerPortalPage() {
           </Form.Item>
         </Form>
       </Modal>
+      <CompleteTripModal trip={completing} busy={busy} onCancel={() => setCompleting(null)} onSubmit={complete} />
       <ChangePasswordModal open={pwdOpen} onClose={() => setPwdOpen(false)} />
     </Layout>
   );
@@ -368,22 +382,32 @@ function MoneyView({ summary }: { summary?: Summary }) {
             { title: 'Hành trình', render: (_, t) => (t.dropoffAddress ? `${t.pickupAddress} → ${t.dropoffAddress}` : t.pickupAddress) },
             { title: 'Xe', render: (_, t) => [t.vehicleType.name, t.partnerPlate].filter(Boolean).join(' · ') },
             { title: 'Trạng thái', dataIndex: 'status', render: (v) => <EnumTag labels={TRIP_STATUS} value={v} /> },
-            { title: 'Giá thuê (chưa thuế)', dataIndex: 'partnerNet', align: 'right', render: (v) => `${formatVnd(v)}đ` },
+            {
+              title: 'Phát sinh',
+              align: 'right',
+              render: (_, t) => {
+                const up = Number(t.partnerExtraUp);
+                const down = Number(t.partnerExtraDown);
+                if (!up && !down) return '—';
+                return <span title={t.partnerExtraNote ?? undefined}>{[up && `+${formatVnd(up)}`, down && `−${formatVnd(down)}`].filter(Boolean).join(' ')}</span>;
+              },
+            },
+            { title: 'Chưa thuế', dataIndex: 'partnerNet', align: 'right', render: (v) => `${formatVnd(v)}đ` },
             { title: 'Thuế', dataIndex: 'partnerVat', align: 'right', render: (v, t) => (t.partnerInvoice ? `${formatVnd(v)}đ (${Number(t.partnerVatPercent)}%)` : '—') },
             { title: 'Thành tiền', dataIndex: 'partnerTotal', align: 'right', render: (v) => <b>{formatVnd(v)}đ</b> },
           ]}
           summary={() => (
             <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={5}>
+              <Table.Summary.Cell index={0} colSpan={6}>
                 <b>Tổng</b>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={5} align="right">
+              <Table.Summary.Cell index={6} align="right">
                 <b>{formatVnd(summary.totalNet)}đ</b>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={6} align="right">
+              <Table.Summary.Cell index={7} align="right">
                 <b>{formatVnd(summary.totalVat)}đ</b>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={7} align="right">
+              <Table.Summary.Cell index={8} align="right">
                 <b>{formatVnd(summary.totalCost)}đ</b>
               </Table.Summary.Cell>
             </Table.Summary.Row>

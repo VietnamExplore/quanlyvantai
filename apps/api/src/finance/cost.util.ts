@@ -3,6 +3,9 @@ type Num = { toString(): string } | number | string | null;
 export interface TripCostInput {
   partnerId: number | null;
   partnerCost: Num;
+  /** Phát sinh nhà xe (trước thuế) */
+  partnerExtraUp?: Num;
+  partnerExtraDown?: Num;
   estimatedCost: Num;
   costs: { amount: Num; categoryCode?: string | null }[];
   /** Chi phí xăng theo định mức (km × định mức × giá) */
@@ -16,7 +19,7 @@ export interface TripCostInput {
  */
 export function tripCost(t: TripCostInput) {
   const extra = t.costs.reduce((s, c) => s + Number(c.amount ?? 0), 0);
-  if (t.partnerId) return { cost: Number(t.partnerCost ?? 0) + extra, actual: true, known: true };
+  if (t.partnerId) return { cost: partnerNet(t) + extra, actual: true, known: true };
   // Xe công ty đã ghi km: xăng tính theo định mức (bỏ khoản xăng nhập tay của chuyến để không tính trùng)
   if (t.fuelCost !== null && t.fuelCost !== undefined) {
     const others = t.costs.filter((c) => c.categoryCode !== 'XANG_DAU').reduce((s, c) => s + Number(c.amount ?? 0), 0);
@@ -38,8 +41,13 @@ export const DEFAULT_COST_CATEGORIES = [
 ];
 
 /** Số tiền phải trả nhà xe cho chuyến: giá thuê chưa thuế + thuế (khi nhà xe xuất hóa đơn) */
-export function partnerPayable(t: { partnerCost: Num; partnerInvoice?: boolean; partnerVatPercent?: Num }) {
-  const net = Number(t.partnerCost ?? 0);
+/** Giá nhà xe trước thuế = giá thuê + phát sinh tăng − phát sinh giảm (không âm) */
+export function partnerNet(t: { partnerCost: Num; partnerExtraUp?: Num; partnerExtraDown?: Num }) {
+  return Math.max(0, Number(t.partnerCost ?? 0) + Number(t.partnerExtraUp ?? 0) - Number(t.partnerExtraDown ?? 0));
+}
+
+export function partnerPayable(t: { partnerCost: Num; partnerExtraUp?: Num; partnerExtraDown?: Num; partnerInvoice?: boolean; partnerVatPercent?: Num }) {
+  const net = partnerNet(t);
   const vat = t.partnerInvoice ? Math.round((net * Number(t.partnerVatPercent ?? 0)) / 100) : 0;
   return { net, vat, total: net + vat };
 }
