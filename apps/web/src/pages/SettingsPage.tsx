@@ -192,6 +192,16 @@ export default function SettingsPage() {
               <Input />
             </Form.Item>
           </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="companyWebsite" label="Website">
+              <Input placeholder="vd: www.congty.vn" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="companySlogan" label="Khẩu hiệu / dịch vụ" tooltip="Hiện dưới tên công ty trên bảng đón khách, ví dụ: Dịch vụ đưa đón sân bay & du lịch">
+              <Input placeholder="vd: Airport Transfer & Travel Service" />
+            </Form.Item>
+          </Col>
           <Col span={24}>
             <Form.Item name="bankInfo" label="Thông tin chuyển khoản" extra="Ví dụ: Vietcombank – STK 0123456789 – CTY TNHH DU LỊCH ABC">
               <Input.TextArea rows={2} />

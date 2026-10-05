@@ -29,6 +29,9 @@ export const SETTING_KEYS = [
   'companyPhone',
   'companyEmail',
   'companyTaxCode',
+  // Website và khẩu hiệu công ty (hiện trên bảng đón, giấy tờ)
+  'companyWebsite',
+  'companySlogan',
   'bankInfo',
   'quoteFooter',
   // Ghi chú cuối báo giá theo ngôn ngữ giấy tờ

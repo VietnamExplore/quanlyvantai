@@ -489,6 +489,8 @@ export type Settings = Partial<
     | 'companyPhone'
     | 'companyEmail'
     | 'companyTaxCode'
+    | 'companyWebsite'
+    | 'companySlogan'
     | 'bankInfo'
     | 'quoteFooter'
     | 'companyLogo'

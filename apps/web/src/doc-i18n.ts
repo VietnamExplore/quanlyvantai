@@ -49,6 +49,8 @@ const DICT = {
   phone: { vi: 'Điện thoại', en: 'Phone', ko: '전화번호', zh: '电话', ja: '電話番号' },
   address: { vi: 'Địa chỉ', en: 'Address', ko: '주소', zh: '地址', ja: '住所' },
   taxCode: { vi: 'MST', en: 'Tax code', ko: '사업자번호', zh: '税号', ja: '税番号' },
+  welcome: { vi: 'Chào mừng', en: 'Welcome', ko: '환영합니다', zh: '欢迎', ja: 'ようこそ' },
+  website: { vi: 'Website', en: 'Website', ko: '웹사이트', zh: '网站', ja: 'ウェブサイト' },
   hotline: { vi: 'Hotline', en: 'Hotline', ko: '핫라인', zh: '热线', ja: 'ホットライン' },
   email: { vi: 'Email', en: 'Email', ko: '이메일', zh: '邮箱', ja: 'メール' },
   colNo: { vi: 'STT', en: 'No.', ko: '번호', zh: '序号', ja: 'No.' },
