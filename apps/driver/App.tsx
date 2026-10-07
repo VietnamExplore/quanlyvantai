@@ -12,6 +12,7 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { TripDetailScreen } from './src/screens/TripDetailScreen';
 import { TripsScreen } from './src/screens/TripsScreen';
+import { contentFrame, CONTENT_MAX_WIDTH } from './src/platform';
 import { BRAND, colors } from './src/theme';
 
 const LOGO = require('./assets/logo.png');
@@ -109,7 +110,7 @@ export default function App() {
     return onNotificationOpen((tripId) => setScreen({ name: 'trip', id: tripId, from: 'trips' }));
   }, [user]);
 
-  // Nút Back của Android: quay về danh sách thay vì thoát app
+  // Nút Back của Android: quay về danh sách thay vì thoát app (iPhone/iPad dùng nút ‹ trên đầu trang)
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (screen.name !== 'trips') {
@@ -193,7 +194,7 @@ export default function App() {
             </SafeAreaView>
           </LinearGradient>
           <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['bottom']}>
-            <View style={{ flex: 1 }}>
+            <View style={contentFrame}>
               {screen.name === 'trips' && <TripsScreen onOpen={(id) => openTrip(id, 'trips')} />}
               {screen.name === 'fuel' && <FuelScreen />}
               {screen.name === 'earnings' && <EarningsScreen onOpenTrip={(id) => openTrip(id, 'earnings')} />}
@@ -236,7 +237,7 @@ export default function App() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   bootLogo: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 10 },
-  header: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, gap: 10 },
+  header: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, gap: 10, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   brand: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandLogo: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   brandName: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
@@ -251,8 +252,8 @@ const s = StyleSheet.create({
   toast: { position: 'absolute', top: 8, left: 10, right: 10, backgroundColor: '#0f1b2d', borderRadius: 16, padding: 14, elevation: 12, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   toastTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
   toastBody: { color: 'rgba(255,255,255,0.85)', fontSize: 13.5, marginTop: 2 },
-  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 6, paddingBottom: 4 },
-  tabItem: { flex: 1, alignItems: 'center', gap: 2 },
+  tabBar: { flexDirection: 'row', justifyContent: 'center', backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 6, paddingBottom: 4 },
+  tabItem: { flex: 1, maxWidth: 200, alignItems: 'center', gap: 2 },
   tabIcon: { width: 52, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   tabIconActive: { backgroundColor: colors.primarySoft },
   tabLabel: { fontSize: 12, fontWeight: '600', color: colors.muted },

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
+import { KEYBOARD_BEHAVIOR, MODAL_ORIENTATIONS, sheetFrame } from '../platform';
 import { colors, fmtDate } from '../theme';
 import { Button, Card, Section, styles as ui } from '../ui';
 
@@ -139,9 +140,10 @@ export function AdvanceCard({ netPay, onChanged }: { netPay: number | null; onCh
       )}
       <Text style={s.foot}>Tiền tạm ứng được trừ vào thực nhận của tháng nhận tiền.</Text>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal supportedOrientations={MODAL_ORIENTATIONS} visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={{ flex: 1 }}>
         <Pressable style={s.backdrop} onPress={() => setOpen(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, sheetFrame]}>
           <Text style={s.sheetTitle}>Đề nghị tạm ứng</Text>
           {netPay !== null && (
             <Text style={s.hint}>
@@ -171,6 +173,7 @@ export function AdvanceCard({ netPay, onChanged }: { netPay: number | null; onCh
             <Button title="Gửi đề nghị" onPress={send} loading={busy} style={{ flex: 2 }} />
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </Card>
   );

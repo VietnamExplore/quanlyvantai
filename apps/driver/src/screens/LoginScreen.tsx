@@ -135,7 +135,8 @@ export function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: AuthUser) => vo
 }
 
 const s = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', padding: 22, paddingTop: 56 },
+  // width + maxWidth: trên iPad khung đăng nhập gọn ở giữa màn hình
+  container: { flexGrow: 1, justifyContent: 'center', padding: 22, paddingTop: 56, width: '100%', maxWidth: 520, alignSelf: 'center' },
   bubble: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' },
   header: { alignItems: 'center', marginBottom: 22 },
   logoDisc: {

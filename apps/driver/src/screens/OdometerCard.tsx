@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KEYBOARD_BEHAVIOR, MODAL_ORIENTATIONS, sheetFrame } from '../platform';
 import { colors } from '../theme';
 import type { Trip } from '../types';
 import { Button, Card, Section, styles as ui } from '../ui';
@@ -53,9 +54,10 @@ export function KmModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal supportedOrientations={MODAL_ORIENTATIONS} visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={{ flex: 1 }}>
       <Pressable style={s.backdrop} onPress={onClose} />
-      <View style={s.sheet}>
+      <View style={[s.sheet, sheetFrame]}>
         <Text style={s.title}>{mode === 'start' ? '🛣  Bắt đầu chuyến' : '🏁  Km đồng hồ lúc kết thúc'}</Text>
         {known != null ? (
           <View style={s.startBox}>
@@ -82,6 +84,7 @@ export function KmModal({
           <Button title={mode === 'start' ? 'Bắt đầu' : trip.status === 'HOAN_THANH' ? 'Lưu km' : 'Hoàn thành chuyến'} onPress={submit} loading={busy} style={{ flex: 2 }} />
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

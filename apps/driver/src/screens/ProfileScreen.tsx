@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, getServer } from '../api';
+import { keyboardScroll } from '../platform';
 import { BRAND, colors, fmtDate } from '../theme';
 import type { AuthUser, DriverProfile } from '../types';
 import { Button, Card, Row, Section, styles as ui } from '../ui';
@@ -55,7 +56,7 @@ export function ProfileScreen({ user, onLogout }: { user: AuthUser; onLogout: ()
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 40 }}>
+    <ScrollView {...keyboardScroll} contentContainerStyle={{ padding: 12, paddingBottom: 40 }}>
       <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={p.hero}>
         <View style={p.avatar}>
           <Text style={p.avatarText}>{initials(user.fullName)}</Text>

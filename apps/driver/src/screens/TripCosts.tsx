@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, apiUpload, useAuthImage } from '../api';
+import { MODAL_ORIENTATIONS } from '../platform';
 import { colors, fmtDate } from '../theme';
 import type { CostCategory, TripCost } from '../types';
 import { Button, Card, styles as ui } from '../ui';
@@ -231,7 +232,7 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
         </View>
       )}
 
-      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
+      <Modal supportedOrientations={MODAL_ORIENTATIONS} visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
         <Pressable style={s.viewer} onPress={() => setViewing(null)}>
           {viewing && <ReceiptImage costId={viewing.id} />}
           <Text style={s.viewerHint}>

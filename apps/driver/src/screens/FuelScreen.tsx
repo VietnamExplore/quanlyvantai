@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { api, apiUpload, useAuthImage } from '../api';
+import { keyboardScroll, MODAL_ORIENTATIONS } from '../platform';
 import { colors, fmtDate } from '../theme';
 import { Button, Card, MonthSwitcher, Section, thisMonth, styles as ui } from '../ui';
 import { pickPhoto, type Photo } from './TripCosts';
@@ -142,7 +143,7 @@ export function FuelScreen() {
   const selfPaid = items.filter((f) => f.driverPaid).reduce((s, f) => s + f.amount, 0);
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 40 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} colors={[colors.primary]} />}>
+    <ScrollView {...keyboardScroll} contentContainerStyle={{ padding: 12, paddingBottom: 40 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} colors={[colors.primary]} />}>
       <MonthSwitcher month={month} onChange={setMonth} />
 
       <View style={s.stats}>
@@ -253,7 +254,7 @@ export function FuelScreen() {
         ))}
       </Card>
 
-      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
+      <Modal supportedOrientations={MODAL_ORIENTATIONS} visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
         <Pressable style={s.viewer} onPress={() => setViewing(null)}>
           {viewing && <ReceiptImage id={viewing.id} />}
           <Text style={s.viewerHint}>Bấm để đóng</Text>

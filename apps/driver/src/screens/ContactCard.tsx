@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ALL_APPS, APP_LABEL, contactGuest, guessApp, messageApp, messageGuest, openApp, type ContactApp } from '../contact';
+import { MODAL_ORIENTATIONS, sheetFrame } from '../platform';
 import { colors } from '../theme';
 import { Button, Card, Section } from '../ui';
 
@@ -26,9 +27,9 @@ export function ContactChooser({ contact, mode = 'call', onClose }: { contact: G
     else await openApp(app, phone, appId ?? null);
   };
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal supportedOrientations={MODAL_ORIENTATIONS} visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={s.sheetBg} onPress={onClose}>
-        <Pressable style={s.sheet} onPress={() => undefined}>
+        <Pressable style={[s.sheet, sheetFrame]} onPress={() => undefined}>
           <Text style={s.sheetTitle}>
             {mode === 'message' ? 'Nhắn tin' : 'Gọi'} cho {contact.name} qua…
           </Text>

@@ -1,7 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
+import { KEYBOARD_BEHAVIOR, keyboardScroll, MODAL_ORIENTATIONS } from '../platform';
 import { BRAND, colors, dayLabel, fmtDate, fmtHour, fmtTime, NEXT_STEP, SERVICE } from '../theme';
 import type { Passenger, Trip } from '../types';
 import { Button, Card, Chip, QuickAction, Row, Section, StatusBadge, styles as ui } from '../ui';
@@ -163,7 +164,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   const service = trip.service?.name ?? SERVICE[trip.serviceType] ?? trip.serviceType;
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 12, paddingBottom: next ? 170 : 40 }}>
+      <ScrollView {...keyboardScroll} ref={scrollRef} contentContainerStyle={{ padding: 12, paddingBottom: next ? 170 : 40 }}>
         {/* Khối đầu: giờ đón, trạng thái */}
         <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
           <View style={s.heroTop}>
@@ -324,9 +325,9 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
       {choosing && <ContactChooser contact={choosing} onClose={() => setChoosing(null)} />}
       <KmModal trip={trip} mode={kmMode === 'start' ? 'start' : 'end'} visible={!!kmMode} busy={busy} onClose={() => setKmMode(null)} onSubmit={saveKm} />
 
-      <Modal visible={rejectOpen} transparent animationType="fade" onRequestClose={() => setRejectOpen(false)}>
-        <View style={s.modalBg}>
-          <View style={s.modal}>
+      <Modal supportedOrientations={MODAL_ORIENTATIONS} visible={rejectOpen} transparent animationType="fade" onRequestClose={() => setRejectOpen(false)}>
+        <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={s.modalBg}>
+          <View style={[s.modal, { width: '100%', maxWidth: 520, alignSelf: 'center' }]}>
             <Text style={{ fontSize: 19, fontWeight: '800', marginBottom: 4, color: colors.text }}>Từ chối chuyến</Text>
             <Text style={{ fontSize: 14, color: colors.text2, marginBottom: 12 }}>Văn phòng sẽ điều xe khác cho chuyến này.</Text>
             <TextInput placeholderTextColor={colors.muted} style={[ui.input, { minHeight: 80, textAlignVertical: 'top' }]} multiline value={reason} onChangeText={setReason} placeholder="Lý do (ví dụ: xe hỏng, bận việc gia đình…)" />
@@ -335,7 +336,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
               <Button title="Gửi từ chối" variant="danger" onPress={reject} loading={busy} style={{ flex: 1 }} />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

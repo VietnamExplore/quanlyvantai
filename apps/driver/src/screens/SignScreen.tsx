@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuthImage } from '../api';
 import { BrandSign } from '../BrandSign';
+import { isPad, MODAL_ORIENTATIONS } from '../platform';
 import type { Trip } from '../types';
 
 /**
@@ -34,16 +35,16 @@ export function SignScreen({ trip, onClose }: { trip: Trip; onClose: () => void 
     return () => clearTimeout(timer);
   }, [tools]);
 
-  // Xoay ngang khi mở, trả về dọc khi đóng
+  // Xoay ngang khi mở, trả về dọc khi đóng (iPad: trả lại tự xoay theo cách cầm máy)
   useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => undefined);
     return () => {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined);
+      (isPad ? ScreenOrientation.unlockAsync() : ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP)).catch(() => undefined);
     };
   }, []);
 
   return (
-    <Modal visible animationType="fade" statusBarTranslucent supportedOrientations={['landscape', 'portrait']} onRequestClose={onClose}>
+    <Modal visible animationType="fade" statusBarTranslucent supportedOrientations={MODAL_ORIENTATIONS} onRequestClose={onClose}>
       <StatusBar hidden />
       <Pressable style={s.page} onPress={() => setTools(true)}>
         {mode === 'image' && hasImage && !imgError ? (

@@ -10,10 +10,22 @@
         "buildType": "apk"
       }
     },
+    "ios-test": {
+      "distribution": "internal",
+      "ios": {
+        "buildConfiguration": "Release"
+      }
+    },
     "production": {
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "ios": {}
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {}
     }
   }
 }

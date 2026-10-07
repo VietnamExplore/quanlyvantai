@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
+import { KEYBOARD_BEHAVIOR, MODAL_ORIENTATIONS, sheetFrame } from '../platform';
 import { colors, fmtTime } from '../theme';
 import type { Trip } from '../types';
 import { Button, Card, styles as ui } from '../ui';
@@ -64,9 +65,10 @@ export function CollectCard({ trip, onChanged }: { trip: Trip; onChanged: (t: Tr
         <Text style={s.meta}>Nhận chuyến xong mới xác nhận thu tiền được.</Text>
       )}
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal supportedOrientations={MODAL_ORIENTATIONS} visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={{ flex: 1 }}>
         <Pressable style={s.backdrop} onPress={() => setOpen(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, sheetFrame]}>
           <Text style={s.sheetTitle}>Xác nhận đã thu tiền khách</Text>
           <Text style={ui.label}>Số tiền đã thu (đồng)</Text>
           <TextInput
@@ -88,6 +90,7 @@ export function CollectCard({ trip, onChanged }: { trip: Trip; onChanged: (t: Tr
             <Button title="Xác nhận đã thu" onPress={confirm} loading={busy} style={{ flex: 2 }} />
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </Card>
   );
