@@ -21,7 +21,8 @@
 
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
-	@html path / /index.html
+	# Trang ứng dụng (/, /dispatch, /bookings/…: đều là index.html) luôn hỏi lại máy chủ để nhận bản mới sau mỗi lần cập nhật
+	@html not path /assets/* /api/*
 	header @html Cache-Control "no-cache"
 
 	header {

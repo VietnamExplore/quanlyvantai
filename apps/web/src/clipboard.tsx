@@ -5,7 +5,7 @@ import { App, Input, Typography } from 'antd';
  * - HTTPS / localhost: dùng Clipboard API.
  * - Mở bằng địa chỉ IP nội bộ (http://192.168…): trình duyệt chặn Clipboard API → dùng cách cũ (ô chữ ẩn + lệnh copy),
  *   chạy được trên Chrome, Edge, Safari iPhone, Android.
- * Trả về false nếu không sao chép được.
+ * Trả về false nếu không sao chép được (khi đó không được báo "đã sao chép": bộ nhớ tạm vẫn còn nội dung cũ).
  */
 export async function copyText(text: string): Promise<boolean> {
   if (window.isSecureContext && navigator.clipboard?.writeText) {
@@ -16,20 +16,35 @@ export async function copyText(text: string): Promise<boolean> {
       /* thử cách dự phòng */
     }
   }
+  // Ngăn kéo / hộp thoại antd giữ con trỏ bên trong nó: ô chữ đặt ngoài sẽ bị giành mất con trỏ, lệnh copy chép rỗng
+  // → đặt ô chữ ngay trong ngăn / hộp thoại đang mở
+  const host = (document.activeElement?.closest('.ant-drawer-content, .ant-modal-content, [role="dialog"]') as HTMLElement | null) ?? document.body;
   const ta = document.createElement('textarea');
   ta.value = text;
   // Không để bàn phím điện thoại bật lên / trang cuộn khi chọn chữ
   ta.setAttribute('readonly', '');
   ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;';
-  document.body.appendChild(ta);
+  host.appendChild(ta);
+  // Ghi thẳng nội dung khi trình duyệt chép, không phụ thuộc chữ đang được chọn
+  let written = false;
+  const onCopy = (e: ClipboardEvent) => {
+    if (!e.clipboardData) return;
+    e.clipboardData.setData('text/plain', text);
+    e.preventDefault();
+    written = true;
+  };
+  document.addEventListener('copy', onCopy, true);
   try {
     ta.focus();
     ta.select();
     ta.setSelectionRange(0, text.length); // Safari iPhone cần chọn theo vùng
-    return document.execCommand('copy');
+    const ok = document.execCommand('copy');
+    const selected = document.activeElement === ta && ta.selectionEnd - ta.selectionStart === text.length;
+    return ok && (written || selected);
   } catch {
     return false;
   } finally {
+    document.removeEventListener('copy', onCopy, true);
     ta.remove();
     window.getSelection()?.removeAllRanges();
   }

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { copyText, useCopyText } from '../../clipboard';
 import { formatVnd } from '../common';
 import { APP_LABEL, chatUrl, guessApp, type ContactApp } from './contact';
+import { buildPartnerDispatchText } from './dispatch-text';
 import { SignBoard } from './SignBoard';
 import type { PartnerTrip } from './types';
 import { ExtraStatusTag } from '../PartnerExtraReview';
@@ -153,6 +154,22 @@ export function PartnerTripDetail({
             </span>
             Gọi đoàn
           </span>
+        )}
+        {/* Chép lệnh điều xe gửi lái xe của nhà xe (sau khi đã nhận chuyến) */}
+        {t.status === 'DA_GAN' || t.status === 'HUY' ? (
+          <span className="pt-quick-disabled" title={t.status === 'DA_GAN' ? 'Nhận chuyến trước rồi chép lệnh gửi lái xe' : undefined}>
+            <span className="pt-quick-icon" style={{ background: '#f1f4f9' }}>
+              <CopyOutlined />
+            </span>
+            Lệnh điều xe
+          </span>
+        ) : (
+          <button type="button" onClick={() => copy(buildPartnerDispatchText(t), 'Đã sao chép lệnh điều xe. Dán vào Zalo gửi lái xe.')}>
+            <span className="pt-quick-icon" style={{ background: '#f3ecfd' }}>
+              <CopyOutlined style={{ color: '#7c3aed' }} />
+            </span>
+            Lệnh điều xe
+          </button>
         )}
       </div>
 
