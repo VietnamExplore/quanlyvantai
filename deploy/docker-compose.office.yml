@@ -20,12 +20,16 @@ services:
       # Cơ sở dữ liệu chạy trong container "db" (cổng 5432 của máy)
       DATABASE_URL: postgresql://transfer:transfer@host.docker.internal:5432/transfer?schema=public
       UPLOAD_DIR: /data/uploads
+      # Sao lưu tự động hằng ngày (cài giờ, số bản giữ lại ở trang Sao lưu & dọn dẹp)
+      BACKUP_DIR: /data/backups
+      BACKUP_DIR_LABEL: D:\TRANSFER\backups
       PORT: 3000
       TZ: Asia/Ho_Chi_Minh
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ../apps/api/uploads:/data/uploads
+      - ../backups:/data/backups
 
   web:
     build:

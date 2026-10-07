@@ -6,9 +6,8 @@ build, khởi tạo dữ liệu, đăng nhập, tải file 100 MB, sao lưu, và
 | Thành phần | Vai trò |
 |---|---|
 | `db` | PostgreSQL 17. Không mở cổng ra Internet |
-| `api` | API NestJS. Mỗi lần khởi động tự áp dụng thay đổi cơ sở dữ liệu (`prisma migrate deploy`) |
+| `api` | API NestJS. Mỗi lần khởi động tự áp dụng thay đổi cơ sở dữ liệu (`prisma migrate deploy`). Tự sao lưu hằng ngày vào `deploy/backups/` và dọn nhật ký / thông báo cũ |
 | `web` | Caddy: phục vụ giao diện web, chuyển `/api` sang API, **tự cấp và gia hạn HTTPS**, cho tải file tối đa 100 MB |
-| `backup` | Sao lưu cơ sở dữ liệu và file tải lên lúc 02:00 hằng ngày vào `deploy/backups/`, giữ 14 ngày |
 
 ## 1. Chuẩn bị
 - **VPS**: Ubuntu 24.04, tối thiểu 2 vCPU, 4 GB RAM, 40 GB SSD. Nên chọn máy đặt tại Việt Nam hoặc Singapore.
@@ -87,13 +86,14 @@ cd /opt/transfer/deploy && docker compose up -d --build
 Thay đổi cơ sở dữ liệu được áp dụng tự động khi API khởi động.
 
 ## 8. Sao lưu và khôi phục
-- Sao lưu tự động hằng ngày vào `/opt/transfer/deploy/backups/`.
-- Sao lưu ngay: `docker compose exec backup bash /backup.sh now`.
+- Sao lưu tự động hằng ngày vào `/opt/transfer/deploy/backups/`: `db-….dump` (cơ sở dữ liệu) và `uploads-….tar.gz` (file tải lên).
+- Cài giờ chạy, số bản giữ lại, sao lưu ngay, tải bản sao lưu: trên web, menu **Hệ thống → Sao lưu & dọn dẹp** (chỉ Admin).
+- Sao lưu lỗi thì Admin nhận thông báo trên chuông.
 - **Nên tải bản sao lưu về máy khác định kỳ**, ví dụ mỗi tuần, vì VPS hỏng thì bản sao lưu trên đó cũng mất:
   `scp root@IP-VPS:/opt/transfer/deploy/backups/db-*.dump .`
 - Khôi phục: làm như mục 5A với file `db-….dump` và `uploads-….tar.gz` tương ứng.
 
 ## 9. Xử lý sự cố
-- Xem log: `docker compose logs -f api` (hoặc `web`, `db`, `backup`).
+- Xem log: `docker compose logs -f api` (hoặc `web`, `db`).
 - Không có HTTPS: kiểm tra tên miền đã trỏ đúng IP và cổng 80, 443 đã mở. Xem `docker compose logs web`.
 - Khởi động lại toàn bộ: `docker compose restart`.

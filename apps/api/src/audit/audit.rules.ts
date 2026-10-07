@@ -16,6 +16,11 @@ export interface AuditRule {
 const r = (method: string, path: string, action: string, entity?: string, model?: string, idField?: 'id' | 'code'): AuditRule => ({ method, path, action, entity, model, idField });
 
 export const AUDIT_RULES: AuditRule[] = [
+  // Sao lưu & dọn dẹp
+  r('PUT', '/system/maintenance', 'Sửa cài đặt sao lưu & dọn dẹp', 'System'),
+  r('POST', '/system/backups/run', 'Sao lưu dữ liệu', 'System'),
+  r('POST', '/system/cleanup/run', 'Dọn nhật ký & thông báo cũ', 'System'),
+
   // Đăng nhập
   r('POST', '/auth/login', 'Đăng nhập', 'User'),
   r('POST', '/auth/change-password', 'Đổi mật khẩu', 'User'),

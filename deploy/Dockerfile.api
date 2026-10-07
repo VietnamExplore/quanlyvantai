@@ -1,7 +1,11 @@
 # API NestJS + Prisma cho máy chủ thật (build từ thư mục gốc của dự án)
 FROM node:24-bookworm-slim
 # poppler-utils (pdftoppm): chuyển trang đầu bảng đón PDF thành ảnh cho app lái xe
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates tzdata poppler-utils && rm -rf /var/lib/apt/lists/*
+# postgresql-client-17 (pg_dump, từ kho PostgreSQL chính thức): sao lưu tự động, phải cùng phiên bản với máy chủ PostgreSQL 17
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates tzdata poppler-utils postgresql-common \
+ && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
+ && apt-get install -y --no-install-recommends postgresql-client-17 \
+ && rm -rf /var/lib/apt/lists/*
 ENV TZ=Asia/Ho_Chi_Minh
 WORKDIR /app
 
@@ -15,8 +19,8 @@ COPY apps/api apps/api
 WORKDIR /app/apps/api
 RUN npx prisma generate && npm run build
 
-ENV NODE_ENV=production PORT=3000 UPLOAD_DIR=/data/uploads
-VOLUME /data/uploads
+ENV NODE_ENV=production PORT=3000 UPLOAD_DIR=/data/uploads BACKUP_DIR=/data/backups
+VOLUME /data/uploads /data/backups
 EXPOSE 3000
 # Mỗi lần khởi động: áp dụng các thay đổi cơ sở dữ liệu còn thiếu rồi chạy API
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

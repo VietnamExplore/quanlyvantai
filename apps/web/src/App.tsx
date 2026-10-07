@@ -4,6 +4,7 @@ import { useAuth } from './auth';
 import { AppLayout } from './components/AppLayout';
 import AdvancesPage from './pages/AdvancesPage';
 import AuditLogPage from './pages/AuditLogPage';
+import SystemPage from './pages/SystemPage';
 import PartnerPortalPage from './pages/PartnerPortalPage';
 import BookingEditPage from './pages/BookingEditPage';
 import BookingsPage from './pages/BookingsPage';
@@ -97,6 +98,7 @@ export default function App() {
         {hasRole('ADMIN') && <Route path="users" element={<UsersPage />} />}
         {hasRole('ADMIN') && <Route path="settings" element={<SettingsPage />} />}
         {hasRole('ADMIN') && <Route path="audit-logs" element={<AuditLogPage />} />}
+        {hasRole('ADMIN') && <Route path="system" element={<SystemPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

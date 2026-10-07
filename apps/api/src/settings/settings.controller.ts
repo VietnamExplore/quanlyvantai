@@ -72,7 +72,7 @@ export class SettingsController {
     // Khóa API dịch là bí mật: không trả về, chỉ báo đã cài hay chưa
     const key = rows.find((r) => r.key === API_KEY_KEY)?.value;
     return {
-      ...Object.fromEntries(rows.filter((r) => r.key !== API_KEY_KEY).map((r) => [r.key, r.value])),
+      ...Object.fromEntries(rows.filter((r) => r.key !== API_KEY_KEY && !r.key.startsWith('sys.')).map((r) => [r.key, r.value])),
       translateKeySet: key ? 'yes' : '',
       translateKeyHint: key ? '…' + key.slice(-4) : '',
     };

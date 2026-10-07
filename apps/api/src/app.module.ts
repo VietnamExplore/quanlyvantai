@@ -27,6 +27,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { VehicleTypesModule } from './vehicle-types/vehicle-types.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
+import { SystemModule } from './system/system.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     UsersModule,
     VehicleTypesModule,
     VehiclesModule,
+    SystemModule,
     DriversModule,
     PartnersModule,
     CustomersModule,

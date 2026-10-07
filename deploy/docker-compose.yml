@@ -35,8 +35,12 @@ services:
       SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
       TZ: Asia/Ho_Chi_Minh
+      # Sao lưu tự động hằng ngày (giờ chạy, số bản giữ lại cài ở trang Sao lưu & dọn dẹp)
+      BACKUP_DIR: /data/backups
+      BACKUP_DIR_LABEL: /opt/transfer/deploy/backups
     volumes:
       - uploads:/data/uploads
+      - ./backups:/data/backups
 
   web:
     build:
@@ -54,26 +58,6 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
-
-  # Sao lưu hằng ngày lúc 02:00: cơ sở dữ liệu + file tải lên, giữ ${BACKUP_KEEP_DAYS} ngày
-  backup:
-    image: postgres:17
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      PGHOST: db
-      PGUSER: transfer
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: transfer
-      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
-      TZ: Asia/Ho_Chi_Minh
-    volumes:
-      - ./backups:/backups
-      - uploads:/data/uploads:ro
-      - ./backup.sh:/backup.sh:ro
-    entrypoint: ["bash", "/backup.sh"]
 
 volumes:
   dbdata:
