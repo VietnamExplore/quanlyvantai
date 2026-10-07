@@ -1,14 +1,29 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Flex, Form, Input, Modal, Popconfirm, Space, Typography, type FormInstance } from 'antd';
+import { App, Button, Card, Flex, Form, Input, Modal, Popconfirm, Select, Space, Tabs, Typography, type FormInstance } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import { paged } from './common';
+import { paged, usePartnerOptions } from './common';
 import { ResponsiveTable } from './ResponsiveTable';
 
 type Filters = Record<string, string | number | undefined>;
+
+/** Một phần (tab) của danh sách, ví dụ "Công ty" / "Nhà xe đối tác" */
+export interface CrudSection<T> {
+  key: string;
+  label: string;
+  /** Bản ghi thuộc phần này */
+  match: (row: T) => boolean;
+  /** Giá trị mặc định khi bấm Thêm mới ở phần này (gộp với newDefaults chung) */
+  newDefaults?: Record<string, unknown>;
+  /** Ẩn các cột (theo tiêu đề cột) không cần ở phần này */
+  hideColumns?: string[];
+  /** Có lọc theo nhà xe đối tác: trả về mã nhà xe của bản ghi */
+  partnerOf?: (row: T) => number | null | undefined;
+}
 
 export interface CrudPageProps<T extends object> {
   /** Trường khóa của bản ghi (mặc định "id"), dùng trong đường dẫn sửa/xóa */
@@ -17,7 +32,8 @@ export interface CrudPageProps<T extends object> {
   /** Đường dẫn API, ví dụ "/vehicles" */
   endpoint: string;
   columns: ColumnsType<T>;
-  renderForm: (ctx: { form: FormInstance; editing: T | null }) => ReactNode;
+  /** section: mã phần (tab) đang mở, nếu trang chia phần */
+  renderForm: (ctx: { form: FormInstance; editing: T | null; section?: string }) => ReactNode;
   /** Bộ lọc thêm bên cạnh ô tìm kiếm */
   renderFilters?: (filters: Filters, setFilter: (key: string, value: string | number | undefined) => void) => ReactNode;
   /** Các trường ngày: tự đổi giữa chuỗi "YYYY-MM-DD" và Dayjs cho DatePicker */
@@ -34,6 +50,8 @@ export interface CrudPageProps<T extends object> {
   deleteConfirm?: string;
   searchPlaceholder?: string;
   modalWidth?: number;
+  /** Chia danh sách thành các phần (tab) riêng; tab đang mở lưu trên địa chỉ trang (?tab=…) */
+  sections?: CrudSection<T>[];
 }
 
 export function CrudPage<T extends object>(props: CrudPageProps<T>) {
@@ -48,6 +66,11 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
   const [open, setOpen] = useState(false);
 
   const setFilter = (key: string, value: string | number | undefined) => setFilters((f) => ({ ...f, [key]: value }));
+  const partnerOptions = usePartnerOptions();
+  const [params, setParams] = useSearchParams();
+  const sections = props.sections ?? [];
+  const section = sections.find((x) => x.key === params.get('tab')) ?? sections[0];
+  const [partner, setPartner] = useState<number>();
 
   const { data = [], isFetching } = useQuery({
     queryKey: [endpoint, filters],
@@ -83,8 +106,8 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
       const values: Record<string, unknown> = { ...row, ...props.toFormValues?.(row) };
       for (const f of dateFields) values[f] = values[f] ? dayjs(values[f] as string) : null;
       form.setFieldsValue(values);
-    } else if (props.newDefaults) {
-      form.setFieldsValue(props.newDefaults);
+    } else if (props.newDefaults || section?.newDefaults) {
+      form.setFieldsValue({ ...props.newDefaults, ...section?.newDefaults });
     }
     setOpen(true);
   };
@@ -128,11 +151,23 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
       ]
     : [];
 
+  // Bản ghi của phần (tab) đang mở, lọc thêm theo nhà xe nếu có chọn
+  const rows = section ? data.filter((r) => section.match(r) && (!partner || !section.partnerOf || section.partnerOf(r) === partner)) : data;
+  const shownColumns = section?.hideColumns?.length ? columns.filter((c) => !section.hideColumns!.includes(String(c.title ?? ''))) : columns;
+  const switchSection = (key: string) => {
+    setPartner(undefined);
+    setParams((p) => {
+      const n = new URLSearchParams(p);
+      n.set('tab', key);
+      return n;
+    }, { replace: true });
+  };
+
   return (
     <Card>
       <Flex justify="space-between" align="center" wrap gap={12} style={{ marginBottom: 16 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>
-          {title} <Typography.Text type="secondary">({data.length})</Typography.Text>
+          {title} <Typography.Text type="secondary">({rows.length})</Typography.Text>
         </Typography.Title>
         <Flex gap={8} wrap>
           <Input
@@ -142,6 +177,9 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
             style={{ width: 240 }}
             onChange={(e) => setFilter('q', e.target.value || undefined)}
           />
+          {section?.partnerOf && (
+            <Select allowClear showSearch optionFilterProp="label" placeholder="Tất cả nhà xe" style={{ width: 200 }} options={partnerOptions} value={partner} onChange={setPartner} />
+          )}
           {renderFilters?.(filters, setFilter)}
           {canEdit && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm(null)}>
@@ -151,12 +189,20 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
         </Flex>
       </Flex>
 
+      {sections.length > 0 && (
+        <Tabs
+          activeKey={section?.key}
+          onChange={switchSection}
+          style={{ marginBottom: 4 }}
+          items={sections.map((x) => ({ key: x.key, label: `${x.label} (${data.filter(x.match).length})` }))}
+        />
+      )}
       <ResponsiveTable<T>
         rowKey={(row) => keyOf(row)}
         size="middle"
         loading={isFetching}
-        columns={[...columns, ...actionColumn]}
-        dataSource={data}
+        columns={[...shownColumns, ...actionColumn]}
+        dataSource={rows}
         pagination={paged()}
       />
 
@@ -172,7 +218,7 @@ export function CrudPage<T extends object>(props: CrudPageProps<T>) {
         forceRender
       >
         <Form form={form} layout="vertical">
-          {renderForm({ form, editing })}
+          {renderForm({ form, editing, section: section?.key })}
         </Form>
       </Modal>
     </Card>

@@ -18,6 +18,10 @@ export default function UsersPage() {
       deleteConfirm="Xóa người dùng này? Tài khoản đã có dữ liệu (booking, phiếu thu chi, điều xe…) sẽ được khóa và ẩn đi, chứng từ cũ vẫn giữ tên người tạo."
       searchPlaceholder="Tên đăng nhập, họ tên, SĐT"
       newDefaults={{ isActive: true, roles: [] }}
+      sections={[
+        { key: 'cong-ty', label: 'Người dùng công ty', match: (r) => !r.roles.includes('NHA_XE') },
+        { key: 'nha-xe', label: 'Tài khoản nhà xe đối tác', match: (r) => r.roles.includes('NHA_XE'), newDefaults: { roles: ['NHA_XE'] }, partnerOf: (r) => r.partner?.id },
+      ]}
       toFormValues={(r) => ({ driverId: r.driver?.id ?? null, partnerId: r.partner?.id ?? null, password: undefined })}
       modalWidth={640}
       renderFilters={(f, set) => (

@@ -16,7 +16,6 @@ export default function DriversPage() {
   const canSalary = hasRole('ADMIN', 'KE_TOAN');
   const salaries = useCurrentSalaries(canSalary);
   const [salaryDriver, setSalaryDriver] = useState<Driver | null>(null);
-  const ownerOptions = [{ value: 'company', label: 'Lái xe công ty' }, ...partnerOptions.map((p) => ({ value: String(p.value), label: p.label }))];
 
   return (
     <>
@@ -28,9 +27,12 @@ export default function DriversPage() {
       searchPlaceholder="Tên, SĐT, số bằng"
       dateFields={['licenseExpiry', 'healthCheckExpiry']}
       newDefaults={{ status: 'DANG_LAM' }}
+      sections={[
+        { key: 'cong-ty', label: 'Lái xe công ty', match: (r) => !r.partner, hideColumns: ['Thuộc'] },
+        { key: 'nha-xe', label: 'Lái xe nhà xe đối tác', match: (r) => !!r.partner, hideColumns: ['Lương (tháng này)', 'Xe mặc định'], partnerOf: (r) => r.partner?.id },
+      ]}
       renderFilters={(f, set) => (
         <>
-          <Select allowClear placeholder="Thuộc" style={{ width: 180 }} options={ownerOptions} value={f.owner} onChange={(v) => set('owner', v)} />
           <Select allowClear placeholder="Trạng thái" style={{ width: 140 }} options={toOptions(DRIVER_STATUS)} value={f.status} onChange={(v) => set('status', v)} />
         </>
       )}
@@ -70,7 +72,7 @@ export default function DriversPage() {
           render: (_, r) => (r.user ? <Tag color={r.user.isActive ? 'green' : 'default'}>{r.user.username}</Tag> : <span style={{ color: '#bbb' }}>Chưa có</span>),
         },
       ]}
-      renderForm={() => (
+      renderForm={({ section }) => (
         <Row gutter={16}>
           <Col xs={24} md={12}>
             <Form.Item name="fullName" label="Họ tên" rules={[{ required: true, message: 'Nhập họ tên' }]}>
@@ -82,11 +84,13 @@ export default function DriversPage() {
               <Input />
             </Form.Item>
           </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="partnerId" label="Thuộc nhà xe đối tác" extra="Để trống nếu là lái xe công ty">
-              <QuickSelect entity="partner" allowClear options={partnerOptions} />
-            </Form.Item>
-          </Col>
+          {section === 'nha-xe' && (
+            <Col xs={24} md={12}>
+              <Form.Item name="partnerId" label="Nhà xe đối tác" rules={[{ required: true, message: 'Chọn nhà xe' }]}>
+                <QuickSelect entity="partner" options={partnerOptions} />
+              </Form.Item>
+            </Col>
+          )}
           <Col xs={24} md={12}>
             <Form.Item name="idCardNumber" label="Số CCCD">
               <Input />

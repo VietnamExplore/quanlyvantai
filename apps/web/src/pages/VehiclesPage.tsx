@@ -28,10 +28,20 @@ export default function VehiclesPage() {
       searchPlaceholder="Biển số, hãng, dòng xe"
       dateFields={['registrationExpiry', 'insuranceExpiry', 'badgeExpiry']}
       newDefaults={{ ownership: 'CONG_TY', status: 'SAN_SANG' }}
+      sections={[
+        { key: 'cong-ty', label: 'Xe công ty', match: (r) => r.ownership === 'CONG_TY', newDefaults: { ownership: 'CONG_TY' }, hideColumns: ['Sở hữu'] },
+        {
+          key: 'nha-xe',
+          label: 'Xe nhà xe đối tác',
+          match: (r) => r.ownership !== 'CONG_TY',
+          newDefaults: { ownership: 'DOI_TAC' },
+          hideColumns: ['Lái xe mặc định', 'Định mức xăng'],
+          partnerOf: (r) => r.partner?.id,
+        },
+      ]}
       renderFilters={(f, set) => (
         <>
           <Select allowClear placeholder="Loại xe" style={{ width: 150 }} options={typeOptions} value={f.vehicleTypeId} onChange={(v) => set('vehicleTypeId', v)} />
-          <Select allowClear placeholder="Sở hữu" style={{ width: 120 }} options={toOptions(OWNERSHIP)} value={f.ownership} onChange={(v) => set('ownership', v)} />
           <Select allowClear placeholder="Trạng thái" style={{ width: 160 }} options={toOptions(VEHICLE_STATUS)} value={f.status} onChange={(v) => set('status', v)} />
         </>
       )}
