@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { api, apiBlob } from '../api';
 import { ResponsiveTable } from '../components/ResponsiveTable';
+import { GdriveCard, type GdriveStatus } from '../components/GdriveCard';
 
 interface MaintenanceConfig {
   backupEnabled: boolean;
@@ -29,6 +30,7 @@ interface Status {
   dir: string;
   disk: { free: number; total: number } | null;
   stats: { auditCount: number; auditOldest: string | null; notificationCount: number; dbSize: number };
+  gdrive: GdriveStatus;
 }
 
 /** 1536000 → "1,5 MB" */
@@ -57,7 +59,12 @@ export default function SystemPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<MaintenanceConfig>();
   const [busy, setBusy] = useState<'save' | 'backup' | 'cleanup' | null>(null);
-  const { data, isLoading } = useQuery({ queryKey: ['/system/maintenance'], queryFn: () => api<Status>('/system/maintenance') });
+  const { data, isLoading } = useQuery({
+    queryKey: ['/system/maintenance'],
+    queryFn: () => api<Status>('/system/maintenance'),
+    // Đang chờ xác nhận Google / đang tải lên Drive: tự cập nhật vài giây một lần
+    refetchInterval: (q) => (q.state.data?.gdrive.pending || q.state.data?.gdrive.busy ? 3000 : false),
+  });
 
   useEffect(() => {
     if (data) form.setFieldsValue(data.config);
@@ -182,6 +189,8 @@ export default function SystemPage() {
         )}
       </Card>
 
+      <GdriveCard<Status> status={data?.gdrive} onStatus={(st) => queryClient.setQueryData(['/system/maintenance'], st)} />
+
       <Card
         title={`Bản sao lưu (${data?.backups.length ?? 0})`}
         extra={
@@ -203,16 +212,30 @@ export default function SystemPage() {
           </Flex>
         }
       >
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-          title={
-            <>
-              Bản sao lưu lưu ở <b>{data?.dir}</b> trên cùng máy chủ. Nên <b>tải bản mới nhất về máy khác</b> (USB, Google Drive…) ít nhất mỗi tuần: máy chủ hỏng thì bản sao lưu trên đó cũng mất. File chứa toàn bộ dữ liệu, cần cất giữ cẩn thận.
-            </>
-          }
-        />
+        {data?.gdrive.connected && data.gdrive.enabled ? (
+          <Alert
+            type="success"
+            showIcon
+            style={{ marginBottom: 16 }}
+            title={
+              <>
+                Bản sao lưu lưu ở <b>{data.dir}</b> và <b>tự đẩy lên Google Drive</b> ({data.gdrive.account}) sau mỗi lần sao lưu. File chứa toàn bộ dữ liệu, cần cất giữ cẩn thận.
+              </>
+            }
+          />
+        ) : (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            title={
+              <>
+                Bản sao lưu lưu ở <b>{data?.dir}</b> trên cùng máy chủ: máy chủ hỏng thì bản sao lưu trên đó cũng mất. Nên <b>kết nối Google Drive</b> ở trên để tự đẩy lên, hoặc tải bản mới nhất về
+                máy khác (USB…) ít nhất mỗi tuần. File chứa toàn bộ dữ liệu, cần cất giữ cẩn thận.
+              </>
+            }
+          />
+        )}
         <ResponsiveTable<BackupSet>
           rowKey="name"
           size="small"

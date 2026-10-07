@@ -1,12 +1,13 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, NotFoundException, Param, Post, Put, Req, Res } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import type { Request, Response } from 'express';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { CurrentUser, Roles, type AuthUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { GdriveService } from './gdrive.service';
 import { BACKUP_FILE, MaintenanceService } from './maintenance.service';
 
 class MaintenanceConfigDto {
@@ -17,6 +18,14 @@ class MaintenanceConfigDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(3650) notificationRetentionDays?: number;
 }
 
+class GdriveConfigDto {
+  @IsOptional() @IsString() @MaxLength(300) clientId?: string;
+  /** Bỏ trống = giữ secret đang lưu */
+  @IsOptional() @IsString() @MaxLength(300) clientSecret?: string;
+  @IsOptional() @IsBoolean() enabled?: boolean;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1, { message: 'Giữ ít nhất 1 bản trên Google Drive' }) @Max(365) keep?: number;
+}
+
 /** Sao lưu dữ liệu và dọn nhật ký / thông báo cũ: chỉ Admin */
 @Controller('system')
 @Roles(Role.ADMIN)
@@ -24,7 +33,47 @@ export class SystemController {
   constructor(
     private readonly maintenance: MaintenanceService,
     private readonly prisma: PrismaService,
+    private readonly gdrive: GdriveService,
   ) {}
+
+  // ───── Google Drive ─────
+
+  @Put('gdrive')
+  async gdriveSave(@Body() dto: GdriveConfigDto) {
+    await this.gdrive.saveConfig(dto);
+    return this.maintenance.status();
+  }
+
+  /** Lấy mã kết nối: Admin nhập mã ở google.com/device */
+  @Post('gdrive/connect')
+  @HttpCode(200)
+  async gdriveConnect() {
+    try {
+      await this.gdrive.startConnect();
+    } catch (e) {
+      throw new BadRequestException((e as Error).message);
+    }
+    return this.maintenance.status();
+  }
+
+  @Post('gdrive/disconnect')
+  @HttpCode(200)
+  async gdriveDisconnect() {
+    await this.gdrive.disconnect();
+    return this.maintenance.status();
+  }
+
+  /** Đẩy bản sao lưu mới nhất lên Google Drive ngay */
+  @Post('gdrive/upload')
+  @HttpCode(200)
+  async gdriveUpload() {
+    try {
+      await this.maintenance.uploadLatest();
+    } catch (e) {
+      throw new BadRequestException((e as Error).message);
+    }
+    return this.maintenance.status();
+  }
 
   @Get('maintenance')
   status() {

@@ -20,6 +20,10 @@ export const AUDIT_RULES: AuditRule[] = [
   r('PUT', '/system/maintenance', 'Sửa cài đặt sao lưu & dọn dẹp', 'System'),
   r('POST', '/system/backups/run', 'Sao lưu dữ liệu', 'System'),
   r('POST', '/system/cleanup/run', 'Dọn nhật ký & thông báo cũ', 'System'),
+  r('PUT', '/system/gdrive', 'Sửa cài đặt Google Drive', 'System'),
+  r('POST', '/system/gdrive/connect', 'Kết nối Google Drive', 'System'),
+  r('POST', '/system/gdrive/disconnect', 'Ngắt kết nối Google Drive', 'System'),
+  r('POST', '/system/gdrive/upload', 'Đẩy sao lưu lên Google Drive', 'System'),
 
   // Đăng nhập
   r('POST', '/auth/login', 'Đăng nhập', 'User'),

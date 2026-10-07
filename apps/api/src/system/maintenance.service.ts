@@ -6,6 +6,7 @@ import { basename, dirname, join, resolve } from 'path';
 import { promisify } from 'util';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
+import { GdriveService } from './gdrive.service';
 
 const run = promisify(execFile);
 
@@ -50,6 +51,7 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly push: PushService,
+    private readonly gdrive: GdriveService,
   ) {}
 
   onModuleInit() {
@@ -176,6 +178,8 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
         removed,
       };
       await this.setValue('lastBackup', result);
+      // Đã kết nối Google Drive: đẩy bản vừa sao lưu lên (chạy nền, lỗi thì báo Admin)
+      if (await this.gdrive.shouldUpload()) void this.gdrive.uploadSet(ts, [dbFile, upFile]).catch(() => undefined);
       this.logger.log(`Sao lưu xong ${ts} (${Math.round((result.dbSize + result.uploadsSize) / 1024)} KB)`);
       return result;
     } catch (e) {
@@ -216,6 +220,14 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
     return removed;
   }
 
+  /** Đẩy bộ sao lưu mới nhất trên máy lên Google Drive (nút Đẩy lên ngay) */
+  async uploadLatest() {
+    if (!(await this.gdrive.status()).connected) throw new Error('Chưa kết nối Google Drive');
+    const set = this.list()[0];
+    if (!set) throw new Error('Chưa có bản sao lưu nào, bấm Sao lưu ngay trước');
+    return this.gdrive.uploadSet(set.name, [set.db?.file, set.uploads?.file].filter((f): f is string => !!f).map((f) => join(this.dir, f)));
+  }
+
   async status() {
     const [config, lastBackup, lastCleanup, auditCount, auditOldest, notificationCount, dbSize] = await Promise.all([
       this.config(),
@@ -240,6 +252,7 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
       backups: this.list(),
       busy: this.busy,
       dir: process.env.BACKUP_DIR_LABEL ?? this.dir,
+      gdrive: await this.gdrive.status(),
       disk,
       stats: { auditCount, auditOldest: auditOldest?.createdAt ?? null, notificationCount, dbSize: Number(dbSize[0]?.size ?? 0) },
     };
