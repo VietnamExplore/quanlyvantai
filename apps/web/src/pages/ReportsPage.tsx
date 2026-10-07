@@ -577,7 +577,7 @@ export default function ReportsPage() {
             { header: `Tỷ lệ sử dụng (%/${periodDays} ngày)`, value: (g) => Math.round((g.activeDays / periodDays) * 100) },
             { header: 'Giờ chạy', value: (g) => g.hours, sum: true },
           ]),
-          ...(pay ? payrollSheets(pay, trips, rangeText) : []),
+          ...(pay ? payrollSheets(filter.driver ? { ...pay, drivers: pay.drivers.filter((d) => d.fullName === filter.driver) } : pay, allTrips, rangeText) : []),
           groupSheet('Hiệu suất lái xe', 'HIỆU SUẤT LÁI XE CÔNG TY', 'Lái xe', groups.drivers, [
             { header: 'Ngày làm việc', value: (g) => g.activeDays, sum: true },
             { header: 'Giờ chạy', value: (g) => g.hours, sum: true },
@@ -649,7 +649,16 @@ export default function ReportsPage() {
             label: 'Hiệu suất lái xe',
             children: (
               <>
-              {canSalary && <DriverPayTable pay={pay && filter.driver ? { ...pay, drivers: pay.drivers.filter((d) => d.fullName === filter.driver) } : pay} loading={payLoading} trips={trips} />}
+              {canSalary && (
+                <DriverPayTable
+                  pay={pay && filter.driver ? { ...pay, drivers: pay.drivers.filter((d) => d.fullName === filter.driver) } : pay}
+                  loading={payLoading}
+                  trips={allTrips}
+                  rangeText={periodText}
+                  from={from}
+                  to={to}
+                />
+              )}
               {canSalary && (
                 <Typography.Title level={5} style={{ marginTop: 24 }}>
                   Hiệu suất lái xe
@@ -1014,9 +1023,53 @@ function payTrips(d: DriverPay, trips: ReportTrip[]) {
     });
 }
 
-function DriverPayTable({ pay, loading, trips }: { pay?: DriverPayReport; loading: boolean; trips: ReportTrip[] }) {
+type PayState = 'all' | 'hasTrips' | 'missingRate' | 'pending' | 'advance' | 'reimburse';
+const PAY_STATE: Record<PayState, string> = {
+  all: 'Tất cả',
+  hasTrips: 'Có chuyến',
+  missingRate: 'Chưa cài lương',
+  pending: 'Còn chuyến chưa HT',
+  advance: 'Có trừ tạm ứng',
+  reimburse: 'Có hoàn ứng',
+};
+
+function DriverPayTable({ pay, loading, trips, rangeText, from, to }: { pay?: DriverPayReport; loading: boolean; trips: ReportTrip[]; rangeText: string; from: string; to: string }) {
+  const { message } = App.useApp();
   const [editing, setEditing] = useState<{ id: number; fullName: string } | null>(null);
-  const rows = pay?.drivers ?? [];
+  // Bộ lọc riêng của bảng lương
+  const [ids, setIds] = useState<number[]>([]);
+  const [status, setStatus] = useState<DriverStatus>();
+  const [state, setState] = useState<PayState>('all');
+  const [q, setQ] = useState('');
+  const all = pay?.drivers ?? [];
+  const rows = all.filter(
+    (r) =>
+      (!ids.length || ids.includes(r.driverId)) &&
+      (!status || r.status === status) &&
+      (!q.trim() || `${r.fullName} ${r.phone}`.toLowerCase().includes(q.trim().toLowerCase())) &&
+      (state === 'all' ||
+        (state === 'hasTrips' && r.trips > 0) ||
+        (state === 'missingRate' && r.missingRate) ||
+        (state === 'pending' && r.pendingTrips.length > 0) ||
+        (state === 'advance' && r.advanceTaken > 0) ||
+        (state === 'reimburse' && r.reimbursement > 0)),
+  );
+  const labels = [
+    ids.length && `Lái xe: ${all.filter((r) => ids.includes(r.driverId)).map((r) => r.fullName).join(', ')}`,
+    status && `Trạng thái: ${DRIVER_STATUS[status].label}`,
+    state !== 'all' && PAY_STATE[state],
+    q.trim() && `Tìm: "${q.trim()}"`,
+  ].filter(Boolean) as string[];
+  const filtered = labels.length > 0;
+
+  async function exportPay(list: DriverPay[], file: string) {
+    if (!pay || !list.length) return;
+    try {
+      await downloadExcel(file, payrollSheets({ ...pay, drivers: list }, trips, filtered && list.length > 1 ? `${rangeText} · Lọc: ${labels.join(' · ')}` : rangeText));
+    } catch (e) {
+      message.error(`Không xuất được Excel: ${(e as Error).message}`);
+    }
+  }
   const sum = rows.reduce(
     (s, r) => ({
       revenue: s.revenue + r.revenue,
@@ -1059,13 +1112,57 @@ function DriverPayTable({ pay, loading, trips }: { pay?: DriverPayReport; loadin
           title={`${pendingCount} chuyến đã qua giờ đón nhưng chưa bấm "Hoàn thành" nên chưa được tính % doanh số. Bấm vào lái xe để xem và cập nhật trạng thái chuyến.`}
         />
       )}
+      <Flex gap={8} wrap align="center" style={{ marginBottom: 12 }}>
+        <Select
+          mode="multiple"
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          maxTagCount="responsive"
+          placeholder="Tất cả lái xe"
+          style={{ minWidth: 220, maxWidth: '100%', flex: '1 1 220px' }}
+          options={all.map((r) => ({ value: r.driverId, label: r.fullName }))}
+          value={ids}
+          onChange={setIds}
+        />
+        <Select
+          allowClear
+          placeholder="Trạng thái lái xe"
+          style={{ width: 170 }}
+          options={(Object.keys(DRIVER_STATUS) as DriverStatus[]).map((k) => ({ value: k, label: DRIVER_STATUS[k].label }))}
+          value={status}
+          onChange={setStatus}
+        />
+        <Select<PayState> style={{ width: 190 }} value={state} onChange={setState} options={(Object.keys(PAY_STATE) as PayState[]).map((k) => ({ value: k, label: k === 'all' ? 'Tình trạng: tất cả' : PAY_STATE[k] }))} />
+        <Input allowClear prefix={<SearchOutlined />} placeholder="Tên, SĐT lái xe" style={{ width: 180, maxWidth: '100%' }} value={q} onChange={(e) => setQ(e.target.value)} />
+        {filtered && (
+          <Button
+            icon={<ClearOutlined />}
+            onClick={() => {
+              setIds([]);
+              setStatus(undefined);
+              setState('all');
+              setQ('');
+            }}
+          >
+            Xóa lọc
+          </Button>
+        )}
+        <Button
+          icon={<FileExcelOutlined style={{ color: '#15803d' }} />}
+          disabled={!rows.length}
+          onClick={() => exportPay(rows, `bang-luong-lai-xe_${from}_${to}${filtered ? (rows.length === 1 ? `_${fileSlug(rows[0].fullName)}` : '_loc') : ''}.xlsx`)}
+        >
+          Xuất Excel bảng lương {filtered ? 'theo bộ lọc' : ''} ({rows.length} lái xe)
+        </Button>
+      </Flex>
       <ResponsiveTable<DriverPay>
         rowKey="driverId"
         size="small"
         loading={loading}
         dataSource={rows}
         pagination={paged('lái xe')}
-        locale={{ emptyText: 'Chưa có lái xe công ty' }}
+        locale={{ emptyText: filtered ? 'Không có lái xe khớp bộ lọc' : 'Chưa có lái xe công ty' }}
         expandable={{
           expandRowByClick: true,
           rowExpandable: (r) => r.trips > 0 || multiMonth || r.advances.length > 0 || r.pendingTrips.length > 0,
@@ -1156,6 +1253,24 @@ function DriverPayTable({ pay, loading, trips }: { pay?: DriverPayReport; loadin
               </Typography.Text>
             ),
             sorter: (a, b) => a.netPay - b.netPay,
+          },
+          {
+            key: 'slip',
+            width: 70,
+            render: (_, r) => (
+              <Tooltip title={`Xuất phiếu lương của ${r.fullName} (lương, chuyến tính lương, hoàn ứng)`}>
+                <Button
+                  size="small"
+                  icon={<FileExcelOutlined style={{ color: '#15803d' }} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    exportPay([r], `phieu-luong-${fileSlug(r.fullName)}_${from}_${to}.xlsx`);
+                  }}
+                >
+                  Phiếu lương
+                </Button>
+              </Tooltip>
+            ),
           },
         ]}
         summary={() =>
