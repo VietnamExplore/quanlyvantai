@@ -53,6 +53,7 @@ export interface Trip {
     leaderAppId?: string | null;
     passengers?: Passenger[];
     signTitle?: string | null;
+    docLanguage?: string | null;
     signSubtitle?: string | null;
     /** Có file bảng đón khách gửi: image/png, image/jpeg, image/webp, application/pdf */
     signFileType?: string | null;

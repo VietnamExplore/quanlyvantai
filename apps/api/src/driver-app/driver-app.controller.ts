@@ -141,6 +141,8 @@ const driverTripSelect = {
       passengers: { select: { seq: true, fullName: true, gender: true, nationality: true, phone: true, note: true }, orderBy: { seq: 'asc' } },
       // Bảng đón khách
       signTitle: true,
+      // Ngôn ngữ giấy tờ của booking: dòng Chào mừng trên bảng đón
+      docLanguage: true,
       signSubtitle: true,
       signFileType: true,
     },

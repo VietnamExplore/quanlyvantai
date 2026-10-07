@@ -84,6 +84,8 @@ const tripSelect = {
       leaderApp: true,
       leaderAppId: true,
       signTitle: true,
+      // Ngôn ngữ giấy tờ của booking: dòng Chào mừng trên bảng đón
+      docLanguage: true,
       signSubtitle: true,
       signFileType: true,
       // Đoàn khách: chỉ họ tên, quốc tịch (không SĐT, giấy tờ của từng khách)

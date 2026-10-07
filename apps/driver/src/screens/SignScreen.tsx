@@ -4,10 +4,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuthImage } from '../api';
+import { BrandSign } from '../BrandSign';
 import type { Trip } from '../types';
 
 /**
- * Bảng đón khách toàn màn hình: tự xoay ngang, chữ tự phóng to vừa màn hình, màn hình không tự tắt.
+ * Bảng đón khách toàn màn hình: tự xoay ngang, màn hình không tự tắt. Bảng chữ kiểu mới có logo, tên công ty, hotline,
+ * dòng Chào mừng và thông tin liên hệ (giống bản in của văn phòng).
  * Booking có bảng đón khách gửi (ảnh hoặc PDF) thì mặc định hiện bảng đó, chuyển qua lại được với bảng chữ.
  */
 export function SignScreen({ trip, onClose }: { trip: Trip; onClose: () => void }) {
@@ -24,6 +26,14 @@ export function SignScreen({ trip, onClose }: { trip: Trip; onClose: () => void 
   const title = (b.signTitle || b.leaderName || b.passengers?.[0]?.fullName || (!b.customer ? b.contactName : '') || '').trim();
   const subtitle = b.signSubtitle?.trim();
 
+  // Nút trên cùng tự ẩn sau vài giây để không che hotline trên bảng; chạm màn hình để hiện lại
+  const [tools, setTools] = useState(true);
+  useEffect(() => {
+    if (!tools) return;
+    const timer = setTimeout(() => setTools(false), 4000);
+    return () => clearTimeout(timer);
+  }, [tools]);
+
   // Xoay ngang khi mở, trả về dọc khi đóng
   useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => undefined);
@@ -35,7 +45,7 @@ export function SignScreen({ trip, onClose }: { trip: Trip; onClose: () => void 
   return (
     <Modal visible animationType="fade" statusBarTranslucent supportedOrientations={['landscape', 'portrait']} onRequestClose={onClose}>
       <StatusBar hidden />
-      <View style={s.page}>
+      <Pressable style={s.page} onPress={() => setTools(true)}>
         {mode === 'image' && hasImage && !imgError ? (
           img.uri ? (
             <Image source={{ uri: img.uri }} style={s.image} resizeMode="contain" />
@@ -46,18 +56,10 @@ export function SignScreen({ trip, onClose }: { trip: Trip; onClose: () => void 
             </View>
           )
         ) : (
-          <View style={s.textWrap}>
-            <Text style={s.title} adjustsFontSizeToFit numberOfLines={3} minimumFontScale={0.2}>
-              {title.toUpperCase()}
-            </Text>
-            {subtitle ? (
-              <Text style={s.subtitle} adjustsFontSizeToFit numberOfLines={2}>
-                {subtitle}
-              </Text>
-            ) : null}
-          </View>
+          <BrandSign title={title} subtitle={subtitle} lang={b.docLanguage} />
         )}
 
+        {tools && (
         <View style={s.toolbar}>
           {hasImage && (
             <Pressable
@@ -75,7 +77,8 @@ export function SignScreen({ trip, onClose }: { trip: Trip; onClose: () => void 
             <Text style={[s.toolText, { color: '#fff' }]}>✕ Đóng</Text>
           </Pressable>
         </View>
-      </View>
+        )}
+      </Pressable>
     </Modal>
   );
 }
@@ -85,10 +88,6 @@ const s = StyleSheet.create({
   image: { flex: 1, margin: 8 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 16, color: '#555' },
-  // Chừa chỗ trên cho nút Đóng; chữ tự co vừa khung (không cố định khoảng cách dòng để chữ co được)
-  textWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 48, paddingTop: 72, paddingBottom: 28 },
-  title: { flexShrink: 1, fontSize: 120, fontWeight: '900', color: '#000', textAlign: 'center', width: '100%' },
-  subtitle: { fontSize: 34, color: '#333', textAlign: 'center', marginTop: 14, width: '100%' },
   toolbar: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', gap: 8, opacity: 0.85 },
   toolBtn: { backgroundColor: '#f0f0f0', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
   closeBtn: { backgroundColor: '#333' },

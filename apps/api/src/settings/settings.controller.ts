@@ -102,6 +102,36 @@ export class SettingsController {
     return this.get();
   }
 
+  /**
+   * Thông tin công ty in trên bảng đón khách (tên theo ngôn ngữ, khẩu hiệu, hotline, email, website, MST, địa chỉ, có logo không).
+   * Lái xe (app) và nhà xe đối tác (cổng nhà xe) cũng đọc được; không gồm thông tin chuyển khoản hay cài đặt khác.
+   */
+  @Get('branding')
+  @Roles(...OFFICE_ROLES, Role.LAI_XE, Role.NHA_XE)
+  async branding() {
+    const rows = await this.prisma.setting.findMany({
+      where: {
+        key: {
+          in: ['companyName', 'companySlogan', 'companyPhone', 'companyEmail', 'companyWebsite', 'companyTaxCode', 'companyAddress', LOGO_KEY, ...['en', 'ko', 'zh', 'ja'].flatMap((l) => [`companyName_${l}`, `companyAddress_${l}`])],
+        },
+      },
+    });
+    const v = Object.fromEntries(rows.map((r) => [r.key, r.value?.trim() || null]));
+    const lang = (field: 'companyName' | 'companyAddress') => Object.fromEntries(['en', 'ko', 'zh', 'ja'].map((l) => [l, v[`${field}_${l}`] ?? null]));
+    return {
+      name: v.companyName ?? null,
+      nameByLang: lang('companyName'),
+      slogan: v.companySlogan ?? null,
+      phone: v.companyPhone ?? null,
+      email: v.companyEmail ?? null,
+      website: v.companyWebsite ?? null,
+      taxCode: v.companyTaxCode ?? null,
+      address: v.companyAddress ?? null,
+      addressByLang: lang('companyAddress'),
+      logo: v[LOGO_KEY] ? `/api/settings/logo?v=${encodeURIComponent(v[LOGO_KEY])}` : null,
+    };
+  }
+
   /** Ảnh logo – công khai để thẻ <img> trên các trang in hiển thị được (logo không phải dữ liệu nhạy cảm) */
   @Get('logo')
   @Public()

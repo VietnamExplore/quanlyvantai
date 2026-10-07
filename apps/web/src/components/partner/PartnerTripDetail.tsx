@@ -440,7 +440,7 @@ export function PartnerTripDetail({
         </div>
       </div>
 
-      {signOpen && <SignBoard tripId={t.id} title={b.signTitle ?? ''} subtitle={b.signSubtitle} hasFile={!!b.signFileType} onClose={() => setSignOpen(false)} />}
+      {signOpen && <SignBoard tripId={t.id} title={(b.signTitle || b.leaderName || b.passengers[0]?.fullName || '').trim()} subtitle={b.signSubtitle} lang={b.docLanguage} hasFile={!!b.signFileType} onClose={() => setSignOpen(false)} />}
     </Drawer>
   );
 }

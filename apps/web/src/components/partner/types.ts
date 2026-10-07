@@ -44,6 +44,7 @@ export interface PartnerTrip {
     leaderApp: string | null;
     leaderAppId: string | null;
     signTitle: string | null;
+    docLanguage: string | null;
     signSubtitle: string | null;
     signFileType: string | null;
     passengers: { seq: number; fullName: string; gender: string | null; nationality: string | null }[];
