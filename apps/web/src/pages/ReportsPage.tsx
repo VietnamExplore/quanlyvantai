@@ -1,4 +1,4 @@
-import { DownloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ClearOutlined, DownloadOutlined, FileExcelOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, App, Button, Card, Col, DatePicker, Flex, Input, Progress, Row, Segmented, Select, Statistic, Table, Tabs, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -10,6 +10,7 @@ import { useAuth } from '../auth';
 import { routeText } from '../booking-utils';
 import { formatVnd, paged } from '../components/common';
 import { DriverSalaryModal } from '../components/DriverSalary';
+import { fileSlug } from '../components/FinanceFilter';
 import { downloadExcel, type ExcelSheet } from '../excel';
 import { DRIVER_STATUS, TRIP_STATUS, VEHICLE_STATUS } from '../labels';
 import type { DriverStatus, TripStatus, VehicleStatus } from '../types';
@@ -30,6 +31,9 @@ interface ReportTrip {
   partnerId: number | null;
   partnerPlate: string | null;
   partnerDriverName: string | null;
+  /** Số km đầu / cuối lái xe công ty ghi trên app */
+  startKm: number | null;
+  endKm: number | null;
   service: { code: string; name: string };
   vehicleType: { id: number; name: string };
   vehicle: { id: number; plateNumber: string } | null;
@@ -205,6 +209,183 @@ const assignment = (t: ReportTrip) =>
       ? `${t.partner.name}${t.partnerPlate ? ` · ${t.partnerPlate}` : ''}`
       : 'Chưa điều xe';
 
+/** Lái xe của chuyến: lái xe công ty, hoặc tài xế nhà xe nhập */
+const driverOf = (t: ReportTrip) => (t.partnerId ? t.partnerDriverName : t.driver?.fullName) ?? '';
+/** Biển số xe của chuyến: xe công ty, hoặc biển số nhà xe nhập */
+const plateOf = (t: ReportTrip) => (t.partnerId ? t.partnerPlate : t.vehicle?.plateNumber) ?? '';
+const kmOf = (t: ReportTrip) => (t.startKm !== null && t.endKm !== null && t.endKm >= t.startKm ? t.endKm - t.startKm : null);
+
+/** Sheet chi tiết chuyến để đối chiếu với lái xe / xe / nhà xe: tiêu đề, kỳ, điều kiện lọc, dòng tổng, tóm tắt */
+function tripSheet(trips: ReportTrip[], title: string, info: string[]): ExcelSheet {
+  const sorted = [...trips].sort((a, b) => a.pickupTime.localeCompare(b.pickupTime));
+  const sum = sorted.reduce((s, t) => ({ revenue: s.revenue + t.revenue, cost: s.cost + t.cost, profit: s.profit + t.profit }), { revenue: 0, cost: 0, profit: 0 });
+  return {
+    name: 'Đối chiếu chuyến',
+    title,
+    info: [...info, `Ngày lập: ${dayjs().format('DD/MM/YYYY HH:mm')}`],
+    headers: [
+      'Giờ đón',
+      'Giờ kết thúc',
+      'Booking',
+      'Mã của khách',
+      'Khách hàng',
+      'Dịch vụ',
+      'Hành trình',
+      'Loại xe',
+      'Số khách',
+      'Biển số',
+      'Lái xe',
+      'Nhà xe',
+      'Số km',
+      'Giờ chạy',
+      'Trạng thái',
+      'Doanh thu',
+      'Giá thuê nhà xe',
+      'Chi phí',
+      'Chi phí LX tự nhập',
+      'Lợi nhuận',
+    ],
+    sumColumns: [8, 12, 13, 15, 16, 17, 18, 19],
+    totalLabel: `Tổng ${sorted.length} chuyến`,
+    rows: sorted.map((t) => [
+      dayjs(t.pickupTime).format('DD/MM/YYYY HH:mm'),
+      dayjs(t.endTime).format('DD/MM/YYYY HH:mm'),
+      t.booking.code,
+      t.booking.customerRef,
+      customerName(t),
+      t.service.name,
+      routeText(t),
+      t.vehicleType.name,
+      t.passengers,
+      plateOf(t),
+      driverOf(t),
+      t.partner?.name ?? (t.vehicle ? 'Xe công ty' : 'Chưa điều xe'),
+      kmOf(t),
+      Math.round(tripHours(t) * 10) / 10,
+      TRIP_STATUS[t.status].label,
+      Math.round(t.revenue),
+      t.partnerCost === null ? null : Math.round(t.partnerCost),
+      Math.round(t.cost),
+      Math.round(t.driverCosts),
+      Math.round(t.profit),
+    ]),
+    summary: [
+      ['Doanh thu', Math.round(sum.revenue)],
+      ['Chi phí', Math.round(sum.cost)],
+      ['Lợi nhuận', Math.round(sum.profit)],
+    ],
+  };
+}
+
+// ───── Bộ lọc báo cáo (áp dụng cho mọi tab, thẻ tổng và file Excel) ─────
+
+type TripKind = 'all' | 'company' | 'partner' | 'none';
+interface ReportFilter {
+  driver?: string;
+  plate?: string;
+  partner?: number;
+  customer?: string;
+  sales?: string;
+  service?: string;
+  vehicleType?: number;
+  kind: TripKind;
+  q: string;
+}
+const EMPTY_FILTER: ReportFilter = { kind: 'all', q: '' };
+const salesName = (t: ReportTrip) => t.booking.salesUser?.fullName ?? 'Chưa gán NV';
+
+function matchTrip(t: ReportTrip, f: ReportFilter) {
+  if (f.driver && driverOf(t) !== f.driver) return false;
+  if (f.plate && plateOf(t) !== f.plate) return false;
+  if (f.partner && t.partner?.id !== f.partner) return false;
+  if (f.customer && customerName(t) !== f.customer) return false;
+  if (f.sales && salesName(t) !== f.sales) return false;
+  if (f.service && t.service.code !== f.service) return false;
+  if (f.vehicleType && t.vehicleType.id !== f.vehicleType) return false;
+  if (f.kind === 'company' && !t.vehicle) return false;
+  if (f.kind === 'partner' && !t.partnerId) return false;
+  if (f.kind === 'none' && (t.vehicle || t.partnerId)) return false;
+  const q = f.q.trim().toLowerCase();
+  if (!q) return true;
+  return [t.booking.code, t.booking.customerRef, customerName(t), salesName(t), routeText(t), assignment(t), driverOf(t)].join(' ').toLowerCase().includes(q);
+}
+
+/** Các lựa chọn lọc lấy từ chuyến trong kỳ */
+function filterOptions(trips: ReportTrip[]) {
+  const sorted = <T extends string | number>(m: Map<T, string>) => [...m.entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, 'vi'));
+  const drivers = new Map<string, string>();
+  const plates = new Map<string, string>();
+  const partners = new Map<number, string>();
+  const customers = new Map<string, string>();
+  const sales = new Map<string, string>();
+  const services = new Map<string, string>();
+  const types = new Map<number, string>();
+  for (const t of trips) {
+    const d = driverOf(t);
+    if (d) drivers.set(d, t.partnerId ? `${d} (${t.partner?.name ?? 'nhà xe'})` : d);
+    const p = plateOf(t);
+    if (p) plates.set(p, t.partnerId ? `${p} (${t.partner?.name ?? 'nhà xe'})` : p);
+    if (t.partner) partners.set(t.partner.id, t.partner.name);
+    customers.set(customerName(t), customerName(t));
+    sales.set(salesName(t), salesName(t));
+    services.set(t.service.code, t.service.name);
+    types.set(t.vehicleType.id, t.vehicleType.name);
+  }
+  return { drivers: sorted(drivers), plates: sorted(plates), partners: sorted(partners), customers: sorted(customers), sales: sorted(sales), services: sorted(services), types: sorted(types) };
+}
+type FilterOptions = ReturnType<typeof filterOptions>;
+
+const KIND_LABEL: Record<Exclude<TripKind, 'all'>, string> = { company: 'Chỉ xe công ty', partner: 'Chỉ nhà xe', none: 'Chỉ chuyến chưa điều' };
+
+/** Mô tả bộ lọc đang dùng (ghi vào file Excel) */
+function filterLabels(f: ReportFilter, o: FilterOptions) {
+  const name = <T,>(list: { value: T; label: string }[], v: T) => list.find((x) => x.value === v)?.label;
+  return [
+    f.driver && `Lái xe: ${f.driver}`,
+    f.plate && `Xe: ${f.plate}`,
+    f.partner && `Nhà xe: ${name(o.partners, f.partner)}`,
+    f.customer && `Khách hàng: ${f.customer}`,
+    f.sales && `NV kinh doanh: ${f.sales}`,
+    f.service && `Dịch vụ: ${name(o.services, f.service)}`,
+    f.vehicleType && `Loại xe: ${name(o.types, f.vehicleType)}`,
+    f.kind !== 'all' && KIND_LABEL[f.kind],
+    f.q.trim() && `Tìm: "${f.q.trim()}"`,
+  ].filter(Boolean) as string[];
+}
+
+function ReportFilterBar({ value, onChange, options }: { value: ReportFilter; onChange: (f: ReportFilter) => void; options: FilterOptions }) {
+  const set = (patch: Partial<ReportFilter>) => onChange({ ...value, ...patch });
+  const pick = (placeholder: string, width: number) => ({ allowClear: true, showSearch: true, optionFilterProp: 'label', placeholder, style: { width, maxWidth: '100%' } });
+  const active = filterLabels(value, options).length > 0;
+  return (
+    <Flex gap={8} wrap align="center">
+      <Select {...pick('Lái xe', 200)} options={options.drivers} value={value.driver} onChange={(driver) => set({ driver })} />
+      <Select {...pick('Xe (biển số)', 180)} options={options.plates} value={value.plate} onChange={(plate) => set({ plate })} />
+      <Select {...pick('Nhà xe đối tác', 200)} options={options.partners} value={value.partner} onChange={(partner) => set({ partner })} />
+      <Select {...pick('Khách hàng', 200)} options={options.customers} value={value.customer} onChange={(customer) => set({ customer })} />
+      <Select {...pick('NV kinh doanh', 170)} options={options.sales} value={value.sales} onChange={(sales) => set({ sales })} />
+      <Select {...pick('Dịch vụ', 170)} options={options.services} value={value.service} onChange={(service) => set({ service })} />
+      <Select {...pick('Loại xe', 150)} options={options.types} value={value.vehicleType} onChange={(vehicleType) => set({ vehicleType })} />
+      <Input allowClear prefix={<SearchOutlined />} placeholder="Booking, tuyến, mã khách…" style={{ width: 220, maxWidth: '100%' }} value={value.q} onChange={(e) => set({ q: e.target.value })} />
+      <Segmented<TripKind>
+        value={value.kind}
+        onChange={(kind) => set({ kind })}
+        options={[
+          { value: 'all', label: 'Tất cả' },
+          { value: 'company', label: 'Xe công ty' },
+          { value: 'partner', label: 'Nhà xe' },
+          { value: 'none', label: 'Chưa điều' },
+        ]}
+      />
+      {active && (
+        <Button icon={<ClearOutlined />} onClick={() => onChange(EMPTY_FILTER)}>
+          Xóa lọc
+        </Button>
+      )}
+    </Flex>
+  );
+}
+
 // ───── Cột dùng chung ─────
 
 const money = (v: number) => formatVnd(Math.round(v));
@@ -257,7 +438,13 @@ export default function ReportsPage() {
     queryKey: ['/reports/trips', from, to],
     queryFn: () => api<TripsReport>('/reports/trips', { query: { from, to } }),
   });
-  const trips = useMemo(() => data?.trips ?? [], [data]);
+  const allTrips = useMemo(() => data?.trips ?? [], [data]);
+  const [filter, setFilter] = useState<ReportFilter>(EMPTY_FILTER);
+  const options = useMemo(() => filterOptions(allTrips), [allTrips]);
+  const labels = filterLabels(filter, options);
+  const isFiltered = labels.length > 0;
+  // Mọi tab, thẻ tổng và file Excel đều dùng các chuyến đã lọc
+  const trips = useMemo(() => allTrips.filter((t) => matchTrip(t, filter)), [allTrips, filter]);
   const { data: pay, isLoading: payLoading } = useQuery({
     queryKey: ['/reports/driver-pay', from, to],
     queryFn: () => api<DriverPayReport>('/reports/driver-pay', { query: { from, to } }),
@@ -271,7 +458,7 @@ export default function ReportsPage() {
       (t) => (t.vehicle ? { key: `v${t.vehicle.id}`, name: t.vehicle.plateNumber } : null),
       from,
       to,
-      (data?.vehicles ?? []).map((v) => ({ key: `v${v.id}`, name: v.plateNumber, sub: v.vehicleType.name })),
+      isFiltered ? [] : (data?.vehicles ?? []).map((v) => ({ key: `v${v.id}`, name: v.plateNumber, sub: v.vehicleType.name })),
     );
     const vehicleInfo = new Map((data?.vehicles ?? []).map((v) => [`v${v.id}`, v]));
     vehicles.forEach((g) => (g.sub = g.sub ?? vehicleInfo.get(g.key)?.vehicleType.name));
@@ -282,7 +469,7 @@ export default function ReportsPage() {
         (t) => (t.driver && !t.partnerId ? { key: `d${t.driver.id}`, name: t.driver.fullName } : null),
         from,
         to,
-        (data?.drivers ?? []).filter((d) => d.status !== 'NGHI_VIEC').map((d) => ({ key: `d${d.id}`, name: d.fullName, sub: d.phone })),
+        isFiltered ? [] : (data?.drivers ?? []).filter((d) => d.status !== 'NGHI_VIEC').map((d) => ({ key: `d${d.id}`, name: d.fullName, sub: d.phone })),
       ),
       partners: groupTrips(trips, (t) => (t.partner ? { key: `p${t.partner.id}`, name: t.partner.name } : null), from, to),
       customers: groupTrips(trips, (t) => ({ key: t.booking.customer ? `c${t.booking.customer.id}` : `le-${t.booking.contactName}`, name: customerName(t) }), from, to),
@@ -290,7 +477,7 @@ export default function ReportsPage() {
       services: groupTrips(trips, (t) => ({ key: t.service.code, name: t.service.name }), from, to),
       vehicleTypes: groupTrips(trips, (t) => ({ key: `t${t.vehicleType.id}`, name: t.vehicleType.name }), from, to),
     };
-  }, [trips, data, from, to]);
+  }, [trips, data, from, to, isFiltered]);
 
   const total = useMemo(() => {
     const s = { revenue: 0, cost: 0, profit: 0, trips: trips.length, passengers: 0, noCost: 0, company: 0, partner: 0, unassigned: 0 };
@@ -307,7 +494,39 @@ export default function ReportsPage() {
     return s;
   }, [trips]);
 
-  const rangeText = `${range[0].format('DD/MM/YYYY')} – ${range[1].format('DD/MM/YYYY')}`;
+  const periodText = `${range[0].format('DD/MM/YYYY')} – ${range[1].format('DD/MM/YYYY')}`;
+  // Tiêu đề các sheet Excel ghi kèm điều kiện lọc
+  const rangeText = isFiltered ? `${periodText} · Lọc: ${labels.join(' · ')}` : periodText;
+
+  /** Xuất Excel đối chiếu các chuyến đang lọc (tên file theo lái xe / xe / nhà xe / khách đang chọn) */
+  async function exportFiltered() {
+    const who = filter.driver ?? filter.plate ?? options.partners.find((p) => p.value === filter.partner)?.label ?? filter.customer ?? filter.sales;
+    try {
+      await downloadExcel(`doi-chieu${who ? `-${fileSlug(who)}` : '-chuyen'}_${from}_${to}.xlsx`, [
+        tripSheet(trips, `ĐỐI CHIẾU CHUYẾN${who ? ` – ${who.toUpperCase()}` : ''}`, [`Kỳ: ${periodText}`, isFiltered ? `Lọc: ${labels.join(' · ')}` : 'Tất cả chuyến trong kỳ']),
+      ]);
+    } catch (e) {
+      message.error(`Không xuất được Excel: ${(e as Error).message}`);
+    }
+  }
+
+  /** Xuất Excel đối chiếu chuyến của một xe / lái xe / nhà xe (dòng trong các tab gom nhóm) */
+  async function exportOne(kind: 'vehicle' | 'driver' | 'partner', g: Group) {
+    const id = Number(g.key.slice(1));
+    const list = trips.filter((t) => (kind === 'vehicle' ? t.vehicle?.id === id : kind === 'driver' ? t.driver?.id === id && !t.partnerId : t.partner?.id === id));
+    if (!list.length) {
+      message.info(`${g.name} không có chuyến trong kỳ`);
+      return;
+    }
+    const label = { vehicle: 'XE', driver: 'LÁI XE', partner: 'NHÀ XE' }[kind];
+    try {
+      await downloadExcel(`doi-chieu-${fileSlug(g.name)}_${from}_${to}.xlsx`, [
+        tripSheet(list, `ĐỐI CHIẾU CHUYẾN – ${label} ${g.name.toUpperCase()}`, [[g.sub, `Kỳ: ${periodText}`].filter(Boolean).join(' · '), ...(isFiltered ? [`Lọc: ${labels.join(' · ')}`] : [])]),
+      ]);
+    } catch (e) {
+      message.error(`Không xuất được Excel: ${(e as Error).message}`);
+    }
+  }
 
   async function exportExcel() {
     setExporting(true);
@@ -374,7 +593,7 @@ export default function ReportsPage() {
         groupSheet('Dịch vụ', 'DOANH THU THEO DỊCH VỤ', 'Dịch vụ', groups.services, [{ header: 'Số khách', value: (g) => g.passengers, sum: true }]),
         groupSheet('Loại xe', 'DOANH THU THEO LOẠI XE', 'Loại xe', groups.vehicleTypes, [{ header: 'Số khách', value: (g) => g.passengers, sum: true }]),
       );
-      await downloadExcel(`bao-cao-${from}-${to}.xlsx`, sheets);
+      await downloadExcel(`bao-cao-${from}-${to}${isFiltered ? '-loc' : ''}.xlsx`, sheets);
     } catch (e) {
       message.error(`Không xuất được Excel: ${(e as Error).message}`);
     } finally {
@@ -383,7 +602,7 @@ export default function ReportsPage() {
   }
 
   const tabs = [
-    { key: 'trips', label: `Chi tiết chuyến (${trips.length})`, children: <TripDetail trips={trips} loading={isLoading} /> },
+    { key: 'trips', label: `Chi tiết chuyến (${trips.length})`, children: <TripDetail trips={trips} loading={isLoading} onExport={exportFiltered} filtered={isFiltered} /> },
     ...(data?.ownOnly
       ? []
       : [
@@ -395,6 +614,7 @@ export default function ReportsPage() {
                 loading={isLoading}
                 rows={groups.vehicles}
                 label="Xe công ty"
+                onExport={(g) => exportOne('vehicle', g)}
                 note={`Tỷ lệ sử dụng = số ngày xe có chuyến / ${periodDays} ngày trong kỳ. Chỉ tính chuyến chạy bằng xe công ty.`}
                 extra={[
                   {
@@ -429,7 +649,7 @@ export default function ReportsPage() {
             label: 'Hiệu suất lái xe',
             children: (
               <>
-              {canSalary && <DriverPayTable pay={pay} loading={payLoading} trips={trips} />}
+              {canSalary && <DriverPayTable pay={pay && filter.driver ? { ...pay, drivers: pay.drivers.filter((d) => d.fullName === filter.driver) } : pay} loading={payLoading} trips={trips} />}
               {canSalary && (
                 <Typography.Title level={5} style={{ marginTop: 24 }}>
                   Hiệu suất lái xe
@@ -439,6 +659,7 @@ export default function ReportsPage() {
                 loading={isLoading}
                 rows={groups.drivers}
                 label="Lái xe công ty"
+                onExport={(g) => exportOne('driver', g)}
                 note="Dùng để đối chiếu tính lương / tiền chuyến. Chi phí LX tự nhập = các khoản lái xe ghi trên app (xăng, cầu đường…)."
                 extra={[
                   { title: 'Ngày làm việc', dataIndex: 'activeDays', align: 'right', sorter: (a, b) => a.activeDays - b.activeDays },
@@ -463,6 +684,7 @@ export default function ReportsPage() {
           loading={isLoading}
           rows={groups.partners}
           label="Nhà xe"
+          onExport={(g) => exportOne('partner', g)}
           note="Chi phí = giá thuê nhà xe + chi phí phát sinh của chuyến."
           extra={[{ title: 'Giá thuê nhà xe', dataIndex: 'partnerCost', align: 'right', render: money, sorter: (a, b) => a.partnerCost - b.partnerCost }]}
         />
@@ -577,6 +799,10 @@ export default function ReportsPage() {
         />
       )}
 
+      <Card size="small" title={isFiltered ? `Lọc: ${trips.length}/${allTrips.length} chuyến` : 'Lọc báo cáo (áp dụng cho mọi tab)'}>
+        <ReportFilterBar value={filter} onChange={setFilter} options={options} />
+      </Card>
+
       <Card>
         <Tabs activeKey={tab} onChange={setTab} items={tabs} />
       </Card>
@@ -586,38 +812,15 @@ export default function ReportsPage() {
 
 // ───── Bảng chi tiết chuyến ─────
 
-function TripDetail({ trips, loading }: { trips: ReportTrip[]; loading: boolean }) {
-  const [q, setQ] = useState('');
-  const [service, setService] = useState<string>();
-  const [kind, setKind] = useState<'all' | 'company' | 'partner' | 'none'>('all');
-
-  const services = useMemo(() => [...new Map(trips.map((t) => [t.service.code, t.service.name])).entries()].map(([value, label]) => ({ value, label })), [trips]);
-  const rows = trips.filter((t) => {
-    if (service && t.service.code !== service) return false;
-    if (kind === 'company' && !t.vehicle) return false;
-    if (kind === 'partner' && !t.partnerId) return false;
-    if (kind === 'none' && (t.vehicle || t.partnerId)) return false;
-    if (!q) return true;
-    const text = [t.booking.code, t.booking.customerRef, customerName(t), t.booking.salesUser?.fullName, routeText(t), assignment(t)].join(' ').toLowerCase();
-    return text.includes(q.toLowerCase());
-  });
+function TripDetail({ trips: rows, loading, onExport, filtered }: { trips: ReportTrip[]; loading: boolean; onExport: () => void; filtered: boolean }) {
   const sum = rows.reduce((s, t) => ({ revenue: s.revenue + t.revenue, cost: s.cost + t.cost, profit: s.profit + t.profit }), { revenue: 0, cost: 0, profit: 0 });
 
   return (
     <>
-      <Flex gap={8} wrap style={{ marginBottom: 12 }}>
-        <Input allowClear prefix={<SearchOutlined />} placeholder="Booking, khách, tuyến, xe, lái xe" style={{ width: 280 }} onChange={(e) => setQ(e.target.value)} />
-        <Select allowClear placeholder="Dịch vụ" style={{ width: 200 }} options={services} onChange={setService} />
-        <Segmented
-          value={kind}
-          onChange={(v) => setKind(v as typeof kind)}
-          options={[
-            { value: 'all', label: 'Tất cả' },
-            { value: 'company', label: 'Xe công ty' },
-            { value: 'partner', label: 'Nhà xe' },
-            { value: 'none', label: 'Chưa điều' },
-          ]}
-        />
+      <Flex justify="flex-end" style={{ marginBottom: 12 }}>
+        <Button icon={<FileExcelOutlined style={{ color: '#15803d' }} />} disabled={!rows.length} onClick={onExport}>
+          Xuất Excel đối chiếu {filtered ? 'theo bộ lọc' : 'chi tiết chuyến'} ({rows.length} chuyến)
+        </Button>
       </Flex>
       <ResponsiveTable<ReportTrip>
         rowKey="id"
@@ -704,7 +907,10 @@ function GroupTable({
   note,
   loading,
   statusOf,
+  onExport,
 }: {
+  /** Xuất Excel đối chiếu chuyến của dòng này (xe / lái xe / nhà xe) */
+  onExport?: (g: Group) => void;
   rows: Group[];
   label: string;
   extra?: ColumnsType<Group>;
@@ -730,6 +936,22 @@ function GroupTable({
     { title: 'Số chuyến', dataIndex: 'trips', align: 'right', sorter: (a, b) => a.trips - b.trips },
     ...extra,
     ...moneyCols(),
+    ...(onExport
+      ? [
+          {
+            key: 'excel',
+            width: 60,
+            render: (_: unknown, g: Group) =>
+              g.trips > 0 && (
+                <Tooltip title={`Xuất Excel đối chiếu chuyến của ${g.name}`}>
+                  <Button size="small" icon={<FileExcelOutlined style={{ color: '#15803d' }} />} onClick={() => onExport(g)}>
+                    Excel
+                  </Button>
+                </Tooltip>
+              ),
+          },
+        ]
+      : []),
   ];
   return (
     <>
