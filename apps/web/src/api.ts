@@ -1,23 +1,32 @@
-const TOKEN_KEY = 'transfer_token';
+/**
+ * Phần mềm văn phòng (/) và cổng nhà xe (/partner) giữ phiên đăng nhập RIÊNG: cùng một trình duyệt vẫn mở được cả hai,
+ * mỗi tab một tài khoản (trước đây dùng chung một khóa nên đăng nhập bên này thì bên kia bị đẩy sang).
+ */
+export type AuthArea = 'office' | 'partner';
+const TOKEN_KEYS: Record<AuthArea, string> = { office: 'transfer_token', partner: 'transfer_partner_token' };
+
+/** Đang ở cổng nhà xe (/partner…; không tính trang danh mục /partners của văn phòng) */
+export const isPartnerArea = () => /^\/partner(\/|$)/.test(window.location.pathname);
+export const currentArea = (): AuthArea => (isPartnerArea() ? 'partner' : 'office');
 
 export const tokenStore = {
-  get(): string | null {
+  get(area: AuthArea = currentArea()): string | null {
     try {
-      return localStorage.getItem(TOKEN_KEY);
+      return localStorage.getItem(TOKEN_KEYS[area]);
     } catch {
       return null;
     }
   },
-  set(token: string) {
+  set(token: string, area: AuthArea = currentArea()) {
     try {
-      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(TOKEN_KEYS[area], token);
     } catch {
       /* trình duyệt chặn lưu trữ: phải đăng nhập lại khi tải lại trang */
     }
   },
-  clear() {
+  clear(area: AuthArea = currentArea()) {
     try {
-      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEYS[area]);
     } catch {
       /* bỏ qua */
     }

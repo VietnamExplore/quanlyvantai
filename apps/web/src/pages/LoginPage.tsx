@@ -1,6 +1,7 @@
 import { CarOutlined, FileDoneOutlined, LockOutlined, ScheduleOutlined, TranslationOutlined, UserOutlined, WalletOutlined } from '@ant-design/icons';
 import { Alert, Button, Flex, Form, Grid, Input, Typography } from 'antd';
 import { useState, type ReactNode } from 'react';
+import { isPartnerArea } from '../api';
 import { useAuth } from '../auth';
 import { BRAND } from '../theme';
 
@@ -12,6 +13,8 @@ const FEATURES: { icon: ReactNode; title: string; text: string }[] = [
 ];
 
 export default function LoginPage() {
+  // Cổng nhà xe (/partner) đăng nhập riêng với phần mềm văn phòng
+  const partner = isPartnerArea();
   const { login } = useAuth();
   const screens = Grid.useBreakpoint();
   const [error, setError] = useState<string | null>(null);
@@ -106,10 +109,10 @@ export default function LoginPage() {
               />
             )}
             <Typography.Title level={2} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.02em' }}>
-              Đăng nhập
+              {partner ? 'Cổng nhà xe đối tác' : 'Đăng nhập'}
             </Typography.Title>
             <Typography.Text type="secondary" style={{ marginTop: 6 }}>
-              Chào mừng bạn quay lại. Nhập tài khoản để tiếp tục.
+              {partner ? 'Đăng nhập bằng tài khoản nhà xe để nhận chuyến.' : 'Chào mừng bạn quay lại. Nhập tài khoản để tiếp tục.'}
             </Typography.Text>
           </Flex>
 

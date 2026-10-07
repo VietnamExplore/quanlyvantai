@@ -1,6 +1,7 @@
 import { Button, Flex, Result, Spin } from 'antd';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth } from './auth';
+import { isPartnerArea } from './api';
+import { isPartnerOnly, useAuth } from './auth';
 import { AppLayout } from './components/AppLayout';
 import AdvancesPage from './pages/AdvancesPage';
 import AuditLogPage from './pages/AuditLogPage';
@@ -45,6 +46,25 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
+
+  // Cổng nhà xe (/partner) có phiên riêng: tài khoản văn phòng đăng nhập ở đây thì hướng dẫn mở phần mềm văn phòng
+  if (isPartnerArea() && !isPartnerOnly(user)) {
+    return (
+      <Result
+        status="info"
+        title="Đây là cổng dành cho nhà xe đối tác"
+        subTitle={`Tài khoản ${user.fullName} là tài khoản văn phòng. Mở phần mềm văn phòng, hoặc đăng xuất để đăng nhập bằng tài khoản nhà xe.`}
+        extra={[
+          <Button key="office" type="primary" href="/">
+            Mở phần mềm văn phòng
+          </Button>,
+          <Button key="out" onClick={logout}>
+            Đăng xuất khỏi cổng nhà xe
+          </Button>,
+        ]}
+      />
+    );
+  }
 
   // Tài khoản nhà xe đối tác: chỉ có cổng nhận chuyến của nhà xe
   if (hasRole('NHA_XE') && !hasRole('ADMIN', 'DIEU_HANH', 'KINH_DOANH', 'KE_TOAN')) {
