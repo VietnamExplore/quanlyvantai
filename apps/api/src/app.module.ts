@@ -28,6 +28,7 @@ import { UsersModule } from './users/users.module';
 import { VehicleTypesModule } from './vehicle-types/vehicle-types.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { SystemModule } from './system/system.module';
+import { ShuttleModule } from './shuttle/shuttle.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { SystemModule } from './system/system.module';
     VehicleTypesModule,
     VehiclesModule,
     SystemModule,
+    ShuttleModule,
     DriversModule,
     PartnersModule,
     CustomersModule,

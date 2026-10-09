@@ -83,6 +83,12 @@ export class TripDto {
 
   @IsOptional() @IsString() itinerary?: string | null;
   @IsOptional() @IsString() notes?: string | null;
+
+  /** Xe ghép: chuyến xe ghép, điểm đón / trả trên tuyến, số trẻ em (trong số khách) */
+  @IsOptional() @IsInt() shuttleRunId?: number | null;
+  @IsOptional() @IsInt() shuttlePickupStopId?: number | null;
+  @IsOptional() @IsInt() shuttleDropoffStopId?: number | null;
+  @IsOptional() @IsInt() @Min(0) childCount?: number;
 }
 
 export class PassengerDto {

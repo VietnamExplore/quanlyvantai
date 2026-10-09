@@ -67,6 +67,8 @@ model VehicleType {
   routePrices    RoutePriceItem[]
   rentalRate     RentalRate?
   trips          BookingTrip[]
+  shuttleRoutes  ShuttleRoute[]
+  shuttleRuns    ShuttleRun[]
 }
 
 enum Ownership {
@@ -102,6 +104,7 @@ model Vehicle {
   defaultDriverId    Int?
   defaultDriver      Driver?       @relation(fields: [defaultDriverId], references: [id])
   trips              BookingTrip[]
+  shuttleRuns        ShuttleRun[]
   vouchers           CashVoucher[]
   notes              String?
   createdAt          DateTime      @default(now())
@@ -132,6 +135,7 @@ model Driver {
   user              User?            @relation(fields: [userId], references: [id])
   defaultVehicles   Vehicle[]
   trips             BookingTrip[]
+  shuttleRuns       ShuttleRun[]
   salaries          DriverSalary[]
   fuelVouchers      CashVoucher[]
   advanceRequests   AdvanceRequest[]
@@ -175,6 +179,7 @@ model Partner {
   vehicles         Vehicle[]
   drivers          Driver[]
   trips            BookingTrip[]
+  shuttleRuns      ShuttleRun[]
   payments         PartnerPayment[]
   vouchers         CashVoucher[]
   users            User[]
@@ -244,6 +249,7 @@ model Location {
 enum PricingMode {
   TUYEN // Tính theo giá tuyến
   THEO_NGAY // Tính theo giá thuê ngày khi không chọn tuyến
+  XE_GHEP // Bán từng chỗ trên chuyến xe ghép (shuttle bus) theo giá vé của tuyến
 }
 
 /// Danh mục dịch vụ (đón tiễn sân bay, city tour, thuê xe theo ngày…) do Admin quản lý
@@ -456,26 +462,26 @@ model BookingTrip {
 
   // ── Điều xe ──
   vehicleId              Int? // Xe công ty
-  vehicle                Vehicle?  @relation(fields: [vehicleId], references: [id])
+  vehicle                Vehicle?     @relation(fields: [vehicleId], references: [id])
   driverId               Int? // Lái xe công ty
-  driver                 Driver?   @relation(fields: [driverId], references: [id])
+  driver                 Driver?      @relation(fields: [driverId], references: [id])
   partnerId              Int? // Giao cho nhà xe đối tác
-  partner                Partner?  @relation(fields: [partnerId], references: [id])
+  partner                Partner?     @relation(fields: [partnerId], references: [id])
   partnerPlate           String?
   partnerDriverName      String?
   partnerDriverPhone     String?
-  partnerCost            Decimal?  @db.Decimal(15, 0) // Giá thuê đối tác thực tế
+  partnerCost            Decimal?     @db.Decimal(15, 0) // Giá thuê đối tác thực tế
   /// Nhà xe đối tác phải xuất hóa đơn cho công ty (thông tin công ty + email nhận hóa đơn hiện trên cổng nhà xe)
-  partnerInvoice         Boolean   @default(false)
+  partnerInvoice         Boolean      @default(false)
   /// Thuế suất trên hóa đơn nhà xe xuất: giá thuê là giá chưa thuế, công nợ nhà xe = giá thuê × (1 + thuế suất)
-  partnerVatPercent      Decimal   @default(0) @db.Decimal(5, 2)
+  partnerVatPercent      Decimal      @default(0) @db.Decimal(5, 2)
   /// Sự cố của nhà xe ở chuyến này: TRE_GIO (đón trễ) | KHONG_DON (không đón khách) – ghi khi văn phòng điều chỉnh giá
   partnerIssue           String?
   /// Ghi chú lần điều chỉnh giá nhà xe gần nhất (lý do, hiện cho nhà xe)
   partnerAdjustNote      String?
   /// Giá phát sinh nhà xe (trước thuế), nhập khi hoàn thành chuyến: công nợ = (giá thuê + tăng − giảm) × (1 + thuế suất)
-  partnerExtraUp         Decimal   @default(0) @db.Decimal(15, 0)
-  partnerExtraDown       Decimal   @default(0) @db.Decimal(15, 0)
+  partnerExtraUp         Decimal      @default(0) @db.Decimal(15, 0)
+  partnerExtraDown       Decimal      @default(0) @db.Decimal(15, 0)
   partnerExtraNote       String?
   /// Duyệt phát sinh: CHO_DUYET | DA_DUYET | TU_CHOI. Chỉ phát sinh DA_DUYET mới tính vào công nợ / lợi nhuận
   partnerExtraStatus     String?
@@ -484,6 +490,15 @@ model BookingTrip {
   partnerExtraReviewedAt DateTime?
   partnerInvoiceNote     String?
   dispatchNote           String? // Ghi chú cho tài xế / nhà xe
+  /// Xe ghép: lượt đặt chỗ thuộc chuyến xe ghép (điều xe theo cả chuyến ghép)
+  shuttleRunId           Int?
+  shuttleRun             ShuttleRun?  @relation(fields: [shuttleRunId], references: [id])
+  shuttlePickupStopId    Int?
+  shuttlePickupStop      ShuttleStop? @relation("ShuttlePickup", fields: [shuttlePickupStopId], references: [id], onDelete: SetNull)
+  shuttleDropoffStopId   Int?
+  shuttleDropoffStop     ShuttleStop? @relation("ShuttleDropoff", fields: [shuttleDropoffStopId], references: [id], onDelete: SetNull)
+  /// Số trẻ em trong số khách (giá vé trẻ em)
+  childCount             Int          @default(0)
 
   /// Văn phòng nhờ lái xe thu tiền khách giúp
   collectAmount    Decimal?       @db.Decimal(15, 0)
@@ -514,6 +529,7 @@ model BookingTrip {
   @@index([pickupTime])
   @@index([vehicleId, pickupTime])
   @@index([driverId, pickupTime])
+  @@index([shuttleRunId])
 }
 
 /// Danh sách hành khách của booking (in kèm lệnh vận chuyển xe hợp đồng)
@@ -747,4 +763,116 @@ model AuditLog {
   @@index([bookingId])
   @@index([userId])
   @@index([entity, entityId])
+}
+
+// ───── Xe ghép (shared shuttle bus) ─────
+
+enum ShuttleStopKind {
+  DIEM_DUNG // Điểm dừng cố định: khách tự ra điểm
+  KHU_VUC // Khu vực đón / trả tận khách sạn
+}
+
+enum ShuttleRunStatus {
+  MO_BAN
+  DONG_BAN
+  HUY
+}
+
+/// Tuyến xe ghép: giá vé / ghế, xe mặc định, số ghế bán
+model ShuttleRoute {
+  id              Int               @id @default(autoincrement())
+  code            String            @unique
+  name            String
+  vehicleTypeId   Int
+  vehicleType     VehicleType       @relation(fields: [vehicleTypeId], references: [id])
+  /// Số ghế bán mỗi chuyến (mặc định)
+  capacity        Int
+  /// Thời gian chạy dự kiến từ giờ xuất bến đến điểm cuối (phút)
+  durationMinutes Int               @default(60)
+  adultPrice      Decimal           @db.Decimal(15, 0)
+  childPrice      Decimal           @default(0) @db.Decimal(15, 0)
+  /// Giá cho khách hàng là đại lý (bỏ trống = giá thường)
+  agentAdultPrice Decimal?          @db.Decimal(15, 0)
+  agentChildPrice Decimal?          @db.Decimal(15, 0)
+  notes           String?
+  isActive        Boolean           @default(true)
+  sortOrder       Int               @default(0)
+  stops           ShuttleStop[]
+  schedules       ShuttleSchedule[]
+  runs            ShuttleRun[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+/// Điểm dừng / khu vực đón trên tuyến, theo thứ tự chạy
+model ShuttleStop {
+  id            Int             @id @default(autoincrement())
+  routeId       Int
+  route         ShuttleRoute    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  seq           Int
+  name          String
+  kind          ShuttleStopKind @default(DIEM_DUNG)
+  address       String?
+  /// Giờ đón dự kiến = giờ xuất bến + số phút này
+  offsetMinutes Int             @default(0)
+  /// Phụ phí mỗi ghế khi đón / trả ở đây (khu vực xa)
+  surcharge     Decimal         @default(0) @db.Decimal(15, 0)
+  canPickup     Boolean         @default(true)
+  canDropoff    Boolean         @default(true)
+  isActive      Boolean         @default(true)
+  pickups       BookingTrip[]   @relation("ShuttlePickup")
+  dropoffs      BookingTrip[]   @relation("ShuttleDropoff")
+}
+
+/// Giờ xuất bến cố định của tuyến
+model ShuttleSchedule {
+  id         Int          @id @default(autoincrement())
+  routeId    Int
+  route      ShuttleRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  /// "HH:mm" giờ Việt Nam
+  departTime String
+  /// Ngày trong tuần chạy: 1 = Thứ Hai … 7 = Chủ nhật; trống = mọi ngày
+  weekdays   Int[]
+  validFrom  DateTime?    @db.Date
+  validTo    DateTime?    @db.Date
+  /// Số ghế bán (trống = theo tuyến)
+  capacity   Int?
+  isActive   Boolean      @default(true)
+  runs       ShuttleRun[]
+}
+
+/// Chuyến xe ghép cụ thể (tuyến + giờ xuất bến); điều xe một lần cho cả chuyến
+model ShuttleRun {
+  id                 Int              @id @default(autoincrement())
+  routeId            Int
+  route              ShuttleRoute     @relation(fields: [routeId], references: [id])
+  scheduleId         Int?
+  schedule           ShuttleSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  departAt           DateTime
+  capacity           Int
+  vehicleTypeId      Int
+  vehicleType        VehicleType      @relation(fields: [vehicleTypeId], references: [id])
+  status             ShuttleRunStatus @default(MO_BAN)
+  note               String?
+  vehicleId          Int?
+  vehicle            Vehicle?         @relation(fields: [vehicleId], references: [id])
+  driverId           Int?
+  driver             Driver?          @relation(fields: [driverId], references: [id])
+  partnerId          Int?
+  partner            Partner?         @relation(fields: [partnerId], references: [id])
+  partnerPlate       String?
+  partnerDriverName  String?
+  partnerDriverPhone String?
+  /// Giá thuê nhà xe cả chuyến (chưa thuế)
+  partnerCost        Decimal?         @db.Decimal(15, 0)
+  /// Chi phí dự kiến cả chuyến khi chạy xe công ty
+  estimatedCost      Decimal?         @db.Decimal(15, 0)
+  dispatchNote       String?
+  assignedAt         DateTime?
+  trips              BookingTrip[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([routeId, departAt])
+  @@index([departAt])
 }

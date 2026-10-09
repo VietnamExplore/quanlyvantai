@@ -16,6 +16,16 @@ export interface AuditRule {
 const r = (method: string, path: string, action: string, entity?: string, model?: string, idField?: 'id' | 'code'): AuditRule => ({ method, path, action, entity, model, idField });
 
 export const AUDIT_RULES: AuditRule[] = [
+  // Xe ghép
+  r('POST', '/shuttle/routes', 'Thêm tuyến xe ghép', 'ShuttleRoute', 'shuttleRoute'),
+  r('PUT', '/shuttle/routes/:id', 'Sửa tuyến xe ghép', 'ShuttleRoute', 'shuttleRoute'),
+  r('DELETE', '/shuttle/routes/:id', 'Xóa tuyến xe ghép', 'ShuttleRoute', 'shuttleRoute'),
+  r('POST', '/shuttle/runs', 'Tạo chuyến xe ghép', 'ShuttleRun'),
+  r('PATCH', '/shuttle/runs/:id', 'Sửa chuyến xe ghép', 'ShuttleRun', 'shuttleRun'),
+  r('POST', '/shuttle/runs/:id/assign', 'Điều xe chuyến xe ghép', 'ShuttleRun', 'shuttleRun'),
+  r('POST', '/shuttle/runs/:id/unassign', 'Hủy điều xe chuyến xe ghép', 'ShuttleRun', 'shuttleRun'),
+  r('POST', '/shuttle/runs/:id/progress', 'Cập nhật chạy chuyến xe ghép', 'ShuttleRun', 'shuttleRun'),
+
   // Sao lưu & dọn dẹp
   r('PUT', '/system/maintenance', 'Sửa cài đặt sao lưu & dọn dẹp', 'System'),
   r('POST', '/system/backups/run', 'Sao lưu dữ liệu', 'System'),

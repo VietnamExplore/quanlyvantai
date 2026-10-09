@@ -4,6 +4,7 @@ import { AuthUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { PriceLine, sumLines } from '../pricing/pricing.service';
+import { ACTIVE_SEAT, ShuttleService } from '../shuttle/shuttle.service';
 import { BookingQueryDto, ChangeStatusDto, CreateBookingDto, PassengerDto, TripDto, UpdateBookingDto } from './bookings.dto';
 
 const HOUR_MS = 3_600_000;
@@ -99,6 +100,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly push: PushService,
+    private readonly shuttle: ShuttleService,
   ) {}
 
   /** "08:30 05/10" giờ Việt Nam */
@@ -247,6 +249,8 @@ export class BookingsService {
             { exclude: user.id },
           );
         }
+        // Xe ghép: lượt đặt mới nhận xe đã điều của chuyến ghép, chia lại chi phí
+        await this.shuttle.syncRuns(booking.trips.map((t) => t.shuttleRunId));
         return withTotals(booking);
       } catch (e) {
         // Hai người tạo booking cùng lúc bị trùng mã: thử lại với số kế tiếp
@@ -274,7 +278,7 @@ export class BookingsService {
     ];
 
     if (trips) {
-      const tripData = await this.buildTrips(trips);
+      const tripData = await this.buildTrips(trips, current);
       const keepIds = new Set(tripData.filter((t) => t.id).map((t) => t.id));
       for (const t of tripData) {
         if (t.id && !current.trips.some((c) => c.id === t.id)) throw new BadRequestException('Chuyến không thuộc booking này');
@@ -300,6 +304,11 @@ export class BookingsService {
     }
 
     await this.prisma.$transaction(ops);
+    // Xe ghép: đồng bộ chuyến ghép cũ và mới (ghế, xe đã điều, chia chi phí)
+    if (trips) {
+      const after = await this.prisma.bookingTrip.findMany({ where: { bookingId: id }, select: { shuttleRunId: true } });
+      await this.shuttle.syncRuns([...current.trips.map((t) => t.shuttleRunId), ...after.map((t) => t.shuttleRunId)]);
+    }
 
     // Báo lái xe khi chuyến đã giao bị đổi giờ / điểm đón / điểm trả, hoặc văn phòng nhờ thu tiền
     if (trips) {
@@ -352,6 +361,8 @@ export class BookingsService {
         : []),
     ]);
 
+    await this.shuttle.syncRuns(booking.trips.map((t) => t.shuttleRunId));
+
     // Khách xác nhận (không tính mở lại booking đã hoàn thành): báo Điều hành để xếp xe
     if (status === BookingStatus.XAC_NHAN && booking.status !== BookingStatus.HOAN_THANH) {
       const first = [...booking.trips].sort((a, b) => a.pickupTime.getTime() - b.pickupTime.getTime())[0];
@@ -376,35 +387,92 @@ export class BookingsService {
     return this.findOne(id);
   }
 
+  /**
+   * Lượt đặt xe ghép: kiểm tra chuyến còn bán, đủ ghế, điểm đón / trả thuộc tuyến;
+   * giờ đón = giờ xuất bến + giờ lệch của điểm đón, loại xe theo chuyến.
+   */
+  private async shuttleTrips(trips: TripDto[], current?: { id: number; trips: { id: number; shuttleRunId: number | null; passengers: number; status: TripStatus }[] }) {
+    const out = new Map<number, { pickupTime: Date; endTime: Date; vehicleTypeId: number; reset: boolean }>();
+    const runIds = [...new Set(trips.map((t) => t.shuttleRunId).filter((x): x is number => !!x))];
+    for (const runId of runIds) {
+      const { run } = await this.shuttle.seatCheck(runId);
+      // Ghế đã dùng bởi booking khác (các lượt của booking này tính lại theo dữ liệu đang lưu)
+      const used = await this.prisma.bookingTrip.aggregate({
+        where: { shuttleRunId: runId, ...ACTIVE_SEAT, ...(current && { bookingId: { not: current.id } }) },
+        _sum: { passengers: true },
+      });
+      const mine = trips.filter((t) => t.shuttleRunId === runId);
+      const need = mine.reduce((s, t) => s + t.passengers, 0);
+      const before = current?.trips.filter((t) => t.shuttleRunId === runId && t.status !== TripStatus.HUY).reduce((s, t) => s + t.passengers, 0) ?? 0;
+      const label = `Chuyến xe ghép ${run.route.name} ${this.when(run.departAt)}`;
+      if (run.status === 'HUY') throw new BadRequestException(`${label} đã hủy`);
+      // Chuyến đóng bán: chỉ giữ / giảm số khách đã đặt, không nhận thêm
+      if (run.status === 'DONG_BAN' && need > before) throw new BadRequestException(`${label} đã đóng bán`);
+      const left = run.capacity - (used._sum.passengers ?? 0);
+      if (need > left) throw new BadRequestException(`${label} chỉ còn ${Math.max(0, left)} ghế`);
+      for (const t of mine) {
+        const pick = run.route.stops.find((s) => s.id === t.shuttlePickupStopId);
+        const drop = run.route.stops.find((s) => s.id === t.shuttleDropoffStopId);
+        if (!pick || !pick.canPickup) throw new BadRequestException(`${label}: chọn điểm đón của tuyến`);
+        if (!drop || !drop.canDropoff) throw new BadRequestException(`${label}: chọn điểm trả của tuyến`);
+        if (drop.seq <= pick.seq) throw new BadRequestException(`${label}: điểm trả phải sau điểm đón trên tuyến`);
+        if ((t.childCount ?? 0) > t.passengers) throw new BadRequestException(`${label}: số trẻ em lớn hơn số khách`);
+        const old = t.id ? current?.trips.find((c) => c.id === t.id) : undefined;
+        // Chuyển lượt đặt sang chuyến ghép khác: bỏ xe đã điều của chuyến cũ (chuyến đã chạy thì không chuyển được)
+        const moved = !!old && old.shuttleRunId !== runId;
+        if (moved && !([TripStatus.CHO_DIEU, TripStatus.DA_GAN, TripStatus.TAI_XE_NHAN] as TripStatus[]).includes(old.status)) {
+          throw new BadRequestException(`${label}: lượt đặt đã chạy, không chuyển chuyến được`);
+        }
+        const endOffset = drop.offsetMinutes > pick.offsetMinutes ? drop.offsetMinutes : run.route.durationMinutes;
+        out.set(trips.indexOf(t), {
+          pickupTime: new Date(run.departAt.getTime() + pick.offsetMinutes * 60_000),
+          endTime: new Date(run.departAt.getTime() + Math.max(endOffset, pick.offsetMinutes + 15) * 60_000),
+          vehicleTypeId: run.vehicleTypeId,
+          reset: moved && old.status !== TripStatus.CHO_DIEU,
+        });
+      }
+    }
+    return out;
+  }
+
   /** Kiểm tra sức chứa, tính thành tiền và giờ kết thúc cho từng chuyến */
-  private async buildTrips(trips: TripDto[]) {
+  private async buildTrips(trips: TripDto[], current?: { id: number; trips: { id: number; shuttleRunId: number | null; passengers: number; status: TripStatus }[] }) {
     const typeIds = [...new Set(trips.map((t) => t.vehicleTypeId))];
     const types = await this.prisma.vehicleType.findMany({ where: { id: { in: typeIds } }, include: { rentalRate: true } });
     const routeIds = [...new Set(trips.map((t) => t.routePriceId).filter((x): x is number => !!x))];
     const routes = await this.prisma.routePrice.findMany({ where: { id: { in: routeIds } } });
     const services = await this.prisma.service.findMany({ where: { code: { in: [...new Set(trips.map((t) => t.serviceType))] } } });
+    for (const [i, t] of trips.entries()) {
+      const service = services.find((s) => s.code === t.serviceType);
+      if (service?.pricingMode === 'XE_GHEP' && !t.shuttleRunId) throw new BadRequestException(`Chuyến ${i + 1}: chọn chuyến xe ghép (tuyến, ngày, giờ chạy)`);
+      if (service && service.pricingMode !== 'XE_GHEP') t.shuttleRunId = null;
+    }
+    const shuttle = await this.shuttleTrips(trips, current);
 
     return trips.map((t, i) => {
       const service = services.find((s) => s.code === t.serviceType);
       if (!service) throw new BadRequestException(`Chuyến ${i + 1}: dịch vụ không tồn tại`);
       if (!service.isActive && !t.id) throw new BadRequestException(`Chuyến ${i + 1}: dịch vụ "${service.name}" đã ngừng sử dụng`);
-      const type = types.find((x) => x.id === t.vehicleTypeId);
-      if (!type) throw new BadRequestException(`Chuyến ${i + 1}: loại xe không tồn tại`);
-      if (t.passengers > type.maxPassengers) {
+      const sh = shuttle.get(i);
+      if (sh) t.vehicleTypeId = sh.vehicleTypeId;
+      const type = types.find((x) => x.id === t.vehicleTypeId) ?? null;
+      if (!type && !sh) throw new BadRequestException(`Chuyến ${i + 1}: loại xe không tồn tại`);
+      // Xe ghép: sức chứa theo số ghế của chuyến ghép (đã kiểm tra ở trên)
+      if (type && !sh && t.passengers > type.maxPassengers) {
         throw new BadRequestException(`Chuyến ${i + 1}: ${t.passengers} khách vượt sức chứa ${type.name} (tối đa ${type.maxPassengers} khách)`);
       }
 
       const surcharges: PriceLine[] = (t.surcharges ?? []).map((s) => ({ name: s.name, amount: Number(s.amount), ...(s.auto && { auto: true }) }));
-      const pickupTime = new Date(t.pickupTime);
+      const pickupTime = sh ? sh.pickupTime : new Date(t.pickupTime);
       const days = t.days ?? 1;
-      let endTime = t.endTime ? new Date(t.endTime) : null;
+      let endTime = sh ? sh.endTime : t.endTime ? new Date(t.endTime) : null;
       if (!endTime) {
         const route = routes.find((r) => r.id === t.routePriceId);
         // Có tuyến: theo giờ chạy của tuyến. Dịch vụ thuê theo ngày: theo số ngày thuê. Còn lại: mặc định 2 giờ
         const hours = route
           ? (route.durationHours === null ? 2 : Number(route.durationHours))
           : service.pricingMode === 'THEO_NGAY'
-            ? (days - 1) * 24 + (type.rentalRate?.fullDayHours ?? 10)
+            ? (days - 1) * 24 + (type?.rentalRate?.fullDayHours ?? 10)
             : 2;
         endTime = new Date(pickupTime.getTime() + (hours + (t.extraHours ?? 0)) * HOUR_MS);
       }
@@ -439,6 +507,22 @@ export class BookingsService {
         estimatedCost: t.estimatedCost ?? null,
         itinerary: t.itinerary || null,
         notes: t.notes || null,
+        shuttleRunId: sh ? t.shuttleRunId! : null,
+        shuttlePickupStopId: sh ? t.shuttlePickupStopId! : null,
+        shuttleDropoffStopId: sh ? t.shuttleDropoffStopId! : null,
+        childCount: sh ? (t.childCount ?? 0) : 0,
+        // Chuyển sang chuyến ghép khác: bỏ xe đã điều của chuyến cũ, chuyến mới sẽ tự gán khi đồng bộ
+        ...(sh?.reset && {
+          status: TripStatus.CHO_DIEU,
+          vehicleId: null,
+          driverId: null,
+          partnerId: null,
+          partnerCost: null,
+          partnerPlate: null,
+          partnerDriverName: null,
+          partnerDriverPhone: null,
+          assignedAt: null,
+        }),
       };
     });
   }

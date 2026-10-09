@@ -8,6 +8,7 @@ import { AssignDto, DispatchQueryDto, PartnerCostDto, PartnerExtraReviewDto, Tri
 const TZ = 'Asia/Ho_Chi_Minh';
 const DISPATCHABLE: BookingStatus[] = [BookingStatus.XAC_NHAN, BookingStatus.HOAN_THANH];
 const CLOSED: TripStatus[] = [TripStatus.HOAN_THANH, TripStatus.HUY];
+const SHUTTLE_ONLY = 'Lượt khách xe ghép được điều theo cả chuyến ghép: mở trang Xe ghép để điều xe / hủy điều xe';
 
 export const dispatchTripInclude = {
   booking: {
@@ -115,7 +116,8 @@ export class DispatchService {
     const today = dayRange().start;
     const waitFrom = new Date(today.getTime() - 7 * 86_400_000);
     const waitTo = new Date(today.getTime() + 7 * 86_400_000);
-    const waitBase: Prisma.BookingTripWhereInput = { status: TripStatus.CHO_DIEU, booking: { status: BookingStatus.XAC_NHAN } };
+    // Lượt khách xe ghép điều theo cả chuyến ghép ở trang Xe ghép, không hiện ở cột chờ điều
+    const waitBase: Prisma.BookingTripWhereInput = { status: TripStatus.CHO_DIEU, shuttleRunId: null, booking: { status: BookingStatus.XAC_NHAN } };
     const activeInRange: Prisma.BookingTripWhereInput = {
       ...overlapping(start, end),
       status: { not: TripStatus.HUY },
@@ -145,7 +147,7 @@ export class DispatchService {
       }),
       // Chuyến đã qua giờ đón mà vẫn chưa điều xe: luôn hiện để không bị sót
       this.prisma.bookingTrip.count({
-        where: { status: TripStatus.CHO_DIEU, pickupTime: { lt: new Date() }, booking: { status: BookingStatus.XAC_NHAN } },
+        where: { status: TripStatus.CHO_DIEU, shuttleRunId: null, pickupTime: { lt: new Date() }, booking: { status: BookingStatus.XAC_NHAN } },
       }),
       // Chuyến chờ điều xa hơn 7 ngày: chỉ đếm, xem ở Danh sách chuyến
       this.prisma.bookingTrip.count({ where: { ...waitBase, pickupTime: { gte: waitTo } } }),
@@ -287,6 +289,7 @@ export class DispatchService {
 
   async assign(id: number, dto: AssignDto, user: AuthUser) {
     const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id }, include: { booking: true, vehicleType: true } });
+    if (trip.shuttleRunId) throw new BadRequestException(SHUTTLE_ONLY);
     if (trip.booking.status !== BookingStatus.XAC_NHAN) throw new BadRequestException('Booking chưa được khách xác nhận nên chưa điều xe được');
     if (CLOSED.includes(trip.status)) throw new BadRequestException('Chuyến đã hoàn thành hoặc đã hủy');
 
@@ -392,6 +395,7 @@ export class DispatchService {
   async adjustPartnerCost(id: number, dto: PartnerCostDto, user: AuthUser) {
     const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id }, include: { booking: { select: { code: true } }, partner: { select: { name: true } } } });
     if (!trip.partnerId) throw new BadRequestException('Chuyến không giao cho nhà xe đối tác');
+    if (trip.shuttleRunId) throw new BadRequestException('Lượt khách xe ghép: giá thuê nhà xe tính cho cả chuyến ghép, sửa ở trang Xe ghép (điều xe lại với giá mới)');
     const label: Record<PartnerCostDto['reason'], string> = { TRE_GIO: 'Nhà xe đón trễ', KHONG_DON: 'Nhà xe không đón khách', PHAT_SINH: 'Thay đổi lịch trình / phát sinh', KHAC: 'Khác' };
     const vnd = (v: unknown) => `${Number(v ?? 0).toLocaleString('vi-VN')}đ`;
     const vat = trip.partnerInvoice ? (dto.partnerVatPercent ?? Number(trip.partnerVatPercent)) : 0;
@@ -479,6 +483,7 @@ export class DispatchService {
 
   async unassign(id: number, user: AuthUser) {
     const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id } });
+    if (trip.shuttleRunId) throw new BadRequestException(SHUTTLE_ONLY);
     if (CLOSED.includes(trip.status)) throw new BadRequestException('Chuyến đã hoàn thành hoặc đã hủy');
     if (trip.status === TripStatus.CHO_DIEU) throw new BadRequestException('Chuyến chưa được điều xe');
     await this.prisma.$transaction([
