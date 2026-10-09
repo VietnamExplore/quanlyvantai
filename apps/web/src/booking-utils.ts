@@ -35,6 +35,13 @@ export interface TripDraft {
   notes: string | null;
   /** Xe / nhà xe đã gán (chỉ để hiển thị) */
   assignment?: string;
+  /** Xe ghép: chuyến ghép, điểm đón / trả, số trẻ em */
+  shuttleRunId?: number | null;
+  shuttlePickupStopId?: number | null;
+  shuttleDropoffStopId?: number | null;
+  childCount?: number;
+  /** Chỉ dùng trên giao diện: tuyến, giờ chạy, tên điểm của chuyến ghép */
+  shuttleRun?: { id: number; departAt: string; routeId: number; route: { name: string } } | null;
 }
 
 export const newKey = () => Math.random().toString(36).slice(2);
@@ -73,6 +80,11 @@ export function fromTrip(t: BookingTrip): TripDraft {
     estimatedCost: t.estimatedCost === null ? null : Number(t.estimatedCost),
     itinerary: t.itinerary,
     notes: t.notes,
+    shuttleRunId: t.shuttleRunId ?? null,
+    shuttlePickupStopId: t.shuttlePickupStopId ?? null,
+    shuttleDropoffStopId: t.shuttleDropoffStopId ?? null,
+    childCount: t.childCount ?? 0,
+    shuttleRun: t.shuttleRun ?? null,
     assignment: t.vehicle
       ? `${t.vehicle.plateNumber}${t.driver ? ` · ${t.driver.fullName}` : ''}`
       : t.partner
@@ -82,7 +94,7 @@ export function fromTrip(t: BookingTrip): TripDraft {
 }
 
 /** Bỏ các trường chỉ dùng trên giao diện trước khi gửi API */
-export function toTripPayload({ key: _k, status: _s, vehicleTypeName: _v, assignment: _a, ...t }: TripDraft) {
+export function toTripPayload({ key: _k, status: _s, vehicleTypeName: _v, assignment: _a, shuttleRun: _r, ...t }: TripDraft) {
   return t;
 }
 

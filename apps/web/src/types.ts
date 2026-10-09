@@ -131,7 +131,7 @@ export interface User extends Ref {
 
 /** Mã dịch vụ trong danh mục Dịch vụ */
 export type ServiceType = string;
-export type PricingMode = 'TUYEN' | 'THEO_NGAY';
+export type PricingMode = 'TUYEN' | 'THEO_NGAY' | 'XE_GHEP';
 
 export interface Service {
   code: string;
@@ -235,6 +235,14 @@ export interface PriceResult {
 
 export interface BookingTrip extends Ref {
   seq: number;
+  /** Xe ghép */
+  shuttleRunId?: number | null;
+  shuttlePickupStopId?: number | null;
+  shuttleDropoffStopId?: number | null;
+  childCount?: number;
+  shuttleRun?: { id: number; departAt: string; routeId: number; status: string; route: { name: string } } | null;
+  shuttlePickupStop?: { id: number; name: string; kind: string } | null;
+  shuttleDropoffStop?: { id: number; name: string; kind: string } | null;
   serviceType: ServiceType;
   service?: ServiceRef;
   pickupTime: string;

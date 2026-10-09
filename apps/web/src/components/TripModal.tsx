@@ -37,6 +37,7 @@ import {
   useVehicleTypeOptions,
 } from "./common";
 import { QuickSelect } from "./QuickCreate";
+import { ShuttleTripFields } from "./ShuttleTripFields";
 
 const CALC_KEYS = [
   "serviceType",
@@ -68,9 +69,11 @@ interface Props {
   title?: string;
   okText?: string;
   saving?: boolean;
+  /** Khách của booking là đại lý: xe ghép dùng giá vé đại lý */
+  agent?: boolean;
 }
 
-export function TripModal({ open, trip, onCancel, onSave, withContact, title, okText, saving }: Props) {
+export function TripModal({ open, trip, onCancel, onSave, withContact, title, okText, saving, agent }: Props) {
   const customers = useCustomers();
   const [form] = Form.useForm();
   const { vehicleTypes } = useVehicleTypeOptions();
@@ -108,6 +111,9 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
   const isRentalCode = (code?: string) =>
     !!code && servicesByCode[code]?.pricingMode === "THEO_NGAY";
   const isRental = isRentalCode(serviceType);
+  // Xe ghép: bán từng chỗ trên chuyến xe ghép (chọn tuyến, giờ chạy, điểm đón / trả)
+  const isShuttleCode = (code?: string) => !!code && servicesByCode[code]?.pricingMode === "XE_GHEP";
+  const isShuttle = isShuttleCode(serviceType);
   const vehicleType = vehicleTypes.find((t) => t.id === vehicleTypeId);
   const amount = tripAmount({ unitPrice, surcharges });
   const estimatedCost: number | null | undefined = Form.useWatch(
@@ -134,6 +140,8 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
             ...trip,
             pickupTime: dayjs(trip.pickupTime),
             endTime: trip.endTime ? dayjs(trip.endTime) : null,
+            // Xe ghép: điền lại tuyến và ngày theo chuyến ghép đã chọn
+            ...(trip.shuttleRun && { shuttleRouteId: trip.shuttleRun.routeId, shuttleDate: dayjs(trip.shuttleRun.departAt) }),
           }
         : {
             serviceType: "DON_TIEN_SAN_BAY",
@@ -179,6 +187,12 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
 
   async function recalc() {
     const v = form.getFieldsValue();
+    // Xe ghép: giá vé tính theo tuyến xe ghép (phần ShuttleTripFields)
+    if (isShuttleCode(v.serviceType)) {
+      setBreakdown([]);
+      setCalcMsg(null);
+      return;
+    }
     if (!v.serviceType || !v.vehicleTypeId || !v.pickupTime) {
       const missing = [
         !v.vehicleTypeId && "loại xe",
@@ -246,6 +260,10 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
   }
 
   const onValuesChange = (changed: Record<string, unknown>) => {
+    if ("serviceType" in changed && isShuttleCode(changed.serviceType as string)) {
+      // Chuyển sang xe ghép: bỏ tuyến giá / giá thuê ngày, giá tính lại theo tuyến xe ghép
+      form.setFieldsValue({ routePriceId: null, rentalOption: "DAY", days: 1, extraKm: 0, extraHours: 0, estimatedCost: null, childCount: 0 });
+    }
     if ("routePriceId" in changed && changed.routePriceId) {
       // Chọn tuyến: tự điền điểm đón / trả nếu còn trống
       const route = routes.find((r) => r.id === changed.routePriceId);
@@ -315,7 +333,8 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
     } catch {
       return;
     }
-    const { rentalOption, customerId, contactName, contactPhone, source, ...rest } = v;
+    const { rentalOption, customerId, contactName, contactPhone, source, shuttleRouteId: _route, shuttleDate: _date, ...rest } = v;
+    const shuttle = isShuttleCode(v.serviceType);
     const contact: QuickContact | undefined = withContact
       ? { customerId: customerId ?? null, contactName: contactName.trim(), contactPhone: contactPhone.trim(), source: source || "HOTLINE" }
       : undefined;
@@ -346,6 +365,12 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
       surcharges: ((v.surcharges ?? []) as PriceLine[])
         .filter((s) => s.name?.trim())
         .map((s) => ({ ...s, amount: Number(s.amount || 0) })),
+      // Xe ghép: chi phí do chuyến ghép chia theo số khách; dịch vụ khác không gắn chuyến ghép
+      shuttleRunId: shuttle ? v.shuttleRunId : null,
+      shuttlePickupStopId: shuttle ? v.shuttlePickupStopId : null,
+      shuttleDropoffStopId: shuttle ? v.shuttleDropoffStopId : null,
+      childCount: shuttle ? v.childCount || 0 : 0,
+      ...(shuttle && { routePriceId: null, estimatedCost: trip?.shuttleRunId === v.shuttleRunId ? (trip?.estimatedCost ?? null) : null }),
     }, contact);
   };
 
@@ -431,6 +456,12 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               <QuickSelect entity="service" options={serviceOptions} />
             </Form.Item>
           </Col>
+          {isShuttle ? (
+            <Col span={24}>
+              <ShuttleTripFields form={form} agent={agent} current={trip ? { runId: trip.shuttleRunId ?? null, passengers: trip.passengers } : undefined} />
+            </Col>
+          ) : (
+          <>
           <Col xs={24} md={8}>
             <Form.Item
               name="pickupTime"
@@ -546,12 +577,15 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               <InputNumber min={0} style={{ width: "100%" }} />
             </Form.Item>
           </Col>
+          </>
+          )}
         </Row>
 
         <Divider titlePlacement="start" style={{ margin: "4px 0 12px" }}>
           Hành trình
         </Divider>
         <Row gutter={16}>
+          {!isShuttle && (
           <Col xs={24} md={8}>
             <Form.Item name="pickupLocationId" label="Điểm đón (chọn nhanh)">
               <QuickSelect
@@ -570,15 +604,17 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               />
             </Form.Item>
           </Col>
-          <Col xs={24} md={16}>
+          )}
+          <Col xs={24} md={isShuttle ? 12 : 16}>
             <Form.Item
               name="pickupAddress"
-              label="Địa chỉ đón"
+              label={isShuttle ? "Địa chỉ đón (khách sạn / điểm dừng)" : "Địa chỉ đón"}
               rules={[{ required: true, message: "Nhập điểm đón" }]}
             >
               <Input />
             </Form.Item>
           </Col>
+          {!isShuttle && (
           <Col xs={24} md={8}>
             <Form.Item name="dropoffLocationId" label="Điểm trả (chọn nhanh)">
               <QuickSelect
@@ -597,8 +633,9 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               />
             </Form.Item>
           </Col>
-          <Col xs={24} md={16}>
-            <Form.Item name="dropoffAddress" label="Địa chỉ trả">
+          )}
+          <Col xs={24} md={isShuttle ? 12 : 16}>
+            <Form.Item name="dropoffAddress" label={isShuttle ? "Địa chỉ trả (khách sạn / điểm dừng)" : "Địa chỉ trả"}>
               <Input />
             </Form.Item>
           </Col>
@@ -686,6 +723,13 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               <MoneyInput />
             </Form.Item>
           </Col>
+          {isShuttle ? (
+            <Col xs={24} md={14}>
+              <Typography.Paragraph type="secondary" style={{ marginTop: 30 }}>
+                Chi phí xe ghép tính cho cả chuyến ghép (điều xe ở trang Xe ghép) rồi chia theo số khách.
+              </Typography.Paragraph>
+            </Col>
+          ) : (
           <Col xs={24} md={10}>
             <Form.Item
               name="estimatedCost"
@@ -700,6 +744,7 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
               <MoneyInput />
             </Form.Item>
           </Col>
+          )}
         </Row>
 
         <Form.List name="surcharges">

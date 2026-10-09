@@ -1062,6 +1062,7 @@ export default function BookingEditPage() {
         trip={editingTrip}
         onCancel={() => setTripModalOpen(false)}
         onSave={saveTrip}
+        agent={customers.find((c) => c.id === watchCustomerId)?.type === "DAI_LY"}
       />
     </Flex>
   );

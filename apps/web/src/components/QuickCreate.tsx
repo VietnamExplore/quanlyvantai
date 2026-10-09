@@ -280,6 +280,7 @@ export function ServiceFields() {
             options={[
               { value: 'TUYEN', label: 'Theo tuyến (chọn tuyến có giá)' },
               { value: 'THEO_NGAY', label: 'Theo ngày thuê (tuyến không bắt buộc)' },
+              { value: 'XE_GHEP', label: 'Xe ghép (bán từng chỗ trên tuyến xe ghép)' },
             ]}
           />
         </Form.Item>

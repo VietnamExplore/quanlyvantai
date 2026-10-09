@@ -20,7 +20,7 @@ export default function ServicesPage() {
         { title: 'Dịch vụ', dataIndex: 'name', render: (v, r) => <Tag color={r.color ?? undefined}>{r.isActive ? v : <s>{v}</s>}</Tag> },
         { title: 'Mã', dataIndex: 'code', render: (v) => <code>{v}</code> },
         { title: 'Tên ngoại ngữ', render: (_, r) => <span style={{ fontSize: 12, color: '#666' }}>{Object.values(r.names ?? {}).filter(Boolean).join(' · ')}</span> },
-        { title: 'Cách tính giá', dataIndex: 'pricingMode', render: (v) => (v === 'THEO_NGAY' ? 'Theo ngày thuê' : 'Theo tuyến') },
+        { title: 'Cách tính giá', dataIndex: 'pricingMode', render: (v) => (v === 'THEO_NGAY' ? 'Theo ngày thuê' : v === 'XE_GHEP' ? 'Xe ghép (theo ghế)' : 'Theo tuyến') },
         { title: 'Chuyến bay', dataIndex: 'hasFlight', render: (v) => (v ? '✈ Có' : '') },
         { title: 'Số chuyến / tuyến', render: (_, r) => `${r._count?.trips ?? 0} / ${r._count?.routes ?? 0}` },
         { title: 'Sử dụng', dataIndex: 'isActive', render: (v) => (v ? null : <Tag>Ngừng</Tag>) },

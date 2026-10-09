@@ -26,6 +26,8 @@ import QuotePage from './pages/QuotePage';
 import RentalRatesPage from './pages/RentalRatesPage';
 import RoutePricesPage from './pages/RoutePricesPage';
 import ServicesPage from './pages/ServicesPage';
+import ShuttlePage from './pages/ShuttlePage';
+import ShuttleRoutesPage from './pages/ShuttleRoutesPage';
 import CustomerSourcesPage from './pages/CustomerSourcesPage';
 import SettingsPage from './pages/SettingsPage';
 import SignPage from './pages/SignPage';
@@ -98,6 +100,8 @@ export default function App() {
         <Route path="bookings" element={<BookingsPage />} />
         <Route path="bookings/:id" element={<BookingEditPage />} />
         <Route path="dispatch" element={<DispatchPage />} />
+        <Route path="shuttle" element={<ShuttlePage />} />
+        <Route path="shuttle-routes" element={<ShuttleRoutesPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="route-prices" element={<RoutePricesPage />} />
         <Route path="rental-rates" element={<RentalRatesPage />} />
