@@ -7,6 +7,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { MoneyInput, formatVnd, paged, useVehicleTypeOptions } from '../components/common';
 import { ResponsiveTable } from '../components/ResponsiveTable';
+import { QuickScheduleGen } from '../components/QuickScheduleGen';
 import { WEEKDAYS, type ShuttleRoute, type ShuttleStopKind } from '../shuttle-types';
 
 interface StopForm {
@@ -361,6 +362,7 @@ export default function ShuttleRoutesPage() {
           <Divider titlePlacement="start" style={{ margin: '16px 0 8px' }}>
             Giờ xuất bến cố định
           </Divider>
+          <QuickScheduleGen form={form} />
           <Form.List name="schedules">
             {(fields, { add, remove }) => (
               <>
