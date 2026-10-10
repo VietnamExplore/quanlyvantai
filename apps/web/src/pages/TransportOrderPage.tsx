@@ -185,12 +185,6 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
             )}
             {v.contact && <div>Người liên hệ: {v.contact}</div>}
           </div>
-          <div className="order-boss">
-            <div className="role">Thủ trưởng đơn vị</div>
-            <div className="hint">(Ký tên và đóng dấu)</div>
-            <div className="space" />
-            <b>{company.companyRepresentative}</b>
-          </div>
         </div>
 
         <table className="grid order-grid">
@@ -291,6 +285,14 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
           ))}
         </div>
 
+        {/* Chữ ký thủ trưởng đơn vị: cuối lệnh, bên phải */}
+        <div className="order-boss">
+          <div className="role">Thủ trưởng đơn vị</div>
+          <div className="hint">(Ký tên và đóng dấu)</div>
+          <div className="space" />
+          <b>{company.companyRepresentative}</b>
+        </div>
+
         {data.kind === 'TRIP' && data.trip.signoffAt && data.trip.signoffSvg && (
           <div className="qr-box" style={{ alignItems: 'flex-start' }}>
             <div>
@@ -315,7 +317,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
 const ORDER_CSS = `
   .order-top { display: flex; gap: 6mm; margin: 2mm 0 3mm; line-height: 1.7; }
   .order-top > div:first-child { flex: 1; }
-  .order-boss { width: 48mm; text-align: center; }
+  .order-boss { width: 62mm; margin: 8mm 0 0 auto; text-align: center; page-break-inside: avoid; }
   .order-boss .role, .order-sign .role { font-weight: 700; text-transform: uppercase; }
   .order-boss .hint, .order-sign .hint { font-style: italic; color: #666; font-size: 10.5pt; }
   .order-boss .space { height: 20mm; }
@@ -326,8 +328,7 @@ const ORDER_CSS = `
   .order-sign .space { height: 20mm; }
   @media (max-width: 820px) {
     .order-top { flex-direction: column; gap: 2mm; }
-    .order-boss { width: auto; text-align: left; }
-    .order-boss .space { display: none; }
+    .order-boss { width: 60%; }
     .order-sign { flex-wrap: wrap; gap: 4mm; }
     .order-sign > div { width: 45%; }
     .order-grid { font-size: 10.5pt; }
