@@ -307,6 +307,8 @@ export class BookingsService {
     }
 
     await this.prisma.$transaction(ops);
+    // Đổi ngày đi: mã booking đổi phần ngày theo chuyến sớm nhất, giữ nguyên số thứ tự
+    if (trips) await this.syncCodeDate(id, current.code);
     // Xe ghép: đồng bộ chuyến ghép cũ và mới (ghế, xe đã điều, chia chi phí)
     if (trips) {
       const after = await this.prisma.bookingTrip.findMany({ where: { bookingId: id }, select: { shuttleRunId: true } });
@@ -340,6 +342,36 @@ export class BookingsService {
       }
     }
     return this.findOne(id);
+  }
+
+  /**
+   * Mã booking theo ngày đi: VNECAR + YYMMDD (chuyến sớm nhất chưa hủy) + số thứ tự.
+   * Sửa ngày đi thì đổi phần ngày, giữ nguyên số thứ tự. Riêng khi đổi sang năm khác mà số thứ tự đó
+   * đã có booking cùng ngày dùng (số thứ tự đánh lại theo năm), lấy số kế tiếp của năm mới để không trùng mã.
+   */
+  private async syncCodeDate(id: number, code: string) {
+    const m = new RegExp(`^${BOOKING_CODE_PREFIX}(\\d{6})-(\\d+)$`).exec(code);
+    if (!m) return; // mã kiểu cũ / nhập tay: giữ nguyên
+    const trips = await this.prisma.bookingTrip.findMany({ where: { bookingId: id }, select: { pickupTime: true, status: true } });
+    const active = trips.filter((t) => t.status !== TripStatus.HUY);
+    const datePart = bookingDatePart((active.length ? active : trips).map((t) => t.pickupTime));
+    if (!trips.length || datePart === m[1]) return;
+    let next = formatBookingCode(datePart, Number(m[2]));
+    if (datePart.slice(0, 2) !== m[1].slice(0, 2)) {
+      const clash = await this.prisma.booking.findUnique({ where: { code: next }, select: { id: true } });
+      if (clash) {
+        const [{ max }] = await this.prisma.$queryRaw<{ max: number | null }[]>`
+          SELECT MAX(CAST(split_part(code, '-', 2) AS INTEGER)) AS max FROM "Booking"
+          WHERE code ~ ${`^${BOOKING_CODE_PREFIX}${datePart.slice(0, 2)}[0-9]{4}-[0-9]+$`}`;
+        next = formatBookingCode(datePart, (max ?? 0) + 1);
+      }
+    }
+    try {
+      await this.prisma.booking.update({ where: { id }, data: { code: next } });
+    } catch (e) {
+      // Trùng mã (hai người cùng sửa): giữ mã cũ, không làm hỏng việc lưu booking
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
+    }
   }
 
   async changeStatus(id: number, { status, cancelReason }: ChangeStatusDto, user?: AuthUser) {

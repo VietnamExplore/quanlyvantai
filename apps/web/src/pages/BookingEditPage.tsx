@@ -238,7 +238,9 @@ export default function BookingEditPage() {
         }
         navigate(`/bookings/${saved.id}`, { replace: true });
       } else {
-        message.success("Đã lưu");
+        // Đổi ngày đi: mã booking đổi phần ngày, giữ số thứ tự
+        if (booking && saved.code !== booking.code) message.success(`Đã lưu · mã booking đổi theo ngày đi: ${booking.code} → ${saved.code}`, 6);
+        else message.success("Đã lưu");
         setEditCompleted(false);
       }
       return saved;
