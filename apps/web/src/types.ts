@@ -251,6 +251,12 @@ export interface PriceResult {
 }
 
 export interface BookingTrip extends Ref {
+  /** Ký nhận điện tử của khách trên app lái xe */
+  signoffName?: string | null;
+  signoffAt?: string | null;
+  /** SVG path chữ ký (khung 600×300) */
+  signoffSvg?: string | null;
+  signoffNote?: string | null;
   seq: number;
   /** Xe ghép */
   shuttleRunId?: number | null;

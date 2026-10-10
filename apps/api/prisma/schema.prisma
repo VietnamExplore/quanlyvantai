@@ -19,35 +19,36 @@ enum Role {
 }
 
 model User {
-  id              Int                 @id @default(autoincrement())
-  username        String              @unique
-  passwordHash    String
-  fullName        String
-  phone           String?
-  email           String?
-  roles           Role[]
-  isActive        Boolean             @default(true)
-  pushToken       String? // Expo push token của app lái xe
+  id               Int                 @id @default(autoincrement())
+  username         String              @unique
+  passwordHash     String
+  fullName         String
+  phone            String?
+  email            String?
+  roles            Role[]
+  isActive         Boolean             @default(true)
+  pushToken        String? // Expo push token của app lái xe
   /// Admin đã xóa (tài khoản có dữ liệu cũ thì giữ lại để không mất lịch sử, ẩn khỏi danh sách)
-  deletedAt       DateTime?
-  driver          Driver?
+  deletedAt        DateTime?
+  driver           Driver?
   /// Tài khoản nhà xe đối tác (vai trò NHA_XE)
-  partnerId       Int?
-  partner         Partner?            @relation(fields: [partnerId], references: [id])
-  customers       Customer[]          @relation("SalesOwner")
-  salesBookings   Booking[]           @relation("BookingSales")
-  createdBookings Booking[]           @relation("BookingCreator")
-  contracts       TransportContract[] @relation("ContractCreator")
-  assignedTrips   BookingTrip[]       @relation("TripAssigner")
-  tripCosts       TripCost[]          @relation("CostCreator")
-  payments        Payment[]           @relation("PaymentCreator")
-  partnerPayments PartnerPayment[]    @relation("PartnerPaymentCreator")
-  cashVouchers    CashVoucher[]       @relation("VoucherCreator")
-  tripEvents      TripEvent[]
-  decidedAdvances AdvanceRequest[]    @relation("AdvanceDecider")
-  notifications   Notification[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  partnerId        Int?
+  partner          Partner?            @relation(fields: [partnerId], references: [id])
+  customers        Customer[]          @relation("SalesOwner")
+  salesBookings    Booking[]           @relation("BookingSales")
+  createdBookings  Booking[]           @relation("BookingCreator")
+  contracts        TransportContract[] @relation("ContractCreator")
+  assignedTrips    BookingTrip[]       @relation("TripAssigner")
+  tripCosts        TripCost[]          @relation("CostCreator")
+  payments         Payment[]           @relation("PaymentCreator")
+  partnerPayments  PartnerPayment[]    @relation("PartnerPaymentCreator")
+  cashVouchers     CashVoucher[]       @relation("VoucherCreator")
+  tripEvents       TripEvent[]
+  decidedAdvances  AdvanceRequest[]    @relation("AdvanceDecider")
+  notifications    Notification[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  handledIncidents FieldIncident[]     @relation("IncidentHandler")
 }
 
 // ───────────── Xe ─────────────
@@ -84,32 +85,34 @@ enum VehicleStatus {
 }
 
 model Vehicle {
-  id                 Int           @id @default(autoincrement())
-  plateNumber        String        @unique
+  id                 Int             @id @default(autoincrement())
+  plateNumber        String          @unique
   vehicleTypeId      Int
-  vehicleType        VehicleType   @relation(fields: [vehicleTypeId], references: [id])
+  vehicleType        VehicleType     @relation(fields: [vehicleTypeId], references: [id])
   brand              String?
   model              String?
   year               Int?
   color              String?
-  ownership          Ownership     @default(CONG_TY)
+  ownership          Ownership       @default(CONG_TY)
   partnerId          Int?
-  partner            Partner?      @relation(fields: [partnerId], references: [id])
-  status             VehicleStatus @default(SAN_SANG)
-  registrationExpiry DateTime?     @db.Date // Hạn đăng kiểm
-  insuranceExpiry    DateTime?     @db.Date // Hạn bảo hiểm
-  badgeExpiry        DateTime?     @db.Date // Hạn phù hiệu
+  partner            Partner?        @relation(fields: [partnerId], references: [id])
+  status             VehicleStatus   @default(SAN_SANG)
+  registrationExpiry DateTime?       @db.Date // Hạn đăng kiểm
+  insuranceExpiry    DateTime?       @db.Date // Hạn bảo hiểm
+  badgeExpiry        DateTime?       @db.Date // Hạn phù hiệu
   odometerKm         Int?
   /// Định mức xăng dầu riêng của xe (lít/100km); trống = theo loại xe
-  fuelNorm           Decimal?      @db.Decimal(5, 2)
+  fuelNorm           Decimal?        @db.Decimal(5, 2)
   defaultDriverId    Int?
-  defaultDriver      Driver?       @relation(fields: [defaultDriverId], references: [id])
+  defaultDriver      Driver?         @relation(fields: [defaultDriverId], references: [id])
   trips              BookingTrip[]
   shuttleRuns        ShuttleRun[]
   vouchers           CashVoucher[]
   notes              String?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  incidents          FieldIncident[]
+  checks             VehicleCheck[]
 }
 
 // ───────────── Lái xe ─────────────
@@ -143,6 +146,8 @@ model Driver {
   notes             String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+  incidents         FieldIncident[]
+  vehicleChecks     VehicleCheck[]
 }
 
 /// Mức lương lái xe công ty theo thời gian: lương cứng / tháng + % doanh thu chuyến đã chạy.
@@ -478,26 +483,26 @@ model BookingTrip {
 
   // ── Điều xe ──
   vehicleId              Int? // Xe công ty
-  vehicle                Vehicle?     @relation(fields: [vehicleId], references: [id])
+  vehicle                Vehicle?        @relation(fields: [vehicleId], references: [id])
   driverId               Int? // Lái xe công ty
-  driver                 Driver?      @relation(fields: [driverId], references: [id])
+  driver                 Driver?         @relation(fields: [driverId], references: [id])
   partnerId              Int? // Giao cho nhà xe đối tác
-  partner                Partner?     @relation(fields: [partnerId], references: [id])
+  partner                Partner?        @relation(fields: [partnerId], references: [id])
   partnerPlate           String?
   partnerDriverName      String?
   partnerDriverPhone     String?
-  partnerCost            Decimal?     @db.Decimal(15, 0) // Giá thuê đối tác thực tế
+  partnerCost            Decimal?        @db.Decimal(15, 0) // Giá thuê đối tác thực tế
   /// Nhà xe đối tác phải xuất hóa đơn cho công ty (thông tin công ty + email nhận hóa đơn hiện trên cổng nhà xe)
-  partnerInvoice         Boolean      @default(false)
+  partnerInvoice         Boolean         @default(false)
   /// Thuế suất trên hóa đơn nhà xe xuất: giá thuê là giá chưa thuế, công nợ nhà xe = giá thuê × (1 + thuế suất)
-  partnerVatPercent      Decimal      @default(0) @db.Decimal(5, 2)
+  partnerVatPercent      Decimal         @default(0) @db.Decimal(5, 2)
   /// Sự cố của nhà xe ở chuyến này: TRE_GIO (đón trễ) | KHONG_DON (không đón khách) – ghi khi văn phòng điều chỉnh giá
   partnerIssue           String?
   /// Ghi chú lần điều chỉnh giá nhà xe gần nhất (lý do, hiện cho nhà xe)
   partnerAdjustNote      String?
   /// Giá phát sinh nhà xe (trước thuế), nhập khi hoàn thành chuyến: công nợ = (giá thuê + tăng − giảm) × (1 + thuế suất)
-  partnerExtraUp         Decimal      @default(0) @db.Decimal(15, 0)
-  partnerExtraDown       Decimal      @default(0) @db.Decimal(15, 0)
+  partnerExtraUp         Decimal         @default(0) @db.Decimal(15, 0)
+  partnerExtraDown       Decimal         @default(0) @db.Decimal(15, 0)
   partnerExtraNote       String?
   /// Duyệt phát sinh: CHO_DUYET | DA_DUYET | TU_CHOI. Chỉ phát sinh DA_DUYET mới tính vào công nợ / lợi nhuận
   partnerExtraStatus     String?
@@ -508,15 +513,22 @@ model BookingTrip {
   dispatchNote           String? // Ghi chú cho tài xế / nhà xe
   /// Xe ghép: lượt đặt chỗ thuộc chuyến xe ghép (điều xe theo cả chuyến ghép)
   shuttleRunId           Int?
-  shuttleRun             ShuttleRun?  @relation(fields: [shuttleRunId], references: [id])
+  shuttleRun             ShuttleRun?     @relation(fields: [shuttleRunId], references: [id])
   shuttlePickupStopId    Int?
-  shuttlePickupStop      ShuttleStop? @relation("ShuttlePickup", fields: [shuttlePickupStopId], references: [id], onDelete: SetNull)
+  shuttlePickupStop      ShuttleStop?    @relation("ShuttlePickup", fields: [shuttlePickupStopId], references: [id], onDelete: SetNull)
   shuttleDropoffStopId   Int?
-  shuttleDropoffStop     ShuttleStop? @relation("ShuttleDropoff", fields: [shuttleDropoffStopId], references: [id], onDelete: SetNull)
+  shuttleDropoffStop     ShuttleStop?    @relation("ShuttleDropoff", fields: [shuttleDropoffStopId], references: [id], onDelete: SetNull)
   /// Số trẻ em trong số khách (giá vé trẻ em)
-  childCount             Int          @default(0)
+  childCount             Int             @default(0)
   /// Cự ly hành trình (km) ghi trên hợp đồng vận chuyển; trống = theo bảng giá tuyến
   distanceKm             Int?
+  /// Ký nhận điện tử: khách (trưởng đoàn / HDV) ký trên điện thoại lái xe xác nhận đã hoàn thành chuyến
+  signoffName            String?
+  signoffAt              DateTime?
+  /// Nét chữ ký dạng SVG path (khung 600×300)
+  signoffSvg             String?
+  signoffNote            String?
+  incidents              FieldIncident[]
 
   /// Văn phòng nhờ lái xe thu tiền khách giúp
   collectAmount    Decimal?       @db.Decimal(15, 0)
@@ -605,6 +617,56 @@ model TransportContract {
   updatedAt           DateTime  @updatedAt
 
   @@unique([year, seq])
+}
+
+/// Sự cố lái xe báo từ app (hỏng xe, va chạm, trễ giờ, khách vắng mặt…): điều hành nhận thông báo và xử lý
+model FieldIncident {
+  id          Int          @id @default(autoincrement())
+  tripId      Int?
+  trip        BookingTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  driverId    Int
+  driver      Driver       @relation(fields: [driverId], references: [id])
+  vehicleId   Int?
+  vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id])
+  /// HONG_XE | VA_CHAM | TRE_GIO | KHACH_VANG | DOI_LICH_TRINH | KHAC
+  type        String
+  note        String
+  /// Ảnh hiện trường (tên file trong uploads/field)
+  photos      String[]     @default([])
+  /// MOI | DANG_XU_LY | DA_XU_LY
+  status      String       @default("MOI")
+  handleNote  String?
+  handledById Int?
+  handledBy   User?        @relation("IncidentHandler", fields: [handledById], references: [id])
+  handledAt   DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([status, createdAt])
+  @@index([tripId])
+}
+
+/// Check-in nhận xe / trả xe của lái xe: km đồng hồ, nhiên liệu, danh mục kiểm tra, ảnh xe
+model VehicleCheck {
+  id         Int      @id @default(autoincrement())
+  vehicleId  Int
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id])
+  driverId   Int
+  driver     Driver   @relation(fields: [driverId], references: [id])
+  /// NHAN | TRA
+  kind       String
+  odometerKm Int?
+  /// Mức nhiên liệu (%): 0 | 25 | 50 | 75 | 100
+  fuelLevel  Int?
+  /// [{ key, label, ok, note }]
+  items      Json     @default("[]")
+  /// Số hạng mục lỗi
+  defects    Int      @default(0)
+  photos     String[] @default([])
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([vehicleId, createdAt])
+  @@index([driverId, createdAt])
 }
 
 model TripEvent {

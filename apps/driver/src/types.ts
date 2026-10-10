@@ -11,6 +11,9 @@ export interface AuthUser {
 
 export interface Trip {
   id: number;
+  /** Khách đã ký nhận hoàn thành chuyến */
+  signoffName?: string | null;
+  signoffAt?: string | null;
   serviceType: ServiceType;
   status: TripStatus;
   pickupTime: string;
@@ -98,4 +101,49 @@ export interface DriverProfile {
   licenseExpiry: string | null;
   healthCheckExpiry: string | null;
   defaultVehicles: { id: number; plateNumber: string }[];
+}
+
+export type IncidentType = 'HONG_XE' | 'VA_CHAM' | 'TRE_GIO' | 'KHACH_VANG' | 'DOI_LICH_TRINH' | 'KHAC';
+
+export interface Incident {
+  id: number;
+  tripId: number | null;
+  type: IncidentType;
+  note: string;
+  photos: string[];
+  /** MOI | DANG_XU_LY | DA_XU_LY */
+  status: string;
+  handleNote: string | null;
+  createdAt: string;
+  vehicle: { id: number; plateNumber: string } | null;
+  trip: { id: number; booking: { code: string } } | null;
+}
+
+export interface CheckItem {
+  key: string;
+  label: string;
+  ok: boolean;
+  note?: string | null;
+}
+
+export interface VehicleCheck {
+  id: number;
+  vehicleId: number;
+  kind: 'NHAN' | 'TRA';
+  odometerKm: number | null;
+  fuelLevel: number | null;
+  items: CheckItem[];
+  defects: number;
+  photos: string[];
+  note: string | null;
+  createdAt: string;
+  vehicle: { id: number; plateNumber: string };
+}
+
+export interface VehicleCheckState {
+  vehicles: { id: number; plateNumber: string; odometerKm: number | null; vehicleType: { name: string } }[];
+  defaultVehicleId: number | null;
+  holding: VehicleCheck[];
+  recent: VehicleCheck[];
+  items: { key: string; label: string }[];
 }

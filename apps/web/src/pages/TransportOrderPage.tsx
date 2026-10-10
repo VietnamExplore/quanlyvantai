@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { LEGAL_CSS, LegalHead, placeOf } from '../components/ContractDoc';
+import { SignatureImage } from '../components/FieldParts';
 import { DOC_CSS } from '../components/PrintDoc';
 import { contractUrl } from '../contract';
 
@@ -24,6 +25,10 @@ interface TripOrder {
     passengers: number;
     distanceKm: number | null;
     routeName: string | null;
+    signoffName: string | null;
+    signoffAt: string | null;
+    signoffSvg: string | null;
+    signoffNote: string | null;
     vehicleType: { name: string; seats: number };
     vehicle: { plateNumber: string } | null;
     driver: Driver;
@@ -234,6 +239,16 @@ export default function TransportOrderPage() {
             </div>
           ))}
         </div>
+
+        {data.kind === 'TRIP' && data.trip.signoffAt && data.trip.signoffSvg && (
+          <div className="qr-box" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <b>Khách xác nhận hoàn thành chuyến (ký điện tử trên app lái xe):</b> {data.trip.signoffName} · {dayjs(data.trip.signoffAt).format('HH:mm DD/MM/YYYY')}
+              {data.trip.signoffNote && <div>Góp ý: {data.trip.signoffNote}</div>}
+              <SignatureImage svg={data.trip.signoffSvg} height={60} />
+            </div>
+          </div>
+        )}
 
         {v.contract && (
           <div className="qr-box">

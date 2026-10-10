@@ -11,6 +11,8 @@ import { CollectCard } from './CollectCard';
 import { KmModal, OdometerCard } from './OdometerCard';
 import { ContactCard, ContactChooser, type GuestContact } from './ContactCard';
 import { SignScreen } from './SignScreen';
+import { SignoffCard } from './SignoffCard';
+import { IncidentSheet, TripIncidents } from './IncidentSheet';
 import { TripCosts } from './TripCosts';
 
 const LEADER_ROLE: Record<string, string> = { HDV: 'Hướng dẫn viên', TRUONG_DOAN: 'Trưởng đoàn' };
@@ -51,6 +53,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [signOpen, setSignOpen] = useState(false);
+  const [incidentOpen, setIncidentOpen] = useState(false);
+  const [incidentKey, setIncidentKey] = useState(0);
   const [allPax, setAllPax] = useState(false);
   // Hỏi km đồng hồ: lúc bắt đầu đi đón / lúc hoàn thành / sửa km kết thúc
   const [kmMode, setKmMode] = useState<'start' | 'end' | 'fix' | null>(null);
@@ -188,6 +192,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           {b.contract && (
             <QuickAction icon="📄" label="Hợp đồng" tone="orange" onPress={() => Linking.openURL(`${getServer()}/e/hd/${b.contract!.token}`)} />
           )}
+          {trip.status !== 'DA_GAN' && trip.status !== 'HUY' && <QuickAction icon="⚠️" label="Sự cố" tone="orange" onPress={() => setIncidentOpen(true)} />}
           {trip.dropoffAddress && <QuickAction icon="🏁" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
         </Card>
 
@@ -234,6 +239,10 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
         </Card>
 
         <CollectCard trip={trip} onChanged={setTrip} />
+
+        <SignoffCard trip={trip} onSigned={(r) => setTrip({ ...trip, ...r })} />
+
+        <TripIncidents tripId={trip.id} reloadKey={incidentKey} />
 
         {guestContact && (
           <View onLayout={(e) => setContactY(e.nativeEvent.layout.y)}>
@@ -325,6 +334,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
       )}
 
       {signOpen && <SignScreen trip={trip} onClose={() => setSignOpen(false)} />}
+      <IncidentSheet visible={incidentOpen} tripId={trip.id} onClose={() => setIncidentOpen(false)} onSent={() => setIncidentKey((k) => k + 1)} />
       {choosing && <ContactChooser contact={choosing} onClose={() => setChoosing(null)} />}
       <KmModal trip={trip} mode={kmMode === 'start' ? 'start' : 'end'} visible={!!kmMode} busy={busy} onClose={() => setKmMode(null)} onSubmit={saveKm} />
 

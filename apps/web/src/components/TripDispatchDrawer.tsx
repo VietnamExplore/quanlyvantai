@@ -1,5 +1,6 @@
 import { CarOutlined, CopyOutlined, FileProtectOutlined, RollbackOutlined, ShopOutlined, SwapOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { SignoffBlock, TripIncidentList } from './FieldParts';
 import {
   Alert,
   App,
@@ -578,6 +579,9 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
           )}
 
           {trip.vehicle && trip.status !== 'CHO_DIEU' && <TripOdometer trip={trip} canEdit={hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH')} />}
+
+          <SignoffBlock trip={trip} />
+          <TripIncidentList tripId={trip.id} />
 
           {flowIndex >= 0 && (
             <>

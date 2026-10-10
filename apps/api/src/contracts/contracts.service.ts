@@ -252,6 +252,10 @@ export class ContractsService {
         driver: { select: { fullName: true, phone: true, licenseClass: true } },
         partner: { select: { name: true } },
         dispatchNote: true,
+        signoffName: true,
+        signoffAt: true,
+        signoffSvg: true,
+        signoffNote: true,
         booking: { select: { id: true, code: true, contactName: true, contactPhone: true, contract: { select: { number: true, signedDate: true, token: true } } } },
       },
     });

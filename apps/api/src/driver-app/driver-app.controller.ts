@@ -102,6 +102,9 @@ class PushTokenDto {
 /** Thông tin chuyến cho lái xe: không gồm giá bán, chi phí */
 const driverTripSelect = {
   id: true,
+  // Ký nhận điện tử của khách
+  signoffName: true,
+  signoffAt: true,
   serviceType: true,
   status: true,
   pickupTime: true,

@@ -16,6 +16,7 @@ import { ServicesModule } from './services/services.module';
 import { CustomerSourcesModule } from './customer-sources/customer-sources.module';
 import { CustomerTypesModule } from './customer-types/customer-types.module';
 import { ContractsModule } from './contracts/contracts.module';
+import { FieldModule } from './field/field.module';
 import { TranslateModule } from './translate/translate.module';
 import { FinanceModule } from './finance/finance.module';
 import { PricingModule } from './pricing/pricing.module';
@@ -69,6 +70,7 @@ import { ShuttleModule } from './shuttle/shuttle.module';
     CustomerSourcesModule,
     CustomerTypesModule,
     ContractsModule,
+    FieldModule,
     TranslateModule,
     FinanceModule,
   ],

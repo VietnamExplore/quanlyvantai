@@ -8,6 +8,7 @@ import { clearKnown, onNotificationOpen, setupNotifications, takeNew, type AppNo
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { EarningsScreen } from './src/screens/EarningsScreen';
 import { FuelScreen } from './src/screens/FuelScreen';
+import { VehicleScreen } from './src/screens/VehicleScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { TripDetailScreen } from './src/screens/TripDetailScreen';
@@ -24,7 +25,7 @@ const initials = (name: string) => {
 };
 import type { AuthUser } from './src/types';
 
-type Tab = 'trips' | 'fuel' | 'earnings';
+type Tab = 'trips' | 'vehicle' | 'fuel' | 'earnings';
 type Screen = { name: Tab } | { name: 'trip'; id: number; from: Tab } | { name: 'profile' } | { name: 'notifications' };
 
 /** Kiểm tra thông báo mới mỗi 30 giây khi app đang mở */
@@ -33,10 +34,11 @@ const POLL_MS = 30_000;
 /** Thanh tab dưới cùng */
 const TABS: { key: Tab; icon: string; label: string; title: string }[] = [
   { key: 'trips', icon: '🚐', label: 'Chuyến', title: 'Chuyến của tôi' },
+  { key: 'vehicle', icon: '🔑', label: 'Nhận xe', title: 'Nhận / trả xe' },
   { key: 'fuel', icon: '⛽', label: 'Xăng dầu', title: 'Xăng dầu' },
   { key: 'earnings', icon: '💰', label: 'Thu nhập', title: 'Thu nhập của tôi' },
 ];
-const isTab = (n: Screen['name']): n is Tab => n === 'trips' || n === 'fuel' || n === 'earnings';
+const isTab = (n: Screen['name']): n is Tab => n === 'trips' || n === 'vehicle' || n === 'fuel' || n === 'earnings';
 
 export default function App() {
   const [booting, setBooting] = useState(true);
@@ -196,6 +198,7 @@ export default function App() {
           <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['bottom']}>
             <View style={contentFrame}>
               {screen.name === 'trips' && <TripsScreen onOpen={(id) => openTrip(id, 'trips')} />}
+              {screen.name === 'vehicle' && <VehicleScreen />}
               {screen.name === 'fuel' && <FuelScreen />}
               {screen.name === 'earnings' && <EarningsScreen onOpenTrip={(id) => openTrip(id, 'earnings')} />}
               {screen.name === 'trip' && <TripDetailScreen key={screen.id} tripId={screen.id} onBack={back} />}
