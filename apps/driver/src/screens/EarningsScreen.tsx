@@ -14,17 +14,15 @@ interface Earnings {
   partner: boolean;
   hasRate?: boolean;
   baseSalary?: number;
-  commissionPercent?: number;
   baseAmount?: number;
   trips?: number;
-  revenue?: number;
   commission?: number;
   total?: number;
   reimbursement?: number;
   /** Tạm ứng đã nhận trong tháng (trừ lương) */
   advanceTaken?: number;
   netPay?: number;
-  completedTrips?: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; service: string | null; bookingCode: string; revenue: number; commission: number }[];
+  completedTrips?: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; service: string | null; bookingCode: string }[];
   pendingTrips?: { id: number; pickupTime: string; booking: { code: string } }[];
   advances?: { category: string; amount: number; date: string; note: string | null; bookingCode: string | null }[];
   holding: { tripId: number; amount: number; collectedAt: string; bookingCode: string }[];
@@ -88,22 +86,22 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
                 <Text style={s.heroBoxValue}>{d.trips ?? 0}</Text>
               </View>
               <View style={s.heroBox}>
-                <Text style={s.heroBoxLabel}>Doanh số xe (chưa thuế)</Text>
-                <Text style={s.heroBoxValue}>{vnd(d.revenue ?? 0)}</Text>
+                <Text style={s.heroBoxLabel}>Tổng hoa hồng</Text>
+                <Text style={s.heroBoxValue}>{vnd(d.commission ?? 0)}</Text>
               </View>
             </View>
           </LinearGradient>
 
           {!d.hasRate && (
             <Card style={s.warnCard}>
-              <Text style={s.warnText}>⚠️ Văn phòng chưa cài mức lương / % doanh số cho bạn tháng này — số liệu dưới đây chưa đầy đủ.</Text>
+              <Text style={s.warnText}>⚠️ Văn phòng chưa cài mức lương / hoa hồng cho bạn tháng này — số liệu dưới đây chưa đầy đủ.</Text>
             </Card>
           )}
 
           <Card>
             <Section icon="🧮" title="Cách tính" />
             <Line label="Lương cứng" hint={d.baseSalary ? `${vnd(d.baseSalary)}/tháng, tính theo ngày làm` : undefined} value={vnd(d.baseAmount ?? 0)} />
-            <Line label={`Hoa hồng ${d.commissionPercent ?? 0}% doanh số`} hint={`${d.trips ?? 0} chuyến · doanh số ${vnd(d.revenue ?? 0)}`} value={vnd(d.commission ?? 0)} />
+            <Line label="Tổng hoa hồng" hint={`${d.trips ?? 0} chuyến đã hoàn thành`} value={vnd(d.commission ?? 0)} />
             <Line label="Tổng lương" value={vnd(d.total ?? 0)} strong />
             <Line label="Hoàn tiền bạn chi hộ" hint="Chi phí chuyến + xăng bạn tự trả" value={`+ ${vnd(d.reimbursement ?? 0)}`} color={colors.success} />
             {(d.advanceTaken ?? 0) > 0 && <Line label="Trừ tạm ứng đã nhận" value={`− ${vnd(d.advanceTaken!)}`} color={colors.danger} />}
@@ -113,7 +111,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
 
           {(d.pendingTrips?.length ?? 0) > 0 && (
             <Card style={s.warnCard}>
-              <Text style={s.warnText}>⏳ {d.pendingTrips!.length} chuyến đã qua giờ đón nhưng chưa bấm "Hoàn thành" — chưa được tính doanh số:</Text>
+              <Text style={s.warnText}>⏳ {d.pendingTrips!.length} chuyến đã qua giờ đón nhưng chưa bấm "Hoàn thành" — chưa được tính hoa hồng:</Text>
               {d.pendingTrips!.map((t) => (
                 <Text key={t.id} style={s.pendingItem} onPress={() => onOpenTrip(t.id)}>
                   • {fmtTime(t.pickupTime)} · {t.booking.code} ›
@@ -153,10 +151,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
                   {t.dropoffAddress ? `${t.pickupAddress} → ${t.dropoffAddress}` : t.pickupAddress}
                 </Text>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={s.tripRevenue}>{vnd(t.revenue)}</Text>
-                <Text style={s.tripCommission}>+ {vnd(t.commission)}</Text>
-              </View>
+              <Text style={s.tripDone}>✓ {t.bookingCode}</Text>
             </View>
           ))}
         </Card>
@@ -207,6 +202,6 @@ const s = StyleSheet.create({
   trip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   tripTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
   tripMeta: { fontSize: 12.5, color: colors.muted, marginTop: 2 },
+  tripDone: { fontSize: 12.5, color: colors.success, fontWeight: '700' },
   tripRevenue: { fontSize: 15, fontWeight: '700', color: colors.text },
-  tripCommission: { fontSize: 12.5, fontWeight: '700', color: colors.success, marginTop: 2 },
 });

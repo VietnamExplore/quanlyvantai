@@ -400,7 +400,7 @@ export class DriverAppController {
 
   // ───── Thu nhập (lương + doanh số) ─────
 
-  /** Thu nhập của lái xe trong tháng: lương cứng, doanh số, tiền %, hoàn ứng + tiền thu hộ chưa nộp */
+  /** Thu nhập của lái xe trong tháng: lương cứng, tổng hoa hồng, hoàn ứng + tiền thu hộ chưa nộp (không lộ giá chuyến / doanh số) */
   @Get('earnings')
   async earnings(@CurrentUser() user: AuthUser, @Query('month') monthQ?: string) {
     const driverId = this.driverId(user);
@@ -422,18 +422,19 @@ export class DriverAppController {
       ...(row && {
         hasRate: !row.missingRate,
         baseSalary: row.baseSalary,
-        commissionPercent: row.commissionPercent,
+        // Lái xe chỉ biết lương và tổng hoa hồng: không gửi doanh số, % hoa hồng, giá / hoa hồng từng chuyến
+        commissionPercent: null,
         baseAmount: row.baseAmount,
         trips: row.trips,
-        revenue: row.revenue,
+        revenue: null,
         commission: row.commission,
         total: row.total,
         reimbursement: row.reimbursement,
         advanceTaken: row.advanceTaken,
         loans: row.loans,
         netPay: row.netPay,
-        completedTrips: row.completedTrips,
-        pendingTrips: row.pendingTrips,
+        completedTrips: row.completedTrips.map(({ revenue: _r, commission: _c, ...t }) => ({ ...t, revenue: null, commission: null })),
+        pendingTrips: row.pendingTrips.map((t) => ({ id: t.id, pickupTime: t.pickupTime, status: t.status, booking: { code: t.booking.code } })),
         advances: row.advances.map((a) => ({ category: a.category, amount: a.amount, date: a.spentAt, note: a.note, bookingCode: a.booking?.code ?? null })),
       }),
       // Tiền mặt thu hộ khách, lái xe đang giữ, chưa nộp lại văn phòng
