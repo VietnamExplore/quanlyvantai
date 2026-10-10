@@ -40,6 +40,8 @@ export interface Vehicle extends Ref {
   vehicleType: { id: number; code: string; name: string; seats: number; fuelNorm: string | null };
   /** Định mức xăng dầu riêng (lít/100km), null = theo loại xe */
   fuelNorm: string | null;
+  /** Loại nhiên liệu (mặt hàng Petrolimex) */
+  fuelType: string | null;
   brand: string | null;
   model: string | null;
   year: number | null;

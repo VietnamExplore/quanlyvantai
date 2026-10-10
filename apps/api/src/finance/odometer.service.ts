@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { FuelPriceService } from './fuel-price.service';
 
 /** Định mức xăng dầu mặc định (lít/100km) khi xe và loại xe đều chưa cài */
 export const DEFAULT_FUEL_NORM = 11;
@@ -15,16 +16,28 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  * - Lít = số km × định mức / 100; chi phí = lít × giá xăng dầu.
  * - Định mức: sửa riêng cho chuyến → định mức của xe → của loại xe → 11 lít/100km; giá: cài đặt "Giá xăng dầu",
  *   chưa cài thì lấy giá bình quân các lần đổ xăng 60 ngày gần đây. Định mức + giá được chốt vào chuyến.
+ * - Xe đã chọn loại nhiên liệu: dùng giá Petrolimex của loại đó (tự cập nhật 15:00 hằng ngày).
  */
 @Injectable()
 export class OdometerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fuel: FuelPriceService,
+  ) {}
 
-  async config() {
+  /** Giá xăng dầu đang áp dụng: theo loại nhiên liệu của xe (giá Petrolimex), không có thì giá chung */
+  async config(fuelType?: string | null): Promise<{ price: number | null; priceSource: 'petrolimex' | 'setting' | 'average' | null }> {
+    const plx = await this.fuel.priceOf(fuelType);
+    if (plx) return { price: plx, priceSource: 'petrolimex' };
+    return this.generalConfig();
+  }
+
+  /** Giá chung: cài đặt "Giá xăng dầu", chưa cài thì giá bình quân các lần đổ xăng 60 ngày */
+  private async generalConfig() {
     const row = await this.prisma.setting.findUnique({ where: { key: 'fuelPrice' } });
     const set = Number(row?.value?.replace(/[^\d]/g, '') || 0);
     let price = set > 0 ? set : null;
-    let priceSource: 'setting' | 'average' | null = price ? 'setting' : null;
+    let priceSource: 'petrolimex' | 'setting' | 'average' | null = price ? 'setting' : null;
     if (!price) {
       const since = new Date(Date.now() - 60 * 86_400_000);
       const agg = await this.prisma.cashVoucher.aggregate({ where: { type: 'CHI', liters: { gt: 0 }, date: { gte: since } }, _sum: { amount: true, liters: true } });
@@ -57,7 +70,7 @@ export class OdometerService {
   async record(tripId: number, input: { startKm?: number | null; endKm?: number | null; fuelNorm?: number | null }) {
     const trip = await this.prisma.bookingTrip.findUnique({
       where: { id: tripId },
-      select: { id: true, vehicleId: true, pickupTime: true, days: true, startKm: true, endKm: true, fuelNorm: true, vehicle: { select: { fuelNorm: true, vehicleType: { select: { fuelNorm: true } } } } },
+      select: { id: true, vehicleId: true, pickupTime: true, days: true, startKm: true, endKm: true, fuelNorm: true, vehicle: { select: { fuelNorm: true, fuelType: true, vehicleType: { select: { fuelNorm: true } } } } },
     });
     if (!trip) throw new NotFoundException('Không tìm thấy chuyến');
     let startKm = input.startKm !== undefined ? input.startKm : trip.startKm;
@@ -71,7 +84,7 @@ export class OdometerService {
 
     const data: Prisma.BookingTripUncheckedUpdateInput = { startKm: startKm ?? null, endKm: endKm ?? null };
     if (startKm != null && endKm != null) {
-      const cfg = await this.config();
+      const cfg = await this.config(trip.vehicle?.fuelType);
       const norm =
         input.fuelNorm ??
         (trip.fuelNorm ? Number(trip.fuelNorm) : null) ??

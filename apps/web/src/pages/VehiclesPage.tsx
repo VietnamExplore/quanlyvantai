@@ -1,5 +1,5 @@
 import { QuickSelect } from '../components/QuickCreate';
-import { Col, DatePicker, Form, Input, InputNumber, Radio, Row, Select } from 'antd';
+import { Col, DatePicker, Form, Input, InputNumber, Radio, Row, Select, Tag } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
 import {
@@ -12,12 +12,14 @@ import {
 } from '../components/common';
 import { OWNERSHIP, VEHICLE_STATUS, toOptions } from '../labels';
 import type { Vehicle } from '../types';
+import { FUEL_TYPES, fuelType, useFuelPrices } from '../fuel';
 
 export default function VehiclesPage() {
   const { hasRole } = useAuth();
   const { options: typeOptions } = useVehicleTypeOptions();
   const partnerOptions = usePartnerOptions();
   const driverOptions = useCompanyDriverOptions();
+  const { data: fuel } = useFuelPrices();
 
   return (
     <CrudPage<Vehicle>
@@ -59,6 +61,22 @@ export default function VehiclesPage() {
           ),
         },
         { title: 'Lái xe mặc định', render: (_, r) => r.defaultDriver?.fullName },
+        {
+          title: 'Nhiên liệu',
+          render: (_, r) => {
+            const f = fuelType(r.fuelType);
+            if (!f) return <span style={{ color: '#bbb' }}>Chưa chọn</span>;
+            const price = fuel?.prices[f.value];
+            return (
+              <>
+                <Tag color={f.color} style={{ marginInlineEnd: 0 }}>
+                  {f.short}
+                </Tag>
+                {price ? <div style={{ fontSize: 12, color: '#888' }}>{price.toLocaleString('vi-VN')} đ/lít</div> : null}
+              </>
+            );
+          },
+        },
         {
           title: 'Định mức xăng',
           align: 'right',
@@ -149,6 +167,22 @@ export default function VehiclesPage() {
           <Col xs={24} md={12}>
             <Form.Item name="odometerKm" label="Số km hiện tại" extra="Tự cập nhật khi lái xe ghi km kết thúc chuyến">
               <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="fuelType"
+              label="Loại nhiên liệu"
+              tooltip="Chi phí xăng dầu của chuyến tính theo giá Petrolimex của loại này (tự cập nhật 15:00 hằng ngày)"
+            >
+              <Select
+                allowClear
+                placeholder="Chọn xăng / dầu"
+                options={FUEL_TYPES.map((f) => ({
+                  value: f.value,
+                  label: fuel?.prices[f.value] ? `${f.label} – ${fuel.prices[f.value].toLocaleString('vi-VN')} đ/lít` : f.label,
+                }))}
+              />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>

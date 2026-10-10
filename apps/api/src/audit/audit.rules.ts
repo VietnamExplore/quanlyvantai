@@ -16,6 +16,9 @@ export interface AuditRule {
 const r = (method: string, path: string, action: string, entity?: string, model?: string, idField?: 'id' | 'code'): AuditRule => ({ method, path, action, entity, model, idField });
 
 export const AUDIT_RULES: AuditRule[] = [
+  // Giá xăng dầu Petrolimex
+  r('POST', '/fuel-prices/refresh', 'Cập nhật giá xăng dầu Petrolimex'),
+  r('PUT', '/fuel-prices/config', 'Đổi cài đặt giá xăng dầu'),
   // Vận hành hiện trường
   r('PATCH', '/field/incidents/:id', 'Xử lý sự cố', 'FieldIncident', 'fieldIncident'),
   // Xe ghép

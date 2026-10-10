@@ -1,8 +1,9 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { FuelPriceService } from './fuel-price.service';
 import { PushService } from '../push/push.service';
 import {
   CreateCostCategoryDto,
@@ -28,6 +29,7 @@ export class FinanceController {
     private readonly prisma: PrismaService,
     private readonly odometer: OdometerService,
     private readonly push: PushService,
+    private readonly fuelPrice: FuelPriceService,
   ) {}
 
   // ───── Loại chi phí ─────
@@ -206,6 +208,24 @@ export class FinanceController {
   @Get('fuel-config')
   fuelConfig() {
     return this.odometer.config();
+  }
+
+  /** Giá xăng dầu Petrolimex (tự cập nhật 15:00 hằng ngày) */
+  @Get('fuel-prices')
+  fuelPrices() {
+    return this.fuelPrice.state();
+  }
+
+  @Post('fuel-prices/refresh')
+  @Roles(Role.ADMIN)
+  refreshFuelPrices() {
+    return this.fuelPrice.refresh();
+  }
+
+  @Put('fuel-prices/config')
+  @Roles(Role.ADMIN)
+  fuelPriceConfig(@Body() body: { zone?: number; auto?: boolean }) {
+    return this.fuelPrice.saveConfig({ zone: body.zone === 2 ? 2 : body.zone === 1 ? 1 : undefined, auto: typeof body.auto === 'boolean' ? body.auto : undefined });
   }
 
   @Delete('vouchers/:id')

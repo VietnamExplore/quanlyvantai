@@ -103,6 +103,8 @@ model Vehicle {
   odometerKm         Int?
   /// Định mức xăng dầu riêng của xe (lít/100km); trống = theo loại xe
   fuelNorm           Decimal?        @db.Decimal(5, 2)
+  /// Loại nhiên liệu (mặt hàng Petrolimex): XANG_95_V | XANG_95_III | XANG_92 | DO_0001 | DO_005 | DIEN
+  fuelType           String?
   defaultDriverId    Int?
   defaultDriver      Driver?         @relation(fields: [defaultDriverId], references: [id])
   trips              BookingTrip[]

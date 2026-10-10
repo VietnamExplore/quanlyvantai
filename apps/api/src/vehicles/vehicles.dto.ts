@@ -1,7 +1,8 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { Ownership, VehicleStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { FUEL_CODES } from '../finance/fuel-price.service';
 
 export class CreateVehicleDto {
   // Chuẩn hóa biển số: bỏ khoảng trắng thừa, viết hoa (ví dụ "51b-123.45" → "51B-123.45")
@@ -55,6 +56,11 @@ export class CreateVehicleDto {
   @Min(1, { message: 'Định mức xăng phải từ 1 lít/100km' })
   @Max(100, { message: 'Định mức xăng tối đa 100 lít/100km' })
   fuelNorm?: number | null;
+
+  /** Loại nhiên liệu: lấy giá Petrolimex tương ứng để tính chi phí xăng dầu */
+  @IsOptional()
+  @IsIn([...FUEL_CODES, null], { message: 'Loại nhiên liệu không hợp lệ' })
+  fuelType?: string | null;
 
   @IsOptional()
   @IsString()

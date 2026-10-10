@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { api, apiUpload } from '../api';
 import { logoUrl } from '../components/PrintDoc';
 import { useSettings } from '../components/common';
+import { FuelPriceCard } from '../components/FuelPriceCard';
 import { DEFAULT_CONTRACT_TERMS } from '../contract';
 import type { Settings } from '../types';
 
@@ -221,11 +222,14 @@ export default function SettingsPage() {
           <Col xs={24} md={8}>
             <Form.Item
               name="fuelPrice"
-              label="Giá xăng dầu (đ/lít)"
-              tooltip="Dùng tính chi phí xăng từng chuyến = số km × định mức (cài ở Loại xe / Xe) × giá. Bỏ trống = giá bình quân các lần đổ xăng 60 ngày gần đây."
+              label="Giá xăng dầu chung (đ/lít)"
+              tooltip="Dùng cho xe chưa chọn loại nhiên liệu, hoặc khi chưa lấy được giá Petrolimex. Bỏ trống = giá bình quân các lần đổ xăng 60 ngày gần đây."
             >
               <Input placeholder="Giá bình quân các lần đổ xăng" inputMode="numeric" suffix="đ/lít" />
             </Form.Item>
+          </Col>
+          <Col span={24}>
+            <FuelPriceCard />
           </Col>
           <Col span={24}>
             <Form.Item name="quoteFooter" label="Ghi chú cuối báo giá" extra="Điều khoản giá bao gồm / không bao gồm, hiệu lực báo giá, chính sách hủy…">
