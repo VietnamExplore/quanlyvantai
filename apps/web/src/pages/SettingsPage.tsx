@@ -228,6 +228,16 @@ export default function SettingsPage() {
               <Input placeholder="Giá bình quân các lần đổ xăng" inputMode="numeric" suffix="đ/lít" />
             </Form.Item>
           </Col>
+          <Col xs={24} md={16}>
+            <Form.Item
+              name="zaloDriverGroup"
+              label="Link nhóm Zalo lái xe"
+              tooltip="Gán xe xong, phần mềm tự sao chép lệnh điều xe và có nút mở nhóm này để dán gửi. Lấy link: mở nhóm Zalo → Tùy chọn → Link tham gia nhóm → Sao chép."
+              rules={[{ pattern: /^https?:\/\//, message: 'Dán đường dẫn bắt đầu bằng https://' }]}
+            >
+              <Input placeholder="https://zalo.me/g/abcxyz" />
+            </Form.Item>
+          </Col>
           <Col span={24}>
             <FuelPriceCard />
           </Col>

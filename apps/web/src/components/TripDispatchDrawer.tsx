@@ -1,6 +1,7 @@
 import { CarOutlined, CopyOutlined, FileProtectOutlined, RollbackOutlined, ShopOutlined, SwapOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SignoffBlock, TripIncidentList } from './FieldParts';
+import { SendOrderModal, type SendTarget } from './SendOrderModal';
 import {
   Alert,
   App,
@@ -146,6 +147,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       message.success(body.mode === 'COMPANY' ? 'Đã gán xe' : 'Đã giao nhà xe đối tác');
       setChanging(false);
       refresh(updated);
+      // Tự sao chép lệnh điều xe + mở hộp gửi Zalo (nhóm lái xe, lái xe / nhà xe)
+      setSendTrip(updated);
     } catch (e) {
       if (e instanceof ApiError && e.data?.needConfirm) {
         modal.confirm({
@@ -169,6 +172,16 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
   }
 
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [sendTrip, setSendTrip] = useState<DispatchTrip | null>(null);
+  const sendTargets = (t: DispatchTrip): SendTarget[] =>
+    t.driver
+      ? [{ label: 'lái xe', name: t.driver.fullName, phone: t.driver.phone }]
+      : t.partner
+        ? [
+            { label: 'nhà xe', name: t.partner.name, phone: t.partner.phone },
+            ...(t.partnerDriverName || t.partnerDriverPhone ? [{ label: 'tài xế nhà xe', name: t.partnerDriverName ?? '', phone: t.partnerDriverPhone }] : []),
+          ]
+        : [];
   const [reviewOpen, setReviewOpen] = useState(false);
 
   async function post(path: string, body?: unknown, okMsg?: string) {
@@ -664,6 +677,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
           )}
         </>
       )}
+      <SendOrderModal open={!!sendTrip} text={sendTrip ? buildDispatchText(sendTrip) : ''} targets={sendTrip ? sendTargets(sendTrip) : []} onClose={() => setSendTrip(null)} />
     </Drawer>
   );
 }

@@ -9,6 +9,7 @@ import { useAuth } from '../auth';
 import { useCopyText } from '../clipboard';
 import { MoneyInput, formatVnd, useCompanyDriverOptions, usePartnerOptions } from '../components/common';
 import { downloadExcel } from '../excel';
+import { SendOrderModal, type SendTarget } from '../components/SendOrderModal';
 import { TRIP_STATUS } from '../labels';
 import { RUN_PROGRESS, RUN_STATUS, type ShuttleRoute, type ShuttleRun, type ShuttleRunDetail, type ShuttleRunTrip } from '../shuttle-types';
 import type { Vehicle } from '../types';
@@ -349,6 +350,16 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
     }
   }
 
+  const [sendOpen, setSendOpen] = useState(false);
+  const sendTargets: SendTarget[] = run?.driver
+    ? [{ label: 'lái xe', name: run.driver.fullName, phone: run.driver.phone }]
+    : run?.partner
+      ? [
+          { label: 'nhà xe', name: run.partner.name, phone: run.partner.phone },
+          ...(run.partnerDriverName || run.partnerDriverPhone ? [{ label: 'tài xế nhà xe', name: run.partnerDriverName ?? '', phone: run.partnerDriverPhone }] : []),
+        ]
+      : [];
+
   const startAssign = () => {
     form.setFieldsValue(
       run?.partner
@@ -361,7 +372,10 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
   const submitAssign = async () => {
     const v = await form.validateFields();
     const ok = await call('assign', `/shuttle/runs/${runId}/assign`, 'POST', v, 'Đã điều xe cho cả chuyến');
-    if (ok) setEditAssign(false);
+    if (ok) {
+      setEditAssign(false);
+      setSendOpen(true);
+    }
   };
 
   // Danh sách khách theo điểm đón (thứ tự đón)
@@ -631,6 +645,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
           ))}
         </Flex>
       )}
+      <SendOrderModal open={sendOpen} text={sendOpen ? manifestText() : ''} targets={sendTargets} onClose={() => setSendOpen(false)} />
     </Drawer>
   );
 }

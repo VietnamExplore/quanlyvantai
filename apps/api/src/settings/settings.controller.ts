@@ -47,6 +47,8 @@ export const SETTING_KEYS = [
   'fuelPrice',
   // Email nhận hóa đơn do nhà xe đối tác xuất cho công ty (trống = email công ty)
   'invoiceEmail',
+  // Link mời vào nhóm Zalo lái xe (mở nhanh để dán lệnh điều xe)
+  'zaloDriverGroup',
   // Hợp đồng vận chuyển (NĐ 158/2024): người đại diện ký, giấy phép kinh doanh vận tải, số điện thoại tiếp nhận phản ánh, điều khoản
   'companyRepresentative',
   'companyRepresentativeTitle',
