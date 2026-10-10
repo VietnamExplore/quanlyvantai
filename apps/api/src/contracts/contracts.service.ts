@@ -256,7 +256,17 @@ export class ContractsService {
         signoffAt: true,
         signoffSvg: true,
         signoffNote: true,
-        booking: { select: { id: true, code: true, contactName: true, contactPhone: true, contract: { select: { number: true, signedDate: true, token: true } } } },
+        booking: {
+          select: {
+            id: true,
+            code: true,
+            contactName: true,
+            contactPhone: true,
+            contract: { select: { number: true, signedDate: true, token: true } },
+            // Danh sách hành khách trên xe (gồm khách lái xe bổ sung khi đón)
+            passengers: { orderBy: { seq: 'asc' }, select: { fullName: true, birthYear: true, note: true } },
+          },
+        },
       },
     });
     if (!t) throw new NotFoundException('Không tìm thấy chuyến');

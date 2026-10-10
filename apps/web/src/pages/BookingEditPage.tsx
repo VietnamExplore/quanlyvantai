@@ -209,6 +209,7 @@ export default function BookingEditPage() {
       passengers: ((v.passengers ?? []) as Passenger[])
         .filter((p) => p?.fullName?.trim())
         .map((p) => ({
+          id: p.id,
           fullName: p.fullName.trim(),
           gender: p.gender ?? null,
           birthYear: p.birthYear ?? null,
@@ -217,6 +218,8 @@ export default function BookingEditPage() {
           phone: p.phone || null,
           note: p.note || null,
         })),
+      // Khách lái xe thêm trên app trong lúc đang sửa (không có trong danh sách lúc mở) được giữ lại
+      knownPassengerIds: booking?.passengers.map((p) => p.id).filter((x): x is number => !!x),
       trips: trips.map(toTripPayload),
     };
     setSaving(true);

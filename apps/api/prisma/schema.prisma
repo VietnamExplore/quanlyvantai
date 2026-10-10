@@ -564,17 +564,21 @@ model BookingTrip {
 
 /// Danh sách hành khách của booking (in kèm lệnh vận chuyển xe hợp đồng)
 model BookingPassenger {
-  id          Int     @id @default(autoincrement())
-  bookingId   Int
-  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  seq         Int
-  fullName    String
-  gender      String? // NAM | NU
-  birthYear   Int?
-  idNumber    String? // CCCD / hộ chiếu
-  nationality String?
-  phone       String?
-  note        String?
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  seq             Int
+  fullName        String
+  gender          String? // NAM | NU
+  birthYear       Int?
+  idNumber        String? // CCCD / hộ chiếu
+  nationality     String?
+  phone           String?
+  note            String?
+  /// Lái xe bổ sung trên app khi đón khách (booking nhập chưa đủ)
+  addedByDriverId Int?
+  addedByName     String?
+  addedAt         DateTime?
 
   @@index([bookingId])
 }

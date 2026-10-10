@@ -12,6 +12,7 @@ import { KmModal, OdometerCard } from './OdometerCard';
 import { ContactCard, ContactChooser, type GuestContact } from './ContactCard';
 import { SignScreen } from './SignScreen';
 import { SignoffCard } from './SignoffCard';
+import { AddPassengersCard } from './AddPassengersCard';
 import { IncidentSheet, TripIncidents } from './IncidentSheet';
 import { TripCosts } from './TripCosts';
 
@@ -239,6 +240,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
         </Card>
 
         <CollectCard trip={trip} onChanged={setTrip} />
+
+        <AddPassengersCard trip={trip} onChanged={(list) => setTrip({ ...trip, booking: { ...trip.booking, passengers: list } })} />
 
         <SignoffCard trip={trip} onSigned={(r) => setTrip({ ...trip, ...r })} />
 

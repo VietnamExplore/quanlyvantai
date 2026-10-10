@@ -8,7 +8,7 @@ import { diskStorage } from 'multer';
 import { join, resolve } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
-import { CreateIncidentDto, CreateVehicleCheckDto, HandleIncidentDto, INCIDENT_LABEL, SignoffDto } from './field.dto';
+import { AddPassengersDto, CreateIncidentDto, CreateVehicleCheckDto, DriverPassengerDto, HandleIncidentDto, INCIDENT_LABEL, SignoffDto } from './field.dto';
 
 /** Ảnh hiện trường (sự cố, nhận / trả xe): apps/api/uploads/field */
 export const FIELD_DIR = resolve(process.env.UPLOAD_DIR ?? join(__dirname, '..', '..', 'uploads'), 'field');
@@ -86,6 +86,116 @@ export class FieldService {
       this.prisma.tripEvent.create({ data: { tripId, status: trip.status, userId, note: `Khách ký nhận hoàn thành: ${dto.name}` } }),
     ]);
     return this.prisma.bookingTrip.findUnique({ where: { id: tripId }, select: { signoffName: true, signoffAt: true, signoffSvg: true, signoffNote: true } });
+  }
+
+  // ───── Lái xe bổ sung danh sách hành khách ─────
+
+  /** Lái xe chỉ bổ sung khách khi đã nhận chuyến, đang đi đón hoặc đã đón khách */
+  private static readonly PAX_STATUSES: TripStatus[] = [TripStatus.TAI_XE_NHAN, TripStatus.DANG_DEN_DON, TripStatus.DA_DON_KHACH];
+
+  private async paxContext(driverId: number, tripId: number) {
+    const trip = await this.ownTrip(driverId, tripId);
+    if (!FieldService.PAX_STATUSES.includes(trip.status)) throw new BadRequestException('Chỉ bổ sung hành khách khi đã nhận chuyến và chưa hoàn thành');
+    const booking = await this.prisma.booking.findUniqueOrThrow({
+      where: { id: trip.bookingId },
+      select: {
+        id: true,
+        code: true,
+        createdById: true,
+        salesUserId: true,
+        trips: { where: { status: { not: TripStatus.HUY } }, select: { passengers: true } },
+        _count: { select: { passengers: true } },
+      },
+    });
+    // Số khách tối đa = số khách lớn nhất trong các chuyến của booking
+    const max = Math.max(trip.passengers, ...booking.trips.map((t) => t.passengers));
+    return { trip, booking, max };
+  }
+
+  async addPassengers(driverId: number, userId: number, tripId: number, dto: AddPassengersDto) {
+    if (!dto.passengers.length) throw new BadRequestException('Chưa nhập hành khách');
+    const { trip, booking, max } = await this.paxContext(driverId, tripId);
+    const have = booking._count.passengers;
+    const room = max - have;
+    if (dto.passengers.length > room) {
+      throw new BadRequestException(
+        room > 0
+          ? `Chuyến ghi ${max} khách, danh sách đã có ${have}: chỉ thêm được ${room} người. Khách đi thêm hãy báo văn phòng.`
+          : `Danh sách đã đủ ${max} khách theo chuyến. Khách đi thêm hãy báo văn phòng.`,
+      );
+    }
+    const driver = await this.prisma.driver.findUniqueOrThrow({ where: { id: driverId }, select: { fullName: true } });
+    const last = await this.prisma.bookingPassenger.aggregate({ where: { bookingId: booking.id }, _max: { seq: true } });
+    const now = new Date();
+    const names = dto.passengers.map((p) => p.fullName).join(', ');
+    await this.prisma.$transaction([
+      this.prisma.bookingPassenger.createMany({
+        data: dto.passengers.map((p, i) => ({
+          bookingId: booking.id,
+          seq: (last._max.seq ?? 0) + i + 1,
+          fullName: p.fullName,
+          birthYear: p.birthYear ?? null,
+          gender: p.gender ?? null,
+          nationality: p.nationality ?? null,
+          phone: p.phone ?? null,
+          note: p.note ?? null,
+          addedByDriverId: driverId,
+          addedByName: driver.fullName,
+          addedAt: now,
+        })),
+      }),
+      this.prisma.tripEvent.create({ data: { tripId, status: trip.status, userId, note: `Lái xe bổ sung ${dto.passengers.length} hành khách: ${names}` } }),
+    ]);
+    await this.push.notifyRoles(
+      [Role.DIEU_HANH],
+      {
+        type: 'PAX_ADDED',
+        title: `Lái xe bổ sung hành khách – ${booking.code}`,
+        body: `${driver.fullName} thêm ${dto.passengers.length} người: ${names}`,
+        link: `/bookings/${booking.id}`,
+        tripId,
+      },
+      { exclude: userId, extra: [booking.createdById, booking.salesUserId] },
+    );
+    return this.driverPassengers(booking.id);
+  }
+
+  private async ownPassenger(driverId: number, id: number) {
+    const p = await this.prisma.bookingPassenger.findUnique({ where: { id } });
+    if (!p || p.addedByDriverId !== driverId) throw new NotFoundException('Chỉ sửa được hành khách do bạn thêm');
+    // Lái xe phải còn chuyến chưa xong của booking này
+    const trip = await this.prisma.bookingTrip.findFirst({ where: { bookingId: p.bookingId, driverId, status: { in: FieldService.PAX_STATUSES } } });
+    if (!trip) throw new BadRequestException('Chuyến đã xong, không sửa được danh sách. Liên hệ văn phòng.');
+    return p;
+  }
+
+  async updatePassenger(driverId: number, id: number, dto: DriverPassengerDto) {
+    const p = await this.ownPassenger(driverId, id);
+    await this.prisma.bookingPassenger.update({
+      where: { id },
+      data: { fullName: dto.fullName, birthYear: dto.birthYear ?? null, gender: dto.gender ?? null, nationality: dto.nationality ?? null, phone: dto.phone ?? null, note: dto.note ?? null },
+    });
+    return this.driverPassengers(p.bookingId);
+  }
+
+  async removePassenger(driverId: number, id: number) {
+    const p = await this.ownPassenger(driverId, id);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.bookingPassenger.delete({ where: { id } });
+      // Đánh lại số thứ tự
+      const rest = await tx.bookingPassenger.findMany({ where: { bookingId: p.bookingId }, orderBy: { seq: 'asc' }, select: { id: true, seq: true } });
+      for (const [i, r] of rest.entries()) if (r.seq !== i + 1) await tx.bookingPassenger.update({ where: { id: r.id }, data: { seq: i + 1 } });
+    });
+    return this.driverPassengers(p.bookingId);
+  }
+
+  /** Danh sách khách trả về app (không gửi số giấy tờ tùy thân) */
+  private driverPassengers(bookingId: number) {
+    return this.prisma.bookingPassenger.findMany({
+      where: { bookingId },
+      orderBy: { seq: 'asc' },
+      select: { id: true, seq: true, fullName: true, gender: true, birthYear: true, nationality: true, phone: true, note: true, addedByDriverId: true },
+    });
   }
 
   // ───── Sự cố ─────

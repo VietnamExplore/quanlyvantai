@@ -53,3 +53,16 @@ export class CreateVehicleCheckDto {
   @IsArray() @ValidateNested({ each: true }) @Type(() => CheckItemDto) items: CheckItemDto[];
   @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(2000) note?: string | null;
 }
+
+export class DriverPassengerDto {
+  @Transform(trim) @IsString() @IsNotEmpty({ message: 'Nhập họ tên hành khách' }) @MaxLength(120) fullName: string;
+  @IsOptional() @IsInt() @Min(1900, { message: 'Năm sinh không hợp lệ' }) @Max(2100, { message: 'Năm sinh không hợp lệ' }) birthYear?: number | null;
+  @IsOptional() @IsIn(['NAM', 'NU']) gender?: 'NAM' | 'NU' | null;
+  @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(60) nationality?: string | null;
+  @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(30) phone?: string | null;
+  @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(200) note?: string | null;
+}
+
+export class AddPassengersDto {
+  @IsArray() @ValidateNested({ each: true }) @Type(() => DriverPassengerDto) passengers: DriverPassengerDto[];
+}

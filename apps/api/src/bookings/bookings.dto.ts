@@ -92,6 +92,9 @@ export class TripDto {
 }
 
 export class PassengerDto {
+  /** Mã dòng hành khách đã có (giữ thông tin "lái xe thêm") */
+  @IsOptional() @IsInt() id?: number;
+
   @IsString()
   @IsNotEmpty({ message: 'Hành khách phải có họ tên' })
   fullName: string;
@@ -182,6 +185,12 @@ export class CreateBookingDto {
   @ValidateNested({ each: true })
   @Type(() => PassengerDto)
   passengers?: PassengerDto[];
+
+  /**
+   * Mã các hành khách lúc mở booking để sửa: hành khách không có trong danh sách này (lái xe vừa thêm trên app
+   * trong lúc văn phòng đang sửa) được giữ lại, không bị xóa khi lưu
+   */
+  @IsOptional() @IsArray() @IsInt({ each: true }) knownPassengerIds?: number[];
 
   @IsOptional() @IsString() signTitle?: string | null;
   @IsOptional() @IsString() signSubtitle?: string | null;

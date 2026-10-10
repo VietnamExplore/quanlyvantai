@@ -141,7 +141,7 @@ const driverTripSelect = {
       leaderPhone: true,
       leaderApp: true,
       leaderAppId: true,
-      passengers: { select: { seq: true, fullName: true, gender: true, nationality: true, phone: true, note: true }, orderBy: { seq: 'asc' } },
+      passengers: { select: { id: true, seq: true, fullName: true, gender: true, birthYear: true, nationality: true, phone: true, note: true, addedByDriverId: true }, orderBy: { seq: 'asc' } },
       // Hợp đồng vận chuyển điện tử: lái xe xuất trình khi kiểm tra (NĐ 158/2024 Điều 7)
       contract: { select: { number: true, token: true } },
       // Bảng đón khách

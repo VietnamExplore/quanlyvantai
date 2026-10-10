@@ -48,6 +48,11 @@ export function buildDispatchText(t: DispatchTrip) {
   const guestName = guest?.fullName || t.booking.customer?.name || t.booking.contactName;
   const guestPhone = guest?.phone || t.booking.contactPhone;
   lines.push(`Khách: ${guestName} – ${guestPhone} (${t.passengers} khách)`);
+  const pax = t.booking.passengers ?? [];
+  if (pax.length > 1) {
+    lines.push(`Danh sách khách (${pax.length}/${t.passengers}):`);
+    pax.forEach((p, i) => lines.push(`${i + 1}. ${p.fullName}${p.birthYear ? ` (${p.birthYear})` : ''}`));
+  }
   // Người liên hệ trong chuyến: tài xế gọi người này khi đón
   const b = t.booking;
   if (b.leaderName || b.leaderPhone) {

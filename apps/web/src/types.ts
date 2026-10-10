@@ -340,6 +340,10 @@ export interface Passenger {
   nationality: string | null;
   phone: string | null;
   note: string | null;
+  /** Lái xe bổ sung trên app khi đón khách */
+  addedByDriverId?: number | null;
+  addedByName?: string | null;
+  addedAt?: string | null;
 }
 
 export type PaymentMethod = 'TIEN_MAT' | 'CHUYEN_KHOAN' | 'THE' | 'KHAC';
@@ -451,7 +455,7 @@ export interface DispatchTrip extends Omit<BookingTrip, 'vehicleType' | 'routePr
     leaderApp?: import('./contact-apps').ContactApp | null;
     leaderAppId?: string | null;
     /** Hành khách đầu tiên trong danh sách hành khách (nếu có) */
-    passengers?: { fullName: string; phone: string | null }[];
+    passengers?: { fullName: string; phone: string | null; birthYear?: number | null }[];
   };
   vehicleType: { id: number; code: string; name: string; seats: number; maxPassengers: number };
   vehicleId: number | null;

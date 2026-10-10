@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Role } from '@prisma/client';
 import type { Response } from 'express';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
-import { CreateIncidentDto, CreateVehicleCheckDto, HandleIncidentDto, SignoffDto } from './field.dto';
+import { AddPassengersDto, CreateIncidentDto, CreateVehicleCheckDto, DriverPassengerDto, HandleIncidentDto, SignoffDto } from './field.dto';
 import { fieldUpload, FieldService } from './field.service';
 
 const driverOf = (user: AuthUser) => {
@@ -22,6 +22,25 @@ export class DriverFieldController {
   @HttpCode(200)
   signoff(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: SignoffDto) {
     return this.field.signoff(driverOf(user), user.id, id, dto);
+  }
+
+  /** Bổ sung hành khách khi đón (booking nhập chưa đủ): danh sách kèm hợp đồng, lệnh điều xe, lệnh vận chuyển cập nhật theo */
+  @Post('trips/:id/passengers')
+  @HttpCode(200)
+  addPassengers(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: AddPassengersDto) {
+    return this.field.addPassengers(driverOf(user), user.id, id, dto);
+  }
+
+  @Post('passengers/:id')
+  @HttpCode(200)
+  updatePassenger(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: DriverPassengerDto) {
+    return this.field.updatePassenger(driverOf(user), id, dto);
+  }
+
+  @Post('passengers/:id/delete')
+  @HttpCode(200)
+  removePassenger(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    return this.field.removePassenger(driverOf(user), id);
   }
 
   @Get('incidents')

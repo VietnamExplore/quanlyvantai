@@ -10,7 +10,7 @@ import {
   SwapOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Typography, Upload, type FormInstance } from 'antd';
+import { Alert, App, Button, Card, Col, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Tag, Tooltip, Typography, Upload, type FormInstance } from 'antd';
 import { useEffect, useState } from 'react';
 import { api, apiBlob, apiUpload } from '../api';
 import { useAuth } from '../auth';
@@ -132,7 +132,28 @@ export function PassengersCard({ form, readOnly, tripPassengers, canPrint, booki
               dataSource={fields}
               locale={{ emptyText: 'Chưa có hành khách. Thêm từng người hoặc dán danh sách từ Excel.' }}
               columns={[
-                { title: '#', width: 40, render: (_, __, i) => i + 1 },
+                {
+                  title: '#',
+                  width: 40,
+                  render: (_, f, i) => {
+                    const by = form.getFieldValue(['passengers', f.name, 'addedByName']) as string | undefined;
+                    return (
+                      <>
+                        {i + 1}
+                        <Form.Item name={[f.name, 'id']} hidden>
+                          <Input />
+                        </Form.Item>
+                        {by && (
+                          <Tooltip title={`Lái xe ${by} bổ sung trên app khi đón khách`}>
+                            <Tag color="orange" style={{ marginInlineEnd: 0, fontSize: 10, padding: '0 3px', lineHeight: '16px' }}>
+                              LX
+                            </Tag>
+                          </Tooltip>
+                        )}
+                      </>
+                    );
+                  },
+                },
                 {
                   title: 'Họ tên',
                   width: 220,

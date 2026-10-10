@@ -66,7 +66,11 @@ export interface Trip {
 }
 
 export interface Passenger {
+  id?: number;
   seq: number;
+  birthYear?: number | null;
+  /** Lái xe bổ sung trên app */
+  addedByDriverId?: number | null;
   fullName: string;
   gender: string | null;
   nationality: string | null;

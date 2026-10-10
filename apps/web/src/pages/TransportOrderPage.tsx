@@ -36,7 +36,13 @@ interface TripOrder {
     partnerPlate: string | null;
     partnerDriverName: string | null;
     partnerDriverPhone: string | null;
-    booking: { code: string; contactName: string; contactPhone: string; contract: { number: string; signedDate: string; token: string } | null };
+    booking: {
+      code: string;
+      contactName: string;
+      contactPhone: string;
+      contract: { number: string; signedDate: string; token: string } | null;
+      passengers: { fullName: string; birthYear: number | null; note: string | null }[];
+    };
   };
 }
 
@@ -229,6 +235,40 @@ export default function TransportOrderPage() {
           </tbody>
         </table>
 
+{data.kind === 'TRIP' && data.trip.booking.passengers.length > 0 && (
+          <>
+            <div style={{ fontWeight: 700, marginTop: '3mm' }}>
+              Danh sách hành khách trên xe ({data.trip.booking.passengers.length}/{data.trip.passengers} người)
+            </div>
+            <table className="grid pax-grid">
+              <colgroup>
+                <col style={{ width: '10mm' }} />
+                <col />
+                <col style={{ width: '22mm' }} />
+                <col style={{ width: '50mm' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Họ tên hành khách</th>
+                  <th>Năm sinh</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.trip.booking.passengers.map((p, i) => (
+                  <tr key={i}>
+                    <td className="c">{i + 1}</td>
+                    <td>{p.fullName}</td>
+                    <td className="c">{p.birthYear ?? ''}</td>
+                    <td>{p.note ?? ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
         <div className="order-sign">
           {['Lái xe 1', 'Lái xe 2', 'Nhân viên phục vụ trên xe'].map((r, i) => (
             <div key={r}>
@@ -269,6 +309,7 @@ const ORDER_CSS = `
   .order-boss .hint, .order-sign .hint { font-style: italic; color: #666; font-size: 10.5pt; }
   .order-boss .space { height: 20mm; }
   .order-grid td { height: 10mm; }
+  .pax-grid td { height: auto; padding: 1mm 2mm; font-size: 11pt; }
   .order-sign { display: flex; justify-content: space-between; text-align: center; margin-top: 6mm; page-break-inside: avoid; }
   .order-sign > div { width: 32%; }
   .order-sign .space { height: 20mm; }

@@ -214,7 +214,7 @@ export class BookingsService {
   async create(dto: CreateBookingDto, user: AuthUser, status: BookingStatus = BookingStatus.NHAP) {
     await this.checkSource(dto.source);
     await this.checkCustomerRef(dto.customerRef);
-    const { trips, passengers, quoteValidUntil, ...data } = normalizeInvoice(dto);
+    const { trips, passengers, knownPassengerIds: _known, quoteValidUntil, ...data } = normalizeInvoice(dto);
     const tripData = await this.buildTrips(trips);
 
     const datePart = bookingDatePart(tripData.map((t) => t.pickupTime));
@@ -272,7 +272,7 @@ export class BookingsService {
       throw new BadRequestException('Booking đã hủy, không sửa được');
     }
 
-    const { trips, passengers, quoteValidUntil, ...data } = normalizeInvoice(dto);
+    const { trips, passengers, knownPassengerIds, quoteValidUntil, ...data } = normalizeInvoice(dto);
     const ops: Prisma.PrismaPromise<unknown>[] = [
       this.prisma.booking.update({
         where: { id },
@@ -301,9 +301,21 @@ export class BookingsService {
     }
 
     if (passengers) {
-      // Thay toàn bộ danh sách hành khách
+      // Thay toàn bộ danh sách hành khách; giữ dấu "lái xe thêm" của các dòng cũ và
+      // giữ các hành khách lái xe vừa thêm trên app trong lúc văn phòng đang sửa booking
+      const existing = await this.prisma.bookingPassenger.findMany({ where: { bookingId: id }, orderBy: { seq: 'asc' } });
+      const byId = new Map(existing.map((p) => [p.id, p]));
+      const known = knownPassengerIds ? new Set(knownPassengerIds) : null;
+      const added = known ? existing.filter((p) => !known.has(p.id)) : [];
+      const rows = [
+        ...passengerRows(passengers).map((p, i) => {
+          const old = passengers[i].id ? byId.get(passengers[i].id!) : undefined;
+          return { ...p, addedByDriverId: old?.addedByDriverId ?? null, addedByName: old?.addedByName ?? null, addedAt: old?.addedAt ?? null };
+        }),
+        ...added.map(({ id: _id, bookingId: _b, ...p }) => p),
+      ].map((p, i) => ({ ...p, seq: i + 1, bookingId: id }));
       ops.push(this.prisma.bookingPassenger.deleteMany({ where: { bookingId: id } }));
-      if (passengers.length) ops.push(this.prisma.bookingPassenger.createMany({ data: passengerRows(passengers).map((p) => ({ ...p, bookingId: id })) }));
+      if (rows.length) ops.push(this.prisma.bookingPassenger.createMany({ data: rows }));
     }
 
     await this.prisma.$transaction(ops);
