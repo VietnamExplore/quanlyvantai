@@ -214,6 +214,11 @@ function RunCard({ run, onClick }: { run: ShuttleRun; onClick: () => void }) {
           {run.status !== 'MO_BAN' && <Tag color={RUN_STATUS[run.status].color}>{RUN_STATUS[run.status].label}</Tag>}
           {run.tripStatus && run.tripStatus !== 'DA_DIEU' && run.tripStatus !== 'CHO_DIEU' && <Tag color={RUN_PROGRESS[run.tripStatus].color}>{RUN_PROGRESS[run.tripStatus].label}</Tag>}
           {!run.scheduleId && <Tag>Chuyến thêm</Tag>}
+          {run.offSchedule && (
+            <Tag color="red" title="Giờ chạy này đã bị tắt / đổi trong danh mục tuyến nhưng chuyến còn khách: chuyển khách sang giờ khác (sửa lượt đặt trong booking)">
+              Đã bỏ khỏi lịch
+            </Tag>
+          )}
         </Space>
       </Flex>
       <Progress

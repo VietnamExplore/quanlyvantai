@@ -71,6 +71,8 @@ export interface ShuttleRun {
   seatsHeld: number;
   seatsLeft: number;
   bookingCount?: number;
+  /** Chuyến theo lịch nhưng giờ chạy đã bị tắt / đổi, vẫn còn khách */
+  offSchedule?: boolean;
   /** Tiến trình theo các lượt khách: chưa điều / đã điều / đang chạy / hoàn thành */
   tripStatus?: 'CHO_DIEU' | 'DA_DIEU' | 'DANG_CHAY' | 'HOAN_THANH' | null;
 }

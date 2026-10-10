@@ -16,11 +16,22 @@ const isoWeekday = (ymd: string) => {
   return d === 0 ? 7 : d;
 };
 
+/** Giờ chạy cố định có chạy vào ngày này không (ngày trong tuần, hiệu lực) */
+const scheduleRunsOn = (s: { weekdays: number[]; validFrom: Date | null; validTo: Date | null }, ymd: string) =>
+  (!s.weekdays.length || s.weekdays.includes(isoWeekday(ymd))) && (!s.validFrom || ymd >= vnYmd(s.validFrom)) && (!s.validTo || ymd <= vnYmd(s.validTo));
+
+/** Chuyến theo lịch còn khớp giờ chạy hiện tại: giờ chạy đang bật, tuyến đang chạy, đúng giờ xuất bến và đúng ngày chạy */
+const runMatches = (s: { isActive: boolean; departTime: string; weekdays: number[]; validFrom: Date | null; validTo: Date | null }, routeActive: boolean, departAt: Date) => {
+  const hm = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false }).format(departAt).replace(/^24/, '00');
+  return routeActive && s.isActive && s.departTime === hm && scheduleRunsOn(s, vnYmd(departAt));
+};
+
 /** Lượt đặt chỗ còn giữ ghế: chuyến chưa hủy, booking chưa hủy */
 export const ACTIVE_SEAT: Prisma.BookingTripWhereInput = { status: { not: TripStatus.HUY }, booking: { status: { not: BookingStatus.HUY } } };
 
 const runInclude = {
-  route: { select: { id: true, code: true, name: true, durationMinutes: true } },
+  route: { select: { id: true, code: true, name: true, durationMinutes: true, isActive: true } },
+  schedule: { select: { isActive: true, departTime: true, weekdays: true, validFrom: true, validTo: true } },
   vehicleType: { select: { id: true, name: true, seats: true, maxPassengers: true } },
   vehicle: { select: { id: true, plateNumber: true } },
   driver: { select: { id: true, fullName: true, phone: true } },
@@ -140,6 +151,8 @@ export class ShuttleService {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new ConflictException('Mã tuyến đã có');
       throw e;
     }
+    // Giờ chạy bị tắt / đổi giờ / tuyến ngừng: xóa ngay các chuyến tới chưa có khách không còn khớp lịch
+    await this.pruneRuns({ routeId: id });
     return this.routeOne(id);
   }
 
@@ -172,17 +185,52 @@ export class ShuttleService {
     const rows: Prisma.ShuttleRunCreateManyInput[] = [];
     for (let t = start; t <= end; t += DAY_MS) {
       const ymd = vnYmd(new Date(t + 12 * 3_600_000));
-      const wd = isoWeekday(ymd);
       for (const r of routes) {
         for (const s of r.schedules) {
-          if (s.weekdays.length && !s.weekdays.includes(wd)) continue;
-          if (s.validFrom && ymd < vnYmd(s.validFrom)) continue;
-          if (s.validTo && ymd > vnYmd(s.validTo)) continue;
+          if (!scheduleRunsOn(s, ymd)) continue;
           rows.push({ routeId: r.id, scheduleId: s.id, departAt: new Date(`${ymd}T${s.departTime}:00+07:00`), capacity: s.capacity ?? r.capacity, vehicleTypeId: r.vehicleTypeId });
         }
       }
     }
     if (rows.length) await this.prisma.shuttleRun.createMany({ data: rows, skipDuplicates: true });
+    // Chuyến đã có (vd còn khách) đang gắn giờ chạy cũ đã tắt / đổi, mà lịch hiện tại có giờ trùng: gắn sang giờ chạy đó
+    const linked = await this.prisma.shuttleRun.findMany({
+      where: { departAt: { gte: new Date(start), lt: new Date(end + DAY_MS) }, scheduleId: { not: null }, routeId: { in: routes.map((r) => r.id) } },
+      include: { schedule: true },
+    });
+    for (const run of linked) {
+      if (run.schedule && runMatches(run.schedule, true, run.departAt)) continue;
+      const match = routes.find((r) => r.id === run.routeId)?.schedules.find((s) => runMatches(s, true, run.departAt));
+      if (match) await this.prisma.shuttleRun.update({ where: { id: run.id }, data: { scheduleId: match.id } });
+    }
+    await this.pruneRuns({ from: new Date(start), to: new Date(end + DAY_MS) });
+  }
+
+  /**
+   * Dọn chuyến theo lịch không còn khớp (giờ chạy đã tắt / đổi giờ / đổi ngày trong tuần / hết hiệu lực, tuyến ngừng chạy):
+   * chưa có lượt đặt nào thì xóa; đã có khách thì giữ lại (hiện nhãn "Đã bỏ khỏi lịch" để điều hành chuyển khách).
+   * Chuyến còn khớp và chưa có khách: cập nhật số ghế / loại xe theo lịch hiện tại. Chuyến tạo thêm bằng tay không bị đụng tới.
+   * Chỉ xét chuyến từ đầu hôm nay trở đi (chuyến đã qua giữ nguyên làm lịch sử).
+   */
+  async pruneRuns(opts: { from?: Date; to?: Date; routeId?: number } = {}) {
+    const today = startOfVnDay(vnYmd(new Date()));
+    const from = opts.from && opts.from > today ? opts.from : today;
+    const runs = await this.prisma.shuttleRun.findMany({
+      where: { scheduleId: { not: null }, departAt: { gte: from, ...(opts.to && { lt: opts.to }) }, ...(opts.routeId && { routeId: opts.routeId }), trips: { none: {} } },
+      include: { schedule: true, route: { select: { isActive: true, capacity: true, vehicleTypeId: true } } },
+    });
+    const stale: number[] = [];
+    for (const run of runs) {
+      if (!run.schedule || !runMatches(run.schedule, run.route.isActive, run.departAt)) stale.push(run.id);
+      else {
+        const capacity = run.schedule.capacity ?? run.route.capacity;
+        if (run.capacity !== capacity || run.vehicleTypeId !== run.route.vehicleTypeId) {
+          await this.prisma.shuttleRun.update({ where: { id: run.id }, data: { capacity, vehicleTypeId: run.route.vehicleTypeId } });
+        }
+      }
+    }
+    if (stale.length) await this.prisma.shuttleRun.deleteMany({ where: { id: { in: stale }, trips: { none: {} } } });
+    return stale.length;
   }
 
   /** Số ghế đã giữ theo chuyến: đã xác nhận (booking xác nhận / hoàn thành) và đang giữ chỗ (booking nháp / báo giá) */
@@ -225,6 +273,8 @@ export class ShuttleService {
         seatsHeld: s.held,
         seatsLeft: Math.max(0, r.capacity - s.confirmed - s.held),
         bookingCount: s.bookings,
+        // Chuyến theo lịch nhưng giờ chạy đã tắt / đổi (còn khách nên chưa xóa): cần chuyển khách sang giờ khác
+        offSchedule: !!r.scheduleId && (!r.schedule || !runMatches(r.schedule, r.route.isActive, r.departAt)),
         tripStatus: st.length ? (st.every((p) => p.status === TripStatus.HOAN_THANH) ? 'HOAN_THANH' : st.some((p) => ['DANG_DEN_DON', 'DA_DON_KHACH', 'HOAN_THANH'].includes(p.status)) ? 'DANG_CHAY' : st.some((p) => p.status !== TripStatus.CHO_DIEU) ? 'DA_DIEU' : 'CHO_DIEU') : null,
       };
     });
