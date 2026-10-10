@@ -274,23 +274,21 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
           </>
         )}
 
+        {/* 4 chữ ký ngang hàng: lái xe 1, lái xe 2, nhân viên phục vụ, thủ trưởng đơn vị */}
         <div className="order-sign">
-          {['Lái xe 1', 'Lái xe 2', 'Nhân viên phục vụ trên xe'].map((r, i) => (
-            <div key={r}>
-              <div className="role">{r}</div>
-              <div className="hint">(Ký và ghi rõ họ tên)</div>
+          {[
+            { role: 'Lái xe 1', hint: '(Ký và ghi rõ họ tên)', name: v.driver?.fullName },
+            { role: 'Lái xe 2', hint: '(Ký và ghi rõ họ tên)', name: null },
+            { role: 'Nhân viên phục vụ trên xe', hint: '(Ký và ghi rõ họ tên)', name: null },
+            { role: 'Thủ trưởng đơn vị', hint: '(Ký tên và đóng dấu)', name: company.companyRepresentative },
+          ].map((x) => (
+            <div key={x.role}>
+              <div className="role">{x.role}</div>
+              <div className="hint">{x.hint}</div>
               <div className="space" />
-              {i === 0 && <b>{v.driver?.fullName}</b>}
+              {x.name && <b>{x.name}</b>}
             </div>
           ))}
-        </div>
-
-        {/* Chữ ký thủ trưởng đơn vị: cuối lệnh, bên phải */}
-        <div className="order-boss">
-          <div className="role">Thủ trưởng đơn vị</div>
-          <div className="hint">(Ký tên và đóng dấu)</div>
-          <div className="space" />
-          <b>{company.companyRepresentative}</b>
         </div>
 
         {data.kind === 'TRIP' && data.trip.signoffAt && data.trip.signoffSvg && (
@@ -317,20 +315,20 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
 const ORDER_CSS = `
   .order-top { display: flex; gap: 6mm; margin: 2mm 0 3mm; line-height: 1.7; }
   .order-top > div:first-child { flex: 1; }
-  .order-boss { width: 62mm; margin: 8mm 0 0 auto; text-align: center; page-break-inside: avoid; }
-  .order-boss .role, .order-sign .role { font-weight: 700; text-transform: uppercase; }
-  .order-boss .hint, .order-sign .hint { font-style: italic; color: #666; font-size: 10.5pt; }
-  .order-boss .space { height: 20mm; }
+  .order-sign .role { font-weight: 700; text-transform: uppercase; }
+  .order-sign .hint { font-style: italic; color: #666; font-size: 10.5pt; }
   .order-grid td { height: 10mm; }
   .pax-grid td { height: auto; padding: 1mm 2mm; font-size: 11pt; }
   .order-sign { display: flex; justify-content: space-between; text-align: center; margin-top: 6mm; page-break-inside: avoid; }
-  .order-sign > div { width: 32%; }
+  .order-sign { gap: 3mm; }
+  .order-sign > div { flex: 1 1 0; min-width: 0; }
+  .order-sign .role { font-size: 11pt; line-height: 1.3; min-height: 2.6em; display: flex; align-items: flex-end; justify-content: center; }
+  .order-sign .hint { font-size: 9.5pt; }
   .order-sign .space { height: 20mm; }
   @media (max-width: 820px) {
     .order-top { flex-direction: column; gap: 2mm; }
-    .order-boss { width: 60%; }
     .order-sign { flex-wrap: wrap; gap: 4mm; }
-    .order-sign > div { width: 45%; }
+    .order-sign > div { flex: 0 0 45%; }
     .order-grid { font-size: 10.5pt; }
   }
 `;
