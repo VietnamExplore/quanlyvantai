@@ -105,7 +105,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
   const v =
     data.kind === 'RUN'
       ? {
-          usage: 'theo hợp đồng (xe ghép)',
+          usage: 'theo hợp đồng',
           from: data.run.departAt,
           to: data.run.arriveAt,
           driver: data.run.driver,
@@ -183,7 +183,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
                   → <b>{v.end}</b>
                 </>
               )}{' '}
-              &nbsp; {data.kind === 'RUN' ? 'Mã số tuyến' : 'Mã booking'}: <b>{v.routeCode}</b>
+              &nbsp; {data.kind === 'RUN' ? 'Mã Tour' : 'Mã booking'}: <b>{v.routeCode}</b>
             </div>
             {v.journey && <div>Hành trình: {v.journey}</div>}
             {v.contract && (
