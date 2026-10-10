@@ -29,6 +29,8 @@ interface TripOrder {
     signoffAt: string | null;
     signoffSvg: string | null;
     signoffNote: string | null;
+    /** Ghi chú điều hành cho lái xe */
+    dispatchNote: string | null;
     vehicleType: { name: string; seats: number };
     vehicle: { plateNumber: string } | null;
     driver: Driver;
@@ -60,6 +62,8 @@ interface RunOrder {
     driver: Driver;
     partner: { name: string } | null;
     passengers: number;
+    paxList: { fullName: string; birthYear: number | null; note: string | null }[];
+    note: string | null;
   };
 }
 
@@ -101,7 +105,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
   const v =
     data.kind === 'RUN'
       ? {
-          usage: 'tuyến cố định (xe ghép)',
+          usage: 'theo hợp đồng (xe ghép)',
           from: data.run.departAt,
           to: data.run.arriveAt,
           driver: data.run.driver,
@@ -113,6 +117,8 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
           routeCode: data.run.route.code,
           journey: data.run.route.stops.join(' – ') || data.run.route.name,
           passengers: data.run.passengers,
+          paxList: data.run.paxList ?? [],
+          note: data.run.note,
           partner: data.run.partner,
           contract: null,
           contact: null,
@@ -130,6 +136,8 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
           routeCode: data.trip.booking.code,
           journey: [data.trip.routeName, data.trip.itinerary, data.trip.distanceKm ? `${data.trip.distanceKm} km` : null].filter(Boolean).join(' · '),
           passengers: data.trip.passengers,
+          paxList: data.trip.booking.passengers,
+          note: data.trip.dispatchNote ?? null,
           partner: data.trip.partner,
           contract: data.trip.booking.contract,
           contact: `${data.trip.booking.contactName} – ${data.trip.booking.contactPhone}`,
@@ -201,7 +209,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
               <th>Điểm (bến xe) đi, đến</th>
               <th>Giờ xe chạy</th>
               <th>Số khách</th>
-              <th>Bến xe / điểm đón (ký tên, đóng dấu)</th>
+              <th>Ghi chú</th>
             </tr>
           </thead>
           <tbody>
@@ -216,7 +224,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
               <td rowSpan={2} className="c">
                 {v.passengers}
               </td>
-              <td rowSpan={2} />
+              <td rowSpan={2} className="small">{v.note}</td>
             </tr>
             <tr>
               <td>Đến: {v.end}</td>
@@ -240,10 +248,10 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
           </tbody>
         </table>
 
-{data.kind === 'TRIP' && data.trip.booking.passengers.length > 0 && (
+{v.paxList.length > 0 && (
           <>
             <div style={{ fontWeight: 700, marginTop: '3mm' }}>
-              Danh sách hành khách trên xe ({data.trip.booking.passengers.length}/{data.trip.passengers} người)
+              Danh sách hành khách trên xe ({v.paxList.length}/{v.passengers} {v.paxList.length === v.passengers ? "người" : "dòng"})
             </div>
             <table className="grid pax-grid">
               <colgroup>
@@ -261,7 +269,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
                 </tr>
               </thead>
               <tbody>
-                {data.trip.booking.passengers.map((p, i) => (
+                {v.paxList.map((p, i) => (
                   <tr key={i}>
                     <td className="c">{i + 1}</td>
                     <td>{p.fullName}</td>
