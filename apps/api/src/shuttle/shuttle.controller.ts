@@ -42,6 +42,12 @@ export class ShuttleController {
     return this.shuttle.listRuns(q);
   }
 
+  /** Chuyến có khách chưa điều xe trong 7 ngày tới */
+  @Get('pending')
+  pending() {
+    return this.shuttle.pending();
+  }
+
   @Get('runs/:id')
   run(@Param('id', ParseIntPipe) id: number) {
     return this.shuttle.getRun(id);

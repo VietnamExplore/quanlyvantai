@@ -1,6 +1,6 @@
-import { CopyOutlined, FileExcelOutlined, LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, CopyOutlined, DownOutlined, FileExcelOutlined, LeftOutlined, PlusOutlined, RightOutlined, UpOutlined, WarningFilled } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Flex, Form, Grid, Input, InputNumber, Modal, Popconfirm, Progress, Radio, Row, Select, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, App, Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Flex, Form, Grid, Input, InputNumber, Modal, Popconfirm, Progress, Radio, Row, Segmented, Select, Space, Spin, Tabs, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -36,15 +36,18 @@ export default function ShuttlePage() {
 
   const { data: runs = [], isFetching } = useQuery({ queryKey: ['/shuttle/runs', { date: ymd }], queryFn: () => api<ShuttleRun[]>('/shuttle/runs', { query: { date: ymd } }) });
   const byRoute = useMemo(() => {
-    const m = new Map<number, { name: string; runs: ShuttleRun[] }>();
+    const m = new Map<number, { id: number; name: string; runs: ShuttleRun[] }>();
     for (const r of runs) {
-      const g = m.get(r.routeId) ?? { name: r.route.name, runs: [] };
+      const g = m.get(r.routeId) ?? { id: r.routeId, name: r.route.name, runs: [] };
       g.runs.push(r);
       m.set(r.routeId, g);
     }
     return [...m.values()];
   }, [runs]);
   const total = runs.filter((r) => r.status !== 'HUY').reduce((s, r) => ({ sold: s.sold + r.seatsConfirmed + r.seatsHeld, cap: s.cap + r.capacity }), { sold: 0, cap: 0 });
+  const pendingAll = runs.filter(needDispatch).length;
+  // Tab tuyến đang mở: theo địa chỉ trang, mặc định tuyến đầu tiên còn chuyến chưa điều xe
+  const routeKey = params.get('route') ?? String((byRoute.find((g) => g.runs.some(needDispatch)) ?? byRoute[0])?.id ?? '');
 
   return (
     <Flex vertical gap={16}>
@@ -56,6 +59,13 @@ export default function ShuttlePage() {
           <Typography.Text type="secondary">
             {runs.length} chuyến · đã bán {total.sold}/{total.cap} ghế · nhập khách bằng dịch vụ "Xe ghép" trong booking
           </Typography.Text>
+          {pendingAll > 0 && (
+            <div>
+              <Typography.Text type="danger" strong>
+                <WarningFilled /> {pendingAll} chuyến có khách chưa điều xe
+              </Typography.Text>
+            </div>
+          )}
         </div>
         <Flex gap={8} wrap>
           <Space.Compact>
@@ -81,17 +91,25 @@ export default function ShuttlePage() {
           <Empty description={<>Không có chuyến xe ghép ngày {date.format('DD/MM/YYYY')}. Khai báo tuyến và giờ chạy ở <Link to="/shuttle-routes">Danh mục → Tuyến xe ghép</Link>.</>} />
         </Card>
       ) : (
-        byRoute.map((g) => (
-          <Card key={g.name} size="small" title={g.name}>
-            <Row gutter={[12, 12]}>
-              {g.runs.map((r) => (
-                <Col key={r.id} xs={24} sm={12} lg={8} xl={6}>
-                  <RunCard run={r} onClick={() => setParam('run', String(r.id))} />
-                </Col>
-              ))}
-            </Row>
-          </Card>
-        ))
+        <Card size="small">
+          <Tabs
+            activeKey={routeKey}
+            onChange={(k) => setParam('route', k)}
+            items={byRoute.map((g) => {
+              const pending = g.runs.filter(needDispatch).length;
+              return {
+                key: String(g.id),
+                label: (
+                  <Space size={6}>
+                    {g.name}
+                    {pending > 0 ? <Badge count={pending} title={`${pending} chuyến có khách chưa điều xe`} /> : g.runs.some((r) => r.seatsConfirmed > 0) ? <CheckCircleFilled style={{ color: '#16a34a' }} title="Đã điều xe đủ" /> : null}
+                  </Space>
+                ),
+                children: <RouteRuns runs={g.runs} onOpen={(id) => setParam('run', String(id))} />,
+              };
+            })}
+          />
+        </Card>
       )}
 
       <RunDrawer runId={openRun} canDispatch={canDispatch} onClose={() => setParam('run', null)} />
@@ -105,18 +123,96 @@ export default function ShuttlePage() {
   );
 }
 
+/** Chuyến có khách đã xác nhận mà chưa điều xe (cần xử lý) */
+const needDispatch = (r: ShuttleRun) => r.status !== 'HUY' && !r.vehicle && !r.partner && r.seatsConfirmed > 0;
+const hasGuests = (r: ShuttleRun) => r.seatsConfirmed + r.seatsHeld > 0;
+
+type RunFilter = 'guests' | 'pending' | 'all';
+
+/** Nội dung một tab tuyến: cảnh báo gọn (bấm mới hiện các giờ chưa điều), lưới chuyến theo bộ lọc */
+function RouteRuns({ runs, onOpen }: { runs: ShuttleRun[]; onOpen: (id: number) => void }) {
+  const pending = runs.filter(needDispatch);
+  const held = runs.filter((r) => r.status !== 'HUY' && !r.vehicle && !r.partner && r.seatsConfirmed === 0 && r.seatsHeld > 0);
+  const withGuests = runs.filter(hasGuests);
+  const [showPending, setShowPending] = useState(false);
+  // Mặc định: chỉ chuyến có khách (tuyến chạy nhiều giờ không bị rối); chưa có khách thì hiện tất cả giờ
+  const [filter, setFilter] = useState<RunFilter>(withGuests.length ? 'guests' : 'all');
+  const shown = filter === 'pending' ? pending : filter === 'guests' ? withGuests : runs;
+  const pax = (r: ShuttleRun) => r.seatsConfirmed + r.seatsHeld;
+
+  return (
+    <Flex vertical gap={12}>
+      {pending.length > 0 ? (
+        <Alert
+          type="error"
+          showIcon
+          title={
+            <Flex justify="space-between" align="center" wrap gap={8}>
+              <span>
+                <b>{pending.length}</b> chuyến có khách chưa điều xe ({pending.reduce((s, r) => s + pax(r), 0)} khách)
+              </span>
+              <Button size="small" type="link" icon={showPending ? <UpOutlined /> : <DownOutlined />} onClick={() => setShowPending((v) => !v)}>
+                {showPending ? 'Ẩn' : 'Xem giờ chưa điều'}
+              </Button>
+            </Flex>
+          }
+          description={
+            showPending && (
+              <Flex gap={6} wrap style={{ marginTop: 4 }}>
+                {pending.map((r) => (
+                  <Tag key={r.id} color="red" style={{ cursor: 'pointer', fontSize: 14, padding: '2px 8px' }} onClick={() => onOpen(r.id)}>
+                    <b>{hm(r.departAt)}</b> · {pax(r)} khách
+                  </Tag>
+                ))}
+              </Flex>
+            )
+          }
+        />
+      ) : withGuests.length > 0 ? (
+        <Alert type="success" showIcon title="Các chuyến có khách đã được điều xe" />
+      ) : null}
+      {held.length > 0 && (
+        <Typography.Text type="secondary">
+          {held.length} chuyến chỉ có khách giữ chỗ (booking chưa xác nhận): {held.map((r) => hm(r.departAt)).join(', ')}
+        </Typography.Text>
+      )}
+      <Segmented<RunFilter>
+        value={filter}
+        onChange={setFilter}
+        options={[
+          { value: 'guests', label: `Có khách (${withGuests.length})` },
+          { value: 'pending', label: `Chưa điều xe (${pending.length})` },
+          { value: 'all', label: `Tất cả giờ (${runs.length})` },
+        ]}
+        style={{ alignSelf: 'flex-start', maxWidth: '100%', overflowX: 'auto' }}
+      />
+      {shown.length ? (
+        <Row gutter={[12, 12]}>
+          {shown.map((r) => (
+            <Col key={r.id} xs={12} sm={8} lg={6} xl={4}>
+              <RunCard run={r} onClick={() => onOpen(r.id)} />
+            </Col>
+          ))}
+        </Row>
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={filter === 'pending' ? 'Không có chuyến nào cần điều xe' : 'Chưa có khách đặt chỗ trên tuyến này'} />
+      )}
+    </Flex>
+  );
+}
+
 function RunCard({ run, onClick }: { run: ShuttleRun; onClick: () => void }) {
   const used = run.seatsConfirmed + run.seatsHeld;
   const assigned = run.vehicle ? `${run.vehicle.plateNumber}${run.driver ? ` · ${run.driver.fullName}` : ''}` : run.partner ? `${run.partner.name}${run.partnerPlate ? ` · ${run.partnerPlate}` : ''}` : null;
   return (
-    <Card size="small" hoverable onClick={onClick} style={{ opacity: run.status === 'HUY' ? 0.5 : 1, borderColor: run.status === 'DONG_BAN' ? '#f0b05a' : undefined }}>
+    <Card size="small" hoverable onClick={onClick} style={{ opacity: run.status === 'HUY' ? 0.5 : 1, borderColor: needDispatch(run) ? '#ef4444' : run.status === 'DONG_BAN' ? '#f0b05a' : undefined, background: needDispatch(run) ? '#fef2f2' : undefined }}>
       <Flex justify="space-between" align="baseline">
         <Typography.Title level={3} style={{ margin: 0 }}>
           {hm(run.departAt)}
         </Typography.Title>
         <Space size={4} wrap style={{ justifyContent: 'flex-end' }}>
           {run.status !== 'MO_BAN' && <Tag color={RUN_STATUS[run.status].color}>{RUN_STATUS[run.status].label}</Tag>}
-          {run.tripStatus && run.tripStatus !== 'DA_DIEU' && <Tag color={RUN_PROGRESS[run.tripStatus].color}>{RUN_PROGRESS[run.tripStatus].label}</Tag>}
+          {run.tripStatus && run.tripStatus !== 'DA_DIEU' && run.tripStatus !== 'CHO_DIEU' && <Tag color={RUN_PROGRESS[run.tripStatus].color}>{RUN_PROGRESS[run.tripStatus].label}</Tag>}
           {!run.scheduleId && <Tag>Chuyến thêm</Tag>}
         </Space>
       </Flex>

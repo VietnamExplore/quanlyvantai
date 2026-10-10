@@ -35,6 +35,7 @@ import { TripModal, type QuickContact } from "../components/TripModal";
 import { EnumTag, paged, byText } from "../components/common";
 import { MonthGrid, WeekGrid, YearGrid } from "../components/ScheduleViews";
 import { TripDispatchDrawer } from "../components/TripDispatchDrawer";
+import { ShuttlePendingNote } from "../components/ShuttlePendingNote";
 import { assignmentText, BLOCK_COLOR } from "../dispatch-utils";
 import { TRIP_STATUS, toOptions } from "../labels";
 import type { Booking, DispatchTrip, Schedule, TripStatus } from "../types";
@@ -675,6 +676,7 @@ export default function DispatchPage() {
               loading={isLoading}
               styles={{ body: { maxHeight: 640, overflowY: "auto" } }}
             >
+              <ShuttlePendingNote />
               <WaitingList trips={data?.waiting ?? []} onOpen={setOpenTrip} />
               {!!data?.waitingLater && (
                 <Flex

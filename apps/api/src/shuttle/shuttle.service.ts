@@ -230,6 +230,23 @@ export class ShuttleService {
     });
   }
 
+  /** Chuyến xe ghép có khách đã xác nhận mà chưa điều xe, từ đầu hôm nay đến N ngày tới (nhắc ở trang Điều xe) */
+  async pending(days = 7) {
+    const from = startOfVnDay(vnYmd(new Date()));
+    const runs = await this.prisma.shuttleRun.findMany({
+      where: {
+        departAt: { gte: from, lt: new Date(from.getTime() + days * DAY_MS) },
+        status: { not: ShuttleRunStatus.HUY },
+        vehicleId: null,
+        partnerId: null,
+        trips: { some: { status: { not: TripStatus.HUY }, booking: { status: { in: [BookingStatus.XAC_NHAN, BookingStatus.HOAN_THANH] } } } },
+      },
+      select: { id: true, departAt: true, route: { select: { id: true, name: true } } },
+      orderBy: { departAt: 'asc' },
+    });
+    return runs.map((r) => ({ id: r.id, departAt: r.departAt, routeId: r.route.id, routeName: r.route.name }));
+  }
+
   /** Chuyến còn bán (cho ô chọn giờ chạy khi nhập booking) */
   async availability(routeId: number, date: string) {
     const runs = await this.listRuns({ date, routeId });
