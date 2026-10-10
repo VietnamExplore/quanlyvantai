@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { FieldPhotos, FUEL_LABEL, INCIDENT_STATUS, INCIDENT_TYPE, IncidentTags, type FieldIncident, type VehicleCheckRow } from '../components/FieldParts';
+import { FieldPhotos, FUEL_LABEL, INCIDENT_STATUS, IncidentTags, type FieldIncident, type VehicleCheckRow } from '../components/FieldParts';
 
 const fmt = (s: string) => dayjs(s).format('HH:mm DD/MM/YYYY');
 
@@ -254,8 +254,7 @@ export default function FieldPage() {
         ]}
       />
       <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12.5 }}>
-        Lái xe báo sự cố, nhận / trả xe và mời khách ký nhận ngay trên app. Sự cố mới và xe có hạng mục lỗi được báo qua chuông thông báo.{' '}
-        {Object.values(INCIDENT_TYPE).length} loại sự cố: {Object.values(INCIDENT_TYPE).map((t) => t.label).join(', ')}.
+        Lái xe báo sự cố và nhận / trả xe trên app; sự cố mới và xe có hạng mục lỗi được báo qua chuông thông báo.
       </Typography.Paragraph>
     </Card>
   );

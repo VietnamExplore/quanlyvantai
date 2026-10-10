@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Pressable, Refre
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../api';
 import { KEYBOARD_BEHAVIOR, keyboardScroll, MODAL_ORIENTATIONS, sheetFrame } from '../platform';
-import { colors, fmtDate, fmtTime } from '../theme';
+import { colors, fmtDate, fmtHour } from '../theme';
 import type { CheckItem, Incident, VehicleCheck, VehicleCheckState } from '../types';
 import { Button, Card, Section, styles as ui } from '../ui';
 import { IncidentRow, IncidentSheet, PhotoStrip, uploadPhotos } from './IncidentSheet';
@@ -139,7 +139,7 @@ function CheckRow({ c }: { c: VehicleCheck }) {
   return (
     <View style={s.hist}>
       <Text style={s.histTitle}>
-        {c.kind === 'NHAN' ? '🔑 Nhận' : '🅿️ Trả'} {c.vehicle.plateNumber} · {fmtTime(c.createdAt)} {fmtDate(c.createdAt)}
+        {c.kind === 'NHAN' ? '🔑 Nhận' : '🅿️ Trả'} {c.vehicle.plateNumber} · {fmtHour(c.createdAt)} {fmtDate(c.createdAt)}
       </Text>
       <Text style={s.histSub}>
         {km(c.odometerKm)} · Nhiên liệu {fuelLabel(c.fuelLevel)}
@@ -218,7 +218,7 @@ export function VehicleScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.plate}>{h.vehicle.plateNumber}</Text>
                 <Text style={s.histSub}>
-                  Nhận {fmtTime(h.createdAt)} {fmtDate(h.createdAt)} · {km(h.odometerKm)} · Nhiên liệu {fuelLabel(h.fuelLevel)}
+                  Nhận {fmtHour(h.createdAt)} {fmtDate(h.createdAt)} · {km(h.odometerKm)} · Nhiên liệu {fuelLabel(h.fuelLevel)}
                 </Text>
               </View>
               <Button title="Trả xe" size="sm" variant="soft" onPress={() => setForm({ kind: 'TRA', vehicleId: h.vehicleId })} />

@@ -3,7 +3,7 @@ import { Alert, Image, KeyboardAvoidingView, Modal, Pressable, ScrollView, Style
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, apiUpload } from '../api';
 import { KEYBOARD_BEHAVIOR, MODAL_ORIENTATIONS, sheetFrame } from '../platform';
-import { colors, fmtDate, fmtTime } from '../theme';
+import { colors, fmtDate, fmtHour } from '../theme';
 import type { Incident, IncidentType } from '../types';
 import { Button, Card, Section, styles as ui } from '../ui';
 import { pickPhoto, type Photo } from './TripCosts';
@@ -159,7 +159,7 @@ export function IncidentRow({ item: i }: { item: Incident }) {
   return (
     <View style={s.row}>
       <Text style={s.rowTitle}>
-        {TYPE_LABEL[i.type] ?? i.type} · {fmtTime(i.createdAt)} {fmtDate(i.createdAt)}
+        {TYPE_LABEL[i.type] ?? i.type} · {fmtHour(i.createdAt)} {fmtDate(i.createdAt)}
       </Text>
       <Text style={s.rowNote}>{i.note}</Text>
       <Text style={[s.rowStatus, { color: st.color }]}>

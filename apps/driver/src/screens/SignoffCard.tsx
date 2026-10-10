@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { api } from '../api';
 import { KEYBOARD_BEHAVIOR, MODAL_ORIENTATIONS, sheetFrame } from '../platform';
-import { colors, fmtDate, fmtTime } from '../theme';
+import { colors, fmtDate, fmtHour } from '../theme';
 import type { Trip } from '../types';
 import { Button, Card, Section, styles as ui } from '../ui';
 
@@ -146,7 +146,7 @@ export function SignoffCard({ trip, onSigned }: { trip: Trip; onSigned: (t: Pick
       {trip.signoffAt ? (
         <>
           <Text style={s.done}>
-            ✔ {trip.signoffName} đã ký lúc {fmtTime(trip.signoffAt)} {fmtDate(trip.signoffAt)}
+            ✔ {trip.signoffName} đã ký lúc {fmtHour(trip.signoffAt)} {fmtDate(trip.signoffAt)}
           </Text>
           <Button title="Ký lại" size="sm" variant="ghost" onPress={start} style={{ alignSelf: 'flex-start', marginTop: 6 }} />
         </>
@@ -162,7 +162,7 @@ export function SignoffCard({ trip, onSigned }: { trip: Trip; onSigned: (t: Pick
           <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={[{ flex: 1, padding: 16 }, sheetFrame]}>
             <Text style={s.title}>Xác nhận hoàn thành chuyến</Text>
             <Text style={s.sub}>
-              {b.code} · {fmtTime(trip.pickupTime)} {fmtDate(trip.pickupTime)} · {trip.passengers} khách
+              {b.code} · {fmtHour(trip.pickupTime)} {fmtDate(trip.pickupTime)} · {trip.passengers} khách
             </Text>
             <Text style={s.sub}>
               {trip.pickupAddress}
