@@ -43,7 +43,6 @@ interface TripOrder {
       contactName: string;
       contactPhone: string;
       contract: { number: string; signedDate: string; token: string } | null;
-      passengers: { fullName: string; birthYear: number | null; note: string | null }[];
     };
   };
 }
@@ -62,7 +61,6 @@ interface RunOrder {
     driver: Driver;
     partner: { name: string } | null;
     passengers: number;
-    paxList: { fullName: string; birthYear: number | null; note: string | null }[];
     note: string | null;
   };
 }
@@ -117,7 +115,6 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
           routeCode: data.run.route.code,
           journey: data.run.route.stops.join(' – ') || data.run.route.name,
           passengers: data.run.passengers,
-          paxList: data.run.paxList ?? [],
           note: data.run.note,
           partner: data.run.partner,
           contract: null,
@@ -136,7 +133,6 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
           routeCode: data.trip.booking.code,
           journey: [data.trip.routeName, data.trip.itinerary, data.trip.distanceKm ? `${data.trip.distanceKm} km` : null].filter(Boolean).join(' · '),
           passengers: data.trip.passengers,
-          paxList: data.trip.booking.passengers,
           note: data.trip.dispatchNote ?? null,
           partner: data.trip.partner,
           contract: data.trip.booking.contract,
@@ -183,7 +179,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
                   → <b>{v.end}</b>
                 </>
               )}{' '}
-              &nbsp; {data.kind === 'RUN' ? 'Mã Tour' : 'Mã booking'}: <b>{v.routeCode}</b>
+              &nbsp; Mã Tour: <b>{v.routeCode}</b>
             </div>
             {v.journey && <div>Hành trình: {v.journey}</div>}
             {v.contract && (
@@ -248,40 +244,6 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
           </tbody>
         </table>
 
-{v.paxList.length > 0 && (
-          <>
-            <div style={{ fontWeight: 700, marginTop: '3mm' }}>
-              Danh sách hành khách trên xe ({v.paxList.length}/{v.passengers} {v.paxList.length === v.passengers ? "người" : "dòng"})
-            </div>
-            <table className="grid pax-grid">
-              <colgroup>
-                <col style={{ width: '10mm' }} />
-                <col />
-                <col style={{ width: '22mm' }} />
-                <col style={{ width: '50mm' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>STT</th>
-                  <th>Họ tên hành khách</th>
-                  <th>Năm sinh</th>
-                  <th>Ghi chú</th>
-                </tr>
-              </thead>
-              <tbody>
-                {v.paxList.map((p, i) => (
-                  <tr key={i}>
-                    <td className="c">{i + 1}</td>
-                    <td>{p.fullName}</td>
-                    <td className="c">{p.birthYear ?? ''}</td>
-                    <td>{p.note ?? ''}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
-
         {/* 4 chữ ký ngang hàng: lái xe 1, lái xe 2, nhân viên phục vụ, thủ trưởng đơn vị */}
         <div className="order-sign">
           {[
@@ -326,7 +288,6 @@ const ORDER_CSS = `
   .order-sign .role { font-weight: 700; text-transform: uppercase; }
   .order-sign .hint { font-style: italic; color: #666; font-size: 10.5pt; }
   .order-grid td { height: 10mm; }
-  .pax-grid td { height: auto; padding: 1mm 2mm; font-size: 11pt; }
   .order-sign { display: flex; justify-content: space-between; text-align: center; margin-top: 6mm; page-break-inside: avoid; }
   .order-sign { gap: 3mm; }
   .order-sign > div { flex: 1 1 0; min-width: 0; }

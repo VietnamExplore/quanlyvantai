@@ -278,8 +278,6 @@ export class ContractsService {
             contactName: true,
             contactPhone: true,
             contract: { select: { number: true, signedDate: true, token: true } },
-            // Danh sách hành khách trên xe (gồm khách lái xe bổ sung khi đón)
-            passengers: { orderBy: { seq: 'asc' }, select: { fullName: true, birthYear: true, note: true } },
           },
         },
       },
@@ -308,33 +306,11 @@ export class ContractsService {
         partner: { select: { name: true } },
         trips: {
           where: { status: { not: TripStatus.HUY }, booking: { status: { in: ['XAC_NHAN', 'HOAN_THANH'] } } },
-          orderBy: [{ shuttlePickupStop: { seq: 'asc' } }, { pickupTime: 'asc' }],
-          select: {
-            passengers: true,
-            notes: true,
-            shuttlePickupStop: { select: { name: true } },
-            booking: {
-              select: {
-                code: true,
-                contactName: true,
-                passengers: { orderBy: { seq: 'asc' }, select: { fullName: true, birthYear: true, note: true } },
-              },
-            },
-          },
+          select: { passengers: true },
         },
       },
     });
     if (!r) throw new NotFoundException('Không tìm thấy chuyến xe ghép');
-    // Danh sách hành khách cả chuyến ghép: theo từng lượt đặt; lượt chưa nhập tên thì ghi người liên hệ + số khách
-    const paxList = r.trips.flatMap((t) => {
-      const where = [t.shuttlePickupStop?.name && `Đón: ${t.shuttlePickupStop.name}`, t.booking.code].filter(Boolean).join(' · ');
-      const named = t.booking.passengers.slice(0, t.passengers);
-      if (!named.length) return [{ fullName: `${t.booking.contactName} (${t.passengers} khách)`, birthYear: null, note: where }];
-      const rows = named.map((x) => ({ fullName: x.fullName, birthYear: x.birthYear, note: [x.note, where].filter(Boolean).join(' · ') as string | null }));
-      const missing = t.passengers - named.length;
-      if (missing > 0) rows.push({ fullName: `(${missing} khách chưa có tên – đoàn ${t.booking.contactName})`, birthYear: null, note: where });
-      return rows;
-    });
     const company = await this.company();
     const ymd = new Date(r.departAt.getTime() + 7 * 3600_000).toISOString().slice(2, 10).replace(/-/g, '');
     return {
@@ -352,7 +328,6 @@ export class ContractsService {
         driver: r.driver ?? (r.partnerDriverName ? { fullName: r.partnerDriverName, phone: r.partnerDriverPhone, licenseClass: null } : null),
         partner: r.partner,
         passengers: r.trips.reduce((s, x) => s + x.passengers, 0),
-        paxList,
         note: [r.note, r.dispatchNote].filter(Boolean).join(' · ') || null,
       },
     };
