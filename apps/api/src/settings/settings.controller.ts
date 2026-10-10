@@ -47,6 +47,13 @@ export const SETTING_KEYS = [
   'fuelPrice',
   // Email nhận hóa đơn do nhà xe đối tác xuất cho công ty (trống = email công ty)
   'invoiceEmail',
+  // Hợp đồng vận chuyển (NĐ 158/2024): người đại diện ký, giấy phép kinh doanh vận tải, số điện thoại tiếp nhận phản ánh, điều khoản
+  'companyRepresentative',
+  'companyRepresentativeTitle',
+  'companyRepresentativeId',
+  'companyTransportLicense',
+  'companyHotline',
+  'contractTerms',
 ] as const;
 
 /** Logo công ty: apps/api/uploads/logo (đổi bằng biến môi trường UPLOAD_DIR); tên file lưu ở cài đặt "companyLogo" */

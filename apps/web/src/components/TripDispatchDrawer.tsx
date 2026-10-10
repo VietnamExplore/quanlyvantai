@@ -1,4 +1,4 @@
-import { CarOutlined, CopyOutlined, RollbackOutlined, ShopOutlined, SwapOutlined } from '@ant-design/icons';
+import { CarOutlined, CopyOutlined, FileProtectOutlined, RollbackOutlined, ShopOutlined, SwapOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -393,7 +393,20 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
           'Chuyến'
         )
       }
-      extra={trip && trip.status !== 'CHO_DIEU' && <Button icon={<CopyOutlined />} onClick={copyOrder}>Sao chép lệnh điều xe</Button>}
+      extra={
+        trip &&
+        trip.status !== 'CHO_DIEU' && (
+          <Space wrap>
+            <Button icon={<CopyOutlined />} onClick={copyOrder}>
+              Sao chép lệnh điều xe
+            </Button>
+            {/* Lệnh vận chuyển theo mẫu TT 36/2024 (kèm QR hợp đồng điện tử nếu booking đã lập hợp đồng) */}
+            <Button icon={<FileProtectOutlined />} href={`/transport-orders/trip/${trip.id}`} target="_blank">
+              Lệnh vận chuyển
+            </Button>
+          </Space>
+        )
+      }
     >
       {isLoading || !trip ? (
         <Flex justify="center" style={{ padding: 48 }}>

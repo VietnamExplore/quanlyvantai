@@ -36,5 +36,7 @@ export function buildPartnerDispatchText(t: PartnerTrip) {
   if (t.itinerary) lines.push(`Lịch trình:\n${t.itinerary}`);
   if (t.notes) lines.push(`Ghi chú: ${t.notes}`);
   if (t.dispatchNote) lines.push(`Lưu ý điều hành: ${t.dispatchNote}`);
+  // Hợp đồng điện tử: lái xe mở link để xuất trình khi kiểm tra
+  if (b.contract) lines.push(`Hợp đồng vận chuyển ${b.contract.number}: ${window.location.origin}/e/hd/${b.contract.token}`);
   return lines.join('\n');
 }

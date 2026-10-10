@@ -82,6 +82,8 @@ const tripSelect = {
       leaderName: true,
       leaderPhone: true,
       leaderApp: true,
+      // Hợp đồng vận chuyển điện tử: lái xe xuất trình khi kiểm tra (NĐ 158/2024 Điều 7)
+      contract: { select: { number: true, token: true } },
       leaderAppId: true,
       signTitle: true,
       // Ngôn ngữ giấy tờ của booking: dòng Chào mừng trên bảng đón

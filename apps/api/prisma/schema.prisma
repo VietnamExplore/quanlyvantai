@@ -19,34 +19,35 @@ enum Role {
 }
 
 model User {
-  id              Int              @id @default(autoincrement())
-  username        String           @unique
+  id              Int                 @id @default(autoincrement())
+  username        String              @unique
   passwordHash    String
   fullName        String
   phone           String?
   email           String?
   roles           Role[]
-  isActive        Boolean          @default(true)
+  isActive        Boolean             @default(true)
   pushToken       String? // Expo push token của app lái xe
   /// Admin đã xóa (tài khoản có dữ liệu cũ thì giữ lại để không mất lịch sử, ẩn khỏi danh sách)
   deletedAt       DateTime?
   driver          Driver?
   /// Tài khoản nhà xe đối tác (vai trò NHA_XE)
   partnerId       Int?
-  partner         Partner?         @relation(fields: [partnerId], references: [id])
-  customers       Customer[]       @relation("SalesOwner")
-  salesBookings   Booking[]        @relation("BookingSales")
-  createdBookings Booking[]        @relation("BookingCreator")
-  assignedTrips   BookingTrip[]    @relation("TripAssigner")
-  tripCosts       TripCost[]       @relation("CostCreator")
-  payments        Payment[]        @relation("PaymentCreator")
-  partnerPayments PartnerPayment[] @relation("PartnerPaymentCreator")
-  cashVouchers    CashVoucher[]    @relation("VoucherCreator")
+  partner         Partner?            @relation(fields: [partnerId], references: [id])
+  customers       Customer[]          @relation("SalesOwner")
+  salesBookings   Booking[]           @relation("BookingSales")
+  createdBookings Booking[]           @relation("BookingCreator")
+  contracts       TransportContract[] @relation("ContractCreator")
+  assignedTrips   BookingTrip[]       @relation("TripAssigner")
+  tripCosts       TripCost[]          @relation("CostCreator")
+  payments        Payment[]           @relation("PaymentCreator")
+  partnerPayments PartnerPayment[]    @relation("PartnerPaymentCreator")
+  cashVouchers    CashVoucher[]       @relation("VoucherCreator")
   tripEvents      TripEvent[]
-  decidedAdvances AdvanceRequest[] @relation("AdvanceDecider")
+  decidedAdvances AdvanceRequest[]    @relation("AdvanceDecider")
   notifications   Notification[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 }
 
 // ───────────── Xe ─────────────
@@ -425,6 +426,7 @@ model Booking {
   createdBy       User               @relation("BookingCreator", fields: [createdById], references: [id])
   trips           BookingTrip[]
   passengers      BookingPassenger[]
+  contract        TransportContract?
   payments        Payment[]
   signTitle       String? // Dòng chính trên bảng đón khách
   signSubtitle    String? // Dòng phụ trên bảng đón khách
@@ -507,6 +509,8 @@ model BookingTrip {
   shuttleDropoffStop     ShuttleStop? @relation("ShuttleDropoff", fields: [shuttleDropoffStopId], references: [id], onDelete: SetNull)
   /// Số trẻ em trong số khách (giá vé trẻ em)
   childCount             Int          @default(0)
+  /// Cự ly hành trình (km) ghi trên hợp đồng vận chuyển; trống = theo bảng giá tuyến
+  distanceKm             Int?
 
   /// Văn phòng nhờ lái xe thu tiền khách giúp
   collectAmount    Decimal?       @db.Decimal(15, 0)
@@ -558,6 +562,42 @@ model BookingPassenger {
 }
 
 /// Nhật ký thay đổi trạng thái / điều xe của chuyến
+/// Hợp đồng vận chuyển hành khách (NĐ 158/2024 Điều 7, 17): mỗi booking một hợp đồng, kèm danh sách hành khách (TT 36/2024 Phụ lục V).
+/// Lưu ít nhất 3 năm: không xóa khi hủy booking.
+model TransportContract {
+  id                  Int       @id @default(autoincrement())
+  bookingId           Int       @unique
+  booking             Booking   @relation(fields: [bookingId], references: [id])
+  /// Số hợp đồng: 0001/2026/HĐVC (seq đánh lại từ 1 mỗi năm)
+  number              String    @unique
+  year                Int
+  seq                 Int
+  signedDate          DateTime  @db.Date
+  /// Bên thuê vận tải (tổ chức hoặc cá nhân)
+  hirerName           String
+  hirerIdNumber       String? // Số CCCD / định danh cá nhân (người thuê là cá nhân)
+  hirerTaxCode        String?
+  hirerAddress        String?
+  hirerPhone          String?
+  hirerRepresentative String? // Người đại diện ký (tổ chức)
+  hirerPosition       String?
+  hirerRepIdNumber    String?
+  paymentMethod       String?
+  extraTerms          String?
+  /// Mã bí mật của bản hợp đồng điện tử (QR / đường dẫn cho lái xe, khách)
+  token               String    @unique
+  /// Bên thuê xác nhận đồng ý hợp đồng điện tử
+  acceptedAt          DateTime?
+  acceptedName        String?
+  acceptedIp          String?
+  createdById         Int
+  createdBy           User      @relation("ContractCreator", fields: [createdById], references: [id])
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([year, seq])
+}
+
 model TripEvent {
   id        Int         @id @default(autoincrement())
   tripId    Int

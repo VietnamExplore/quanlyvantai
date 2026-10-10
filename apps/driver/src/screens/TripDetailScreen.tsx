@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api } from '../api';
+import { api, getServer } from '../api';
 import { KEYBOARD_BEHAVIOR, keyboardScroll, MODAL_ORIENTATIONS } from '../platform';
 import { BRAND, colors, dayLabel, fmtDate, fmtHour, fmtTime, NEXT_STEP, SERVICE } from '../theme';
 import type { Passenger, Trip } from '../types';
@@ -185,6 +185,9 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           <QuickAction icon="🪧" label="Bảng đón" onPress={() => setSignOpen(true)} />
           <QuickAction icon="🧭" label="Chỉ đường" tone="green" onPress={() => openMap(trip.pickupAddress)} />
           {guestContact && <QuickAction icon="💬" label="Liên hệ" tone="purple" onPress={() => scrollRef.current?.scrollTo({ y: contactY - 12, animated: true })} />}
+          {b.contract && (
+            <QuickAction icon="📄" label="Hợp đồng" tone="orange" onPress={() => Linking.openURL(`${getServer()}/e/hd/${b.contract!.token}`)} />
+          )}
           {trip.dropoffAddress && <QuickAction icon="🏁" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
         </Card>
 

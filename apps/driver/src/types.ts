@@ -52,6 +52,8 @@ export interface Trip {
     leaderApp?: import('./contact').ContactApp | null;
     leaderAppId?: string | null;
     passengers?: Passenger[];
+    /** Hợp đồng vận chuyển điện tử (mở bằng mã để xuất trình khi kiểm tra) */
+    contract?: { number: string; token: string } | null;
     signTitle?: string | null;
     docLanguage?: string | null;
     signSubtitle?: string | null;

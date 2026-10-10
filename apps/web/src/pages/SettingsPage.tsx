@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { api, apiUpload } from '../api';
 import { logoUrl } from '../components/PrintDoc';
 import { useSettings } from '../components/common';
+import { DEFAULT_CONTRACT_TERMS } from '../contract';
 import type { Settings } from '../types';
 
 const FOREIGN = [
@@ -229,6 +230,51 @@ export default function SettingsPage() {
           <Col span={24}>
             <Form.Item name="quoteFooter" label="Ghi chú cuối báo giá" extra="Điều khoản giá bao gồm / không bao gồm, hiệu lực báo giá, chính sách hủy…">
               <Input.TextArea rows={5} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Divider titlePlacement="start" style={{ marginTop: 8 }}>
+          Hợp đồng vận chuyển &amp; lệnh vận chuyển (NĐ 158/2024, TT 36/2024)
+        </Divider>
+        <Row gutter={16}>
+          <Col xs={24} md={8}>
+            <Form.Item name="companyRepresentative" label="Người đại diện ký hợp đồng" tooltip="In ở Bên B trên hợp đồng, Thủ trưởng đơn vị trên lệnh vận chuyển">
+              <Input placeholder="Họ tên" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="companyRepresentativeTitle" label="Chức vụ">
+              <Input placeholder="vd: Giám đốc" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="companyRepresentativeId" label="Số CCCD người đại diện">
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="companyTransportLicense" label="Số giấy phép kinh doanh vận tải">
+              <Input placeholder="vd: 4800xxxxxx" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="companyHotline" label="Số điện thoại tiếp nhận phản ánh, khiếu nại" tooltip="Bắt buộc ghi trên hợp đồng. Bỏ trống = Hotline công ty">
+              <Input placeholder="Hotline công ty" />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              name="contractTerms"
+              label="Điều khoản hợp đồng (từ Điều 4)"
+              extra={
+                <>
+                  Điều 1–3 (nội dung, hành trình, giá trị thanh toán) tự lấy từ booking. Dòng bắt đầu bằng ĐIỀU … được in đậm; {"{hotline}"} = số tiếp nhận phản ánh. Bỏ trống = dùng điều khoản mẫu.{" "}
+                  <a onClick={() => form.setFieldValue("contractTerms", DEFAULT_CONTRACT_TERMS)}>Chép điều khoản mẫu vào để sửa</a>
+                </>
+              }
+            >
+              <Input.TextArea rows={8} placeholder={DEFAULT_CONTRACT_TERMS} />
             </Form.Item>
           </Col>
         </Row>

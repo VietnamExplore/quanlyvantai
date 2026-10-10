@@ -1,4 +1,4 @@
-import { AimOutlined, CheckOutlined, CloseOutlined, CopyOutlined, EditOutlined, IdcardOutlined, MessageOutlined, PhoneOutlined, PictureOutlined } from '@ant-design/icons';
+import { AimOutlined, CheckOutlined, CloseOutlined, CopyOutlined, EditOutlined, FileProtectOutlined, IdcardOutlined, MessageOutlined, PhoneOutlined, PictureOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { App, Button, Drawer, Flex, Grid, Tag, Typography } from 'antd';
 import { api } from '../../api';
@@ -134,6 +134,14 @@ export function PartnerTripDetail({
           </span>
           Bảng đón
         </button>
+        {b.contract && (
+          <a href={`/e/hd/${b.contract.token}`} target="_blank" rel="noreferrer" title={`Hợp đồng vận chuyển ${b.contract.number} – lái xe xuất trình khi kiểm tra`}>
+            <span className="pt-quick-icon" style={{ background: '#fff3e2' }}>
+              <FileProtectOutlined />
+            </span>
+            Hợp đồng
+          </a>
+        )}
         <a href={mapUrl(t.pickupAddress)} target="_blank" rel="noreferrer">
           <span className="pt-quick-icon" style={{ background: '#e7f7ee' }}>
             <AimOutlined />

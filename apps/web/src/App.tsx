@@ -1,5 +1,5 @@
 import { Button, Flex, Result, Spin } from 'antd';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { isPartnerArea } from './api';
 import { isPartnerOnly, useAuth } from './auth';
 import { AppLayout } from './components/AppLayout';
@@ -23,6 +23,9 @@ import LoginPage from './pages/LoginPage';
 import PartnersPage from './pages/PartnersPage';
 import PassengerListPage from './pages/PassengerListPage';
 import QuotePage from './pages/QuotePage';
+import ContractPage from './pages/ContractPage';
+import PublicContractPage from './pages/PublicContractPage';
+import TransportOrderPage from './pages/TransportOrderPage';
 import RentalRatesPage from './pages/RentalRatesPage';
 import RoutePricesPage from './pages/RoutePricesPage';
 import ServicesPage from './pages/ServicesPage';
@@ -39,6 +42,11 @@ import VehiclesPage from './pages/VehiclesPage';
 
 export default function App() {
   const { user, loading, logout, hasRole } = useAuth();
+  const { pathname } = useLocation();
+
+  // Hợp đồng vận chuyển điện tử: mở bằng mã bí mật, không cần đăng nhập (lái xe xuất trình, khách xác nhận)
+  const publicContract = /^\/e\/hd\/([A-Za-z0-9_-]+)\/?$/.exec(pathname);
+  if (publicContract) return <PublicContractPage token={publicContract[1]} />;
 
   if (loading) {
     return (
@@ -95,6 +103,8 @@ export default function App() {
       {/* Trang in báo giá: không có menu */}
       <Route path="bookings/:id/quote" element={<QuotePage />} />
       <Route path="bookings/:id/passengers" element={<PassengerListPage />} />
+      <Route path="bookings/:id/contract" element={<ContractPage />} />
+      <Route path="transport-orders/:kind/:id" element={<TransportOrderPage />} />
       <Route path="bookings/:id/sign" element={<SignPage />} />
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />

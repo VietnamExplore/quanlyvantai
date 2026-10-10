@@ -15,6 +15,7 @@ import { PushModule } from './push/push.module';
 import { ServicesModule } from './services/services.module';
 import { CustomerSourcesModule } from './customer-sources/customer-sources.module';
 import { CustomerTypesModule } from './customer-types/customer-types.module';
+import { ContractsModule } from './contracts/contracts.module';
 import { TranslateModule } from './translate/translate.module';
 import { FinanceModule } from './finance/finance.module';
 import { PricingModule } from './pricing/pricing.module';
@@ -67,6 +68,7 @@ import { ShuttleModule } from './shuttle/shuttle.module';
     ServicesModule,
     CustomerSourcesModule,
     CustomerTypesModule,
+    ContractsModule,
     TranslateModule,
     FinanceModule,
   ],

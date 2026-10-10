@@ -513,6 +513,13 @@ export type Settings = Partial<
     | 'bankInfo'
     | 'quoteFooter'
     | 'companyLogo'
+    // Hợp đồng vận chuyển (NĐ 158/2024)
+    | 'companyRepresentative'
+    | 'companyRepresentativeTitle'
+    | 'companyRepresentativeId'
+    | 'companyTransportLicense'
+    | 'companyHotline'
+    | 'contractTerms'
     | `${'companyName' | 'companyAddress' | 'bankInfo' | 'quoteFooter'}_${ForeignLang}`
     // Dịch tự động: dịch vụ đang dùng; khóa API chỉ báo đã cài + 4 ký tự cuối
     | 'translateProvider'

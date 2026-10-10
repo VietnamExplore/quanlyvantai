@@ -7,6 +7,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   FilePdfOutlined,
+  FileProtectOutlined,
   PlusOutlined,
   SaveOutlined,
   SendOutlined,
@@ -76,6 +77,7 @@ import { LeaderCard, PassengersCard, SignCard, uploadSignFile } from "../compone
 import { PaymentsCard } from "../components/finance";
 import { QuickSelect } from "../components/QuickCreate";
 import { DocTranslationsModal } from "../components/DocTranslationsModal";
+import { ContractModal } from "../components/ContractModal";
 import { BookingHistoryCard } from "../components/AuditLog";
 import { DOC_LANGS, toDocLang, type DocLang } from "../doc-i18n";
 import type { Booking, BookingStatus, Customer, Passenger } from "../types";
@@ -109,6 +111,7 @@ export default function BookingEditPage() {
   const [reloadKey, setReloadKey] = useState(0);
   // Bản dịch nội dung booking cho giấy tờ ngoại ngữ
   const [translationsOpen, setTranslationsOpen] = useState(false);
+  const [contractOpen, setContractOpen] = useState(false);
   // Booking mới: file bảng đón khách gửi, tải lên ngay sau khi tạo booking
   const [pendingSignFile, setPendingSignFile] = useState<File | null>(null);
 
@@ -454,6 +457,14 @@ export default function BookingEditPage() {
                   onClick={() => setTranslationsOpen(true)}
                 >
                   Bản dịch giấy tờ
+                </Button>
+                <Button
+                  icon={<FileProtectOutlined />}
+                  disabled={dirty}
+                  title={dirty ? "Lưu booking trước khi lập hợp đồng" : "Hợp đồng vận chuyển, danh sách hành khách (NĐ 158/2024), bản điện tử cho lái xe và khách"}
+                  onClick={() => setContractOpen(true)}
+                >
+                  Hợp đồng vận chuyển
                 </Button>
               </>
             )}
@@ -1061,6 +1072,7 @@ export default function BookingEditPage() {
           onClose={() => setTranslationsOpen(false)}
         />
       )}
+      {booking && <ContractModal bookingId={booking.id} open={contractOpen} onClose={() => setContractOpen(false)} canEdit={canEdit && booking.status !== "HUY"} />}
       <TripModal
         open={tripModalOpen}
         trip={editingTrip}

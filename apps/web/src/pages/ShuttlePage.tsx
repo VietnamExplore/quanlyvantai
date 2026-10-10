@@ -1,4 +1,4 @@
-import { CheckCircleFilled, CopyOutlined, DownOutlined, FileExcelOutlined, LeftOutlined, PlusOutlined, RightOutlined, UpOutlined, WarningFilled } from '@ant-design/icons';
+import { CheckCircleFilled, CopyOutlined, DownOutlined, FileExcelOutlined, FileProtectOutlined, LeftOutlined, PlusOutlined, RightOutlined, UpOutlined, WarningFilled } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Flex, Form, Grid, Input, InputNumber, Modal, Popconfirm, Progress, Radio, Row, Segmented, Select, Space, Spin, Tabs, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -436,6 +436,9 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
             </Button>
             <Button icon={<FileExcelOutlined style={{ color: '#15803d' }} />} disabled={!active.length} onClick={exportExcel}>
               Excel
+            </Button>
+            <Button icon={<FileProtectOutlined />} href={`/transport-orders/run/${run.id}`} target="_blank">
+              Lệnh vận chuyển
             </Button>
           </Space>
         )

@@ -48,5 +48,7 @@ export interface PartnerTrip {
     signSubtitle: string | null;
     signFileType: string | null;
     passengers: { seq: number; fullName: string; gender: string | null; nationality: string | null }[];
+    /** Hợp đồng vận chuyển điện tử: lái xe xuất trình khi kiểm tra */
+    contract?: { number: string; token: string } | null;
   };
 }

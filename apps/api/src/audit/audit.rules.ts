@@ -43,6 +43,7 @@ export const AUDIT_RULES: AuditRule[] = [
   r('POST', '/bookings', 'Tạo booking', 'Booking', 'booking'),
   r('POST', '/bookings/quick-dispatch', 'Tạo lệnh điều xe nhanh', 'Booking', 'booking'),
   r('PATCH', '/bookings/:id', 'Sửa booking', 'Booking', 'booking'),
+  r('PUT', '/contracts/booking/:id', 'Lập / sửa hợp đồng vận chuyển', 'Booking', 'booking'),
   r('POST', '/bookings/:id/status', 'Đổi trạng thái booking', 'Booking', 'booking'),
   r('POST', '/bookings/:id/sign-file', 'Tải lên bảng đón khách gửi', 'Booking', 'booking'),
   r('DELETE', '/bookings/:id/sign-file', 'Xóa bảng đón khách gửi', 'Booking', 'booking'),
