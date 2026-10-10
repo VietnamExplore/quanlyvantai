@@ -22,7 +22,6 @@ interface Earnings {
   /** Tạm ứng đã nhận trong tháng (trừ lương) */
   advanceTaken?: number;
   netPay?: number;
-  completedTrips?: { id: number; pickupTime: string; pickupAddress: string; dropoffAddress: string | null; service: string | null; bookingCode: string }[];
   pendingTrips?: { id: number; pickupTime: string; booking: { code: string } }[];
   advances?: { category: string; amount: number; date: string; note: string | null; bookingCode: string | null }[];
   holding: { tripId: number; amount: number; collectedAt: string; bookingCode: string }[];
@@ -137,26 +136,6 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
         </Card>
       )}
 
-      {d && !d.partner && (
-        <Card>
-          <Section icon="✅" title={`Chuyến đã hoàn thành (${d.completedTrips?.length ?? 0})`} />
-          {!d.completedTrips?.length && <Text style={{ color: colors.muted }}>Chưa có chuyến hoàn thành trong tháng.</Text>}
-          {d.completedTrips?.map((t) => (
-            <View key={t.id} style={s.trip}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.tripTitle} onPress={() => onOpenTrip(t.id)}>
-                  {fmtDate(t.pickupTime).slice(0, 5)} · {t.service ?? 'Chuyến xe'}
-                </Text>
-                <Text style={s.tripMeta} numberOfLines={1}>
-                  {t.dropoffAddress ? `${t.pickupAddress} → ${t.dropoffAddress}` : t.pickupAddress}
-                </Text>
-              </View>
-              <Text style={s.tripDone}>✓ {t.bookingCode}</Text>
-            </View>
-          ))}
-        </Card>
-      )}
-
       {d && !d.partner && (d.advances?.length ?? 0) > 0 && (
         <Card>
           <Section icon="🧾" title="Khoản bạn chi hộ (được hoàn)" />
@@ -202,6 +181,5 @@ const s = StyleSheet.create({
   trip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   tripTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
   tripMeta: { fontSize: 12.5, color: colors.muted, marginTop: 2 },
-  tripDone: { fontSize: 12.5, color: colors.success, fontWeight: '700' },
   tripRevenue: { fontSize: 15, fontWeight: '700', color: colors.text },
 });

@@ -433,7 +433,6 @@ export class DriverAppController {
         advanceTaken: row.advanceTaken,
         loans: row.loans,
         netPay: row.netPay,
-        completedTrips: row.completedTrips.map(({ revenue: _r, commission: _c, ...t }) => ({ ...t, revenue: null, commission: null })),
         pendingTrips: row.pendingTrips.map((t) => ({ id: t.id, pickupTime: t.pickupTime, status: t.status, booking: { code: t.booking.code } })),
         advances: row.advances.map((a) => ({ category: a.category, amount: a.amount, date: a.spentAt, note: a.note, bookingCode: a.booking?.code ?? null })),
       }),
