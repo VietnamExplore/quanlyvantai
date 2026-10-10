@@ -16,9 +16,10 @@ export const LEGAL_CSS = `
   .legal-basis { font-style: italic; font-size: 11.5pt; margin: 0 0 3mm; }
   .legal-basis div::before { content: '- '; }
   .doc h4 { font-size: 12.5pt; margin: 4mm 0 1.5mm; text-transform: uppercase; }
-  .party { display: grid; grid-template-columns: 44mm 1fr; gap: .6mm 3mm; margin-bottom: 2mm; }
+  .party { display: grid; grid-template-columns: 50mm 1fr; gap: .6mm 3mm; margin-bottom: 2mm; }
   .party dt { color: #333; }
   .party dd { margin: 0; }
+  .party .blank { color: #999; letter-spacing: .3mm; }
   .terms { white-space: pre-wrap; text-align: justify; }
   .terms .art { font-weight: 700; display: block; margin-top: 3mm; }
   .qr-box { display: flex; gap: 3mm; align-items: center; font-size: 9.5pt; color: #444; margin-top: 4mm; page-break-inside: avoid; }
@@ -34,13 +35,18 @@ const dateLong = (s: string | Date) => {
   return `ngày ${d.format('DD')} tháng ${d.format('MM')} năm ${d.format('YYYY')}`;
 };
 
+/** Ghép 2 chữ cuối của tên công ty bằng dấu cách không ngắt dòng: xuống dòng thì tên thương hiệu (vd "VIETNAM EXPLORE") luôn nằm cùng một hàng */
+const keepBrand = (name: string) => {
+  const w = name.trim().split(/\s+/);
+  return w.length > 2 ? [...w.slice(0, -2), w.slice(-2).join(' ')].join(' ') : name;
+};
+
 /** Đầu văn bản: tên đơn vị + số | quốc hiệu, tiêu ngữ */
 export function LegalHead({ company, number }: { company: ContractData['company']; number?: string }) {
   return (
     <div className="legal-head">
       <div className="unit">
-        <div className="name">{company.companyName || 'TÊN ĐƠN VỊ'}</div>
-        {company.companyPhone && <div>Điện thoại: {company.companyPhone}</div>}
+        <div className="name">{keepBrand(company.companyName || 'TÊN ĐƠN VỊ')}</div>
         {number && <div>Số: {number}</div>}
       </div>
       <div className="nation">
@@ -63,12 +69,10 @@ export const placeOf = (company: ContractData['company']) => {
 function Party({ rows }: { rows: [string, string | null | undefined][] }) {
   return (
     <dl className="party">
-      {rows
-        .filter(([, v]) => v)
-        .map(([k, v]) => (
+      {rows.map(([k, v]) => (
           <div key={k} style={{ display: 'contents' }}>
             <dt>{k}:</dt>
-            <dd>{v}</dd>
+            <dd>{v || <span className="blank">……………………………………………</span>}</dd>
           </div>
         ))}
     </dl>
@@ -126,12 +130,15 @@ export function ContractDoc({ data, contract, showQr = true }: { data: ContractD
       <Party
         rows={[
           ['Tên tổ chức / cá nhân', contract.hirerName],
-          ['Số CCCD / định danh', contract.hirerIdNumber],
-          ['Mã số thuế', contract.hirerTaxCode],
           ['Địa chỉ', contract.hirerAddress],
           ['Điện thoại', contract.hirerPhone],
-          ['Người đại diện', contract.hirerRepresentative && [contract.hirerRepresentative, contract.hirerPosition && `chức vụ: ${contract.hirerPosition}`].filter(Boolean).join(' – ')],
+          ['Email', contract.hirerEmail],
+          ['Mã số thuế', contract.hirerTaxCode],
+          ['Số CCCD (cá nhân)', contract.hirerIdNumber],
+          ['Người đại diện', contract.hirerRepresentative],
+          ['Chức vụ', contract.hirerPosition],
           ['Số CCCD người đại diện', contract.hirerRepIdNumber],
+          ['Tài khoản', contract.hirerBank],
         ]}
       />
 
@@ -141,12 +148,11 @@ export function ContractDoc({ data, contract, showQr = true }: { data: ContractD
           ['Tên đơn vị', company.companyName],
           ['Địa chỉ', company.companyAddress],
           ['Điện thoại', company.companyPhone],
+          ['Email', company.companyEmail],
           ['Mã số thuế', company.companyTaxCode],
           ['Giấy phép KD vận tải số', company.companyTransportLicense],
-          [
-            'Người đại diện',
-            company.companyRepresentative && [company.companyRepresentative, company.companyRepresentativeTitle && `chức vụ: ${company.companyRepresentativeTitle}`].filter(Boolean).join(' – '),
-          ],
+          ['Người đại diện', company.companyRepresentative],
+          ['Chức vụ', company.companyRepresentativeTitle],
           ['Số CCCD người đại diện', company.companyRepresentativeId],
           ['Tài khoản', company.bankInfo],
         ]}

@@ -65,7 +65,7 @@ export class ContractsService {
     const b = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
-        customer: { select: { name: true, phone: true, taxCode: true, address: true, type: true } },
+        customer: { select: { name: true, phone: true, email: true, taxCode: true, address: true, type: true } },
         passengers: { orderBy: { seq: 'asc' }, select: { seq: true, fullName: true, birthYear: true, note: true } },
         trips: { orderBy: { seq: 'asc' }, select: { ...tripSelect, amount: true } },
         contract: true,
@@ -117,6 +117,7 @@ export class ContractsService {
       hirerTaxCode: data.booking.invoiceTaxCode || c?.taxCode || null,
       hirerAddress: data.booking.invoiceAddress || c?.address || null,
       hirerPhone: c?.phone || data.booking.contactPhone,
+      hirerEmail: c?.email || null,
       hirerRepresentative: c ? data.booking.contactName : null,
       paymentMethod: 'Chuyển khoản hoặc tiền mặt',
     };

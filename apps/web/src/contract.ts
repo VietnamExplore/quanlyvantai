@@ -10,6 +10,8 @@ export interface TransportContract {
   hirerTaxCode: string | null;
   hirerAddress: string | null;
   hirerPhone: string | null;
+  hirerEmail: string | null;
+  hirerBank: string | null;
   hirerRepresentative: string | null;
   hirerPosition: string | null;
   hirerRepIdNumber: string | null;

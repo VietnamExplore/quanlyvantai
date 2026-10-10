@@ -20,6 +20,8 @@ export class SaveContractDto {
   @Transform(trimOrNull) @IsOptional() @IsString() hirerTaxCode?: string | null;
   @Transform(trimOrNull) @IsOptional() @IsString() hirerAddress?: string | null;
   @Transform(trimOrNull) @IsOptional() @IsString() hirerPhone?: string | null;
+  @Transform(trimOrNull) @IsOptional() @IsString() hirerEmail?: string | null;
+  @Transform(trimOrNull) @IsOptional() @IsString() hirerBank?: string | null;
   @Transform(trimOrNull) @IsOptional() @IsString() hirerRepresentative?: string | null;
   @Transform(trimOrNull) @IsOptional() @IsString() hirerPosition?: string | null;
   @Transform(trimOrNull) @IsOptional() @IsString() hirerRepIdNumber?: string | null;

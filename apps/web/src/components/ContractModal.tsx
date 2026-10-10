@@ -185,8 +185,13 @@ export function ContractModal({ bookingId, open, onClose, canEdit }: { bookingId
                   <Input />
                 </Form.Item>
               </Col>
-              <Col span={24}>
+              <Col xs={24} md={16}>
                 <Form.Item name="hirerAddress" label="Địa chỉ">
+                  <Input />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="hirerEmail" label="Email" rules={[{ type: 'email', message: 'Email không hợp lệ' }]}>
                   <Input />
                 </Form.Item>
               </Col>
@@ -202,6 +207,11 @@ export function ContractModal({ bookingId, open, onClose, canEdit }: { bookingId
               </Col>
               <Col xs={24} md={8}>
                 <Form.Item name="hirerRepIdNumber" label="Số CCCD người đại diện">
+                  <Input />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="hirerBank" label="Tài khoản ngân hàng" extra="Ví dụ: Vietcombank – STK 0123456789 – CTY ABC. Mục nào bỏ trống thì bản in để dòng chấm ghi tay">
                   <Input />
                 </Form.Item>
               </Col>
