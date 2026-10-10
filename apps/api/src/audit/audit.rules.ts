@@ -95,6 +95,8 @@ export const AUDIT_RULES: AuditRule[] = [
   r('PATCH', '/cost-categories/:code', 'Sửa loại chi phí', 'CostCategory', 'costCategory', 'code'),
   r('POST', '/customer-sources', 'Thêm nguồn khách', 'CustomerSource', 'customerSource', 'code'),
   r('PATCH', '/customer-sources/:code', 'Sửa nguồn khách', 'CustomerSource', 'customerSource', 'code'),
+  r('POST', '/customer-types', 'Thêm loại khách hàng', 'CustomerKind', 'customerKind', 'code'),
+  r('PATCH', '/customer-types/:code', 'Sửa loại khách hàng', 'CustomerKind', 'customerKind', 'code'),
   r('POST', '/route-prices', 'Thêm giá tuyến', 'RoutePrice', 'routePrice'),
   r('PATCH', '/route-prices/:id', 'Sửa giá tuyến', 'RoutePrice', 'routePrice'),
   r('DELETE', '/route-prices/:id', 'Xóa giá tuyến', 'RoutePrice', 'routePrice'),

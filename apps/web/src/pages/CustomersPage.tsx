@@ -2,14 +2,14 @@ import { QuickSelect } from '../components/QuickCreate';
 import { Col, Form, Input, InputNumber, Row, Select, Switch, Tag } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
-import { EnumTag, formatVnd, useSalesStaffOptions } from '../components/common';
+import { CustomerTypeTag, formatVnd, useCustomerTypes, useSalesStaffOptions } from '../components/common';
 import { DOC_LANGS } from '../doc-i18n';
-import { CUSTOMER_TYPE, toOptions } from '../labels';
 import type { Customer } from '../types';
 
 export default function CustomersPage() {
   const { hasRole, user } = useAuth();
   const salesOptions = useSalesStaffOptions();
+  const { types } = useCustomerTypes();
 
   return (
     <CrudPage<Customer>
@@ -30,13 +30,13 @@ export default function CustomersPage() {
       })}
       renderFilters={(f, set) => (
         <>
-          <Select allowClear placeholder="Loại khách" style={{ width: 150 }} options={toOptions(CUSTOMER_TYPE)} value={f.type} onChange={(v) => set('type', v)} />
+          <Select allowClear placeholder="Loại khách" style={{ width: 150 }} options={types.map((t) => ({ value: t.code, label: t.name }))} value={f.type} onChange={(v) => set('type', v)} />
           <Select allowClear placeholder="NV phụ trách" style={{ width: 170 }} options={salesOptions} value={f.salesUserId} onChange={(v) => set('salesUserId', v)} />
         </>
       )}
       columns={[
         { title: 'Khách hàng', dataIndex: 'name', render: (v, r) => (r.isActive ? <b>{v}</b> : <s>{v}</s>) },
-        { title: 'Loại', dataIndex: 'type', render: (v) => <EnumTag labels={CUSTOMER_TYPE} value={v} /> },
+        { title: 'Loại', dataIndex: 'type', render: (v) => <CustomerTypeTag code={v} /> },
         { title: 'SĐT', dataIndex: 'phone' },
         { title: 'Email', dataIndex: 'email' },
         { title: 'MST', dataIndex: 'taxCode' },
@@ -56,7 +56,7 @@ export default function CustomersPage() {
           </Col>
           <Col xs={24} md={8}>
             <Form.Item name="type" label="Loại khách">
-              <Select options={toOptions(CUSTOMER_TYPE)} />
+              <QuickSelect entity="customerType" />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>

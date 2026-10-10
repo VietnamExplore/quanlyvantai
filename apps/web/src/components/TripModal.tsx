@@ -32,6 +32,7 @@ import {
   Money,
   MoneyInput,
   useCustomers,
+  useCustomerTypes,
   useLocations,
   useServices,
   useVehicleTypeOptions,
@@ -75,6 +76,7 @@ interface Props {
 
 export function TripModal({ open, trip, onCancel, onSave, withContact, title, okText, saving, agent }: Props) {
   const customers = useCustomers();
+  const { isAgent } = useCustomerTypes();
   const [form] = Form.useForm();
   const { vehicleTypes } = useVehicleTypeOptions();
   const locations = useLocations();
@@ -419,7 +421,7 @@ export function TripModal({ open, trip, onCancel, onSave, withContact, title, ok
                       form.setFieldsValue({
                         contactName: cur.contactName || c.name,
                         contactPhone: cur.contactPhone || c.phone || undefined,
-                        ...(c.type === "DAI_LY" && { source: "DAI_LY" }),
+                        ...(isAgent(c.type) && { source: "DAI_LY" }),
                       });
                     }}
                   />

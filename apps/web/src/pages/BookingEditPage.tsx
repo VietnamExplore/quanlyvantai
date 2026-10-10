@@ -61,6 +61,7 @@ import {
   MoneyInput,
   ServiceTag,
   useCustomers,
+  useCustomerTypes,
   useSalesStaffOptions,
   useSettings,
 } from "../components/common";
@@ -93,6 +94,7 @@ export default function BookingEditPage() {
   const copy = useCopyText();
   const [form] = Form.useForm();
   const customers = useCustomers();
+  const { isAgent } = useCustomerTypes();
   const salesOptions = useSalesStaffOptions();
   const settings = useSettings();
 
@@ -336,7 +338,7 @@ export default function BookingEditPage() {
       contactName: cur.contactName || c.name,
       contactPhone: cur.contactPhone || c.phone || "",
       salesUserId: cur.salesUserId ?? c.salesUserId ?? undefined,
-      source: c.type === "DAI_LY" ? "DAI_LY" : cur.source,
+      source: isAgent(c.type) ? "DAI_LY" : cur.source,
       // Khách nước ngoài: giấy tờ theo ngôn ngữ mặc định của khách
       docLanguage: c.docLanguage && c.docLanguage !== "vi" ? c.docLanguage : cur.docLanguage,
     });
@@ -1064,7 +1066,7 @@ export default function BookingEditPage() {
         trip={editingTrip}
         onCancel={() => setTripModalOpen(false)}
         onSave={saveTrip}
-        agent={customers.find((c) => c.id === watchCustomerId)?.type === "DAI_LY"}
+        agent={isAgent(customers.find((c) => c.id === watchCustomerId)?.type)}
       />
     </Flex>
   );

@@ -29,6 +29,7 @@ import ServicesPage from './pages/ServicesPage';
 import ShuttlePage from './pages/ShuttlePage';
 import ShuttleRoutesPage from './pages/ShuttleRoutesPage';
 import CustomerSourcesPage from './pages/CustomerSourcesPage';
+import CustomerTypesPage from './pages/CustomerTypesPage';
 import SettingsPage from './pages/SettingsPage';
 import SignPage from './pages/SignPage';
 import SurchargesPage from './pages/SurchargesPage';
@@ -115,6 +116,7 @@ export default function App() {
         <Route path="services" element={<ServicesPage />} />
         <Route path="cost-categories" element={<CostCategoriesPage />} />
         <Route path="customer-sources" element={<CustomerSourcesPage />} />
+        <Route path="customer-types" element={<CustomerTypesPage />} />
         <Route path="finance/receivables" element={<ReceivablesPage />} />
         {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/payables" element={<PayablesPage />} />}
         {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/ledger" element={<LedgerPage />} />}

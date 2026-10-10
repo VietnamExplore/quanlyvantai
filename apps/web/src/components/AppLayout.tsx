@@ -89,6 +89,7 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
       { key: '/services', label: 'Dịch vụ', icon: <AppstoreOutlined /> },
       { key: '/shuttle-routes', label: 'Tuyến xe ghép', icon: <NodeIndexOutlined /> },
       { key: '/cost-categories', label: 'Loại chi phí', icon: <TagsOutlined /> },
+      { key: '/customer-types', label: 'Loại khách hàng', icon: <TagsOutlined /> },
       { key: '/customer-sources', label: 'Nguồn khách', icon: <TagsOutlined /> },
     ],
   },

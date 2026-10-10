@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { OFFICE_ROLES, Roles } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
@@ -40,14 +40,22 @@ export class CustomersController {
 
   @Post()
   @Roles(Role.ADMIN, Role.KINH_DOANH)
-  create(@Body() dto: CreateCustomerDto) {
+  async create(@Body() dto: CreateCustomerDto) {
+    await this.checkType(dto.type);
     return this.prisma.customer.create({ data: dto, include: customerInclude });
   }
 
   // Không xóa khách hàng: dùng isActive = false để giữ lịch sử booking và công nợ
   @Patch(':id')
   @Roles(Role.ADMIN, Role.KINH_DOANH)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCustomerDto) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCustomerDto) {
+    await this.checkType(dto.type);
     return this.prisma.customer.update({ where: { id }, data: dto, include: customerInclude });
+  }
+
+  private async checkType(type?: string) {
+    if (type && !(await this.prisma.customerKind.findUnique({ where: { code: type } }))) {
+      throw new BadRequestException('Loại khách hàng không tồn tại');
+    }
   }
 }

@@ -1,12 +1,13 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CustomerType } from '@prisma/client';
-import { IsBoolean, IsEmail, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { DOC_LANGUAGES } from '../common/doc-language';
 
 export class CreateCustomerDto {
+  /** Mã loại khách hàng (danh mục /customer-types) */
   @IsOptional()
-  @IsEnum(CustomerType)
-  type?: CustomerType;
+  @IsString()
+  @IsNotEmpty()
+  type?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Tên khách hàng không được để trống' })
@@ -54,6 +55,6 @@ export class UpdateCustomerDto extends PartialType(CreateCustomerDto) {}
 
 export class CustomerQueryDto {
   @IsOptional() @IsString() q?: string;
-  @IsOptional() @IsEnum(CustomerType) type?: CustomerType;
+  @IsOptional() @IsString() type?: string;
   @IsOptional() @IsInt() salesUserId?: number;
 }

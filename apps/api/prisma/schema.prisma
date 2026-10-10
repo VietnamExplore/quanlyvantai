@@ -189,16 +189,24 @@ model Partner {
 
 // ───────────── Khách hàng ─────────────
 
-enum CustomerType {
-  KHACH_LE
-  DOANH_NGHIEP
-  DAI_LY
-  KHACH_SAN
+/// Danh mục loại khách hàng (Khách lẻ, Doanh nghiệp, Đại lý…); thêm mới được
+model CustomerKind {
+  code      String     @id
+  name      String
+  /// Màu thẻ (antd preset: blue, purple, cyan…)
+  color     String?
+  /// Khách loại này hưởng giá đại lý (xe ghép) và nguồn booking mặc định Đại lý
+  isAgent   Boolean    @default(false)
+  sortOrder Int        @default(0)
+  isActive  Boolean    @default(true)
+  customers Customer[]
 }
 
 model Customer {
   id              Int          @id @default(autoincrement())
-  type            CustomerType @default(KHACH_LE)
+  /// Mã loại khách hàng (danh mục CustomerKind)
+  type            String       @default("KHACH_LE")
+  kind            CustomerKind @relation(fields: [type], references: [code], onUpdate: Cascade)
   name            String
   phone           String?
   email           String?

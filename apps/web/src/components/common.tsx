@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { InputNumber, Tag, Tooltip, type InputNumberProps } from 'antd';
 import dayjs from 'dayjs';
 import { api } from '../api';
-import type { Customer, Driver, Location, Partner, Service, Settings, VehicleType } from '../types';
+import type { Customer, CustomerKind, Driver, Location, Partner, Service, Settings, VehicleType } from '../types';
 
 export const DATE_FORMAT = 'DD/MM/YYYY';
 
@@ -83,6 +83,28 @@ export function useServices() {
     options: data.filter((s) => s.isActive).map((s) => ({ value: s.code, label: s.name })),
     name: (code: string) => byCode[code]?.name ?? code,
   };
+}
+
+/** Danh mục loại khách hàng (Khách lẻ, Doanh nghiệp, Đại lý…) */
+export function useCustomerTypes() {
+  const { data = [] } = useQuery({ queryKey: ['/customer-types'], queryFn: () => api<CustomerKind[]>('/customer-types') });
+  const byCode = Object.fromEntries(data.map((t) => [t.code, t])) as Record<string, CustomerKind | undefined>;
+  return {
+    types: data,
+    byCode,
+    options: data.filter((t) => t.isActive).map((t) => ({ value: t.code, label: t.name })),
+    name: (code?: string | null) => (code ? (byCode[code]?.name ?? code) : ''),
+    /** Khách hưởng giá đại lý; danh mục chưa tải thì coi mã DAI_LY là đại lý */
+    isAgent: (code?: string | null) => !!code && (byCode[code]?.isAgent ?? code === 'DAI_LY'),
+  };
+}
+
+/** Nhãn màu loại khách hàng */
+export function CustomerTypeTag({ code }: { code?: string | null }) {
+  const { byCode } = useCustomerTypes();
+  if (!code) return null;
+  const t = byCode[code];
+  return <Tag color={t?.color ?? undefined}>{t?.name ?? code}</Tag>;
 }
 
 /** Nhãn màu tên dịch vụ */

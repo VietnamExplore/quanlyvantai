@@ -6,10 +6,10 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { DATE_FORMAT, EnumTag, formatVnd, Money, paged } from '../components/common';
+import { DATE_FORMAT, CustomerTypeTag, EnumTag, formatVnd, Money, paged } from '../components/common';
 import { PaymentModal } from '../components/finance';
 import { downloadExcel } from '../excel';
-import { BOOKING_STATUS, CUSTOMER_TYPE, PAYMENT_METHOD } from '../labels';
+import { BOOKING_STATUS, PAYMENT_METHOD } from '../labels';
 import { describeFilter, EMPTY_FILTER, FinanceFilterBar, fileSlug, inRange, isFiltered, rangeSuffix, type DebtFilter, type FinanceFilterValue } from '../components/FinanceFilter';
 import type { BookingStatus, CustomerType } from '../types';
 import { ResponsiveTable } from '../components/ResponsiveTable';
@@ -306,7 +306,7 @@ export default function ReceivablesPage() {
               title: 'Khách hàng',
               render: (_, c) => (
                 <>
-                  <b>{c.name}</b> <EnumTag labels={CUSTOMER_TYPE} value={c.customerType} />
+                  <b>{c.name}</b> <CustomerTypeTag code={c.customerType} />
                   {c.phone && (
                     <div>
                       <Typography.Text type="secondary">{c.phone}</Typography.Text>

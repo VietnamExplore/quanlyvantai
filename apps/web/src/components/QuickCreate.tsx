@@ -4,11 +4,11 @@ import { App, Button, Col, Divider, Form, Input, InputNumber, Modal, Radio, Row,
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { CUSTOMER_TYPE, LOCATION_TYPE, OWNERSHIP, toOptions } from '../labels';
-import type { CostCategory, CustomerSource, Role } from '../types';
+import { LOCATION_TYPE, OWNERSHIP, toOptions } from '../labels';
+import type { CostCategory, CustomerKind, CustomerSource, Role } from '../types';
 import { MoneyInput, useCompanyDriverOptions, useLocations, usePartnerOptions, useServices, useVehicleTypeOptions } from './common';
 
-export type QuickEntity = 'customer' | 'location' | 'partner' | 'driver' | 'vehicle' | 'vehicleType' | 'route' | 'salesUser' | 'service' | 'costCategory' | 'customerSource';
+export type QuickEntity = 'customer' | 'location' | 'partner' | 'driver' | 'vehicle' | 'vehicleType' | 'route' | 'salesUser' | 'service' | 'costCategory' | 'customerSource' | 'customerType';
 
 type Rec = { id: number } & Record<string, unknown>;
 
@@ -40,7 +40,7 @@ function CustomerFields() {
       </Col>
       <Col span={8}>
         <Form.Item name="type" label="Loại khách">
-          <Select options={toOptions(CUSTOMER_TYPE)} />
+          <QuickSelect entity="customerType" />
         </Form.Item>
       </Col>
       <Col span={12}>
@@ -389,6 +389,23 @@ export const QUICK_ENTITIES: Record<QuickEntity, EntityConfig> = {
       </Form.Item>
     ),
   },
+  customerType: {
+    title: 'loại khách hàng',
+    endpoint: '/customer-types',
+    roles: ['ADMIN', 'KINH_DOANH'],
+    nameField: 'name',
+    valueKey: 'code',
+    Fields: () => (
+      <>
+        <Form.Item name="name" label="Tên loại khách hàng" rules={[{ required: true, whitespace: true, message: 'Nhập tên' }]}>
+          <Input autoFocus placeholder="Ví dụ: Công ty du lịch, Khách VIP, Trường học…" />
+        </Form.Item>
+        <Form.Item name="isAgent" label="Hưởng giá đại lý" valuePropName="checked" extra="Dùng giá đại lý của tuyến xe ghép, booking mặc định nguồn Đại lý">
+          <Switch />
+        </Form.Item>
+      </>
+    ),
+  },
   salesUser: {
     title: 'nhân viên kinh doanh',
     endpoint: '/users',
@@ -503,6 +520,11 @@ function useDefaultOptions(entity: QuickEntity, enabled: boolean, valueKey: stri
     queryFn: () => api<CustomerSource[]>('/customer-sources'),
     enabled: enabled && entity === 'customerSource',
   });
+  const { data: customerTypes = [] } = useQuery({
+    queryKey: ['/customer-types'],
+    queryFn: () => api<CustomerKind[]>('/customer-types'),
+    enabled: enabled && entity === 'customerType',
+  });
   if (!enabled) return undefined;
   switch (entity) {
     case 'partner':
@@ -521,6 +543,9 @@ function useDefaultOptions(entity: QuickEntity, enabled: boolean, valueKey: stri
       return costCategories.filter((c) => c.isActive).map((c) => ({ value: c.code, label: c.name }));
     case 'customerSource':
       return customerSources.filter((c) => c.isActive).map((c) => ({ value: c.code, label: c.name }));
+    case 'customerType':
+      // Loại đã ngừng dùng vẫn hiện tên (khách cũ) nhưng không chọn được
+      return customerTypes.map((c) => ({ value: c.code, label: c.name, disabled: !c.isActive }));
     default:
       return undefined;
   }

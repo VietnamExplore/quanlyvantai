@@ -2,7 +2,8 @@ export type Role = 'ADMIN' | 'DIEU_HANH' | 'KINH_DOANH' | 'KE_TOAN' | 'LAI_XE' |
 export type Ownership = 'CONG_TY' | 'DOI_TAC';
 export type VehicleStatus = 'SAN_SANG' | 'BAO_DUONG' | 'NGUNG_HOAT_DONG';
 export type DriverStatus = 'DANG_LAM' | 'NGHI_PHEP' | 'NGHI_VIEC';
-export type CustomerType = 'KHACH_LE' | 'DOANH_NGHIEP' | 'DAI_LY' | 'KHACH_SAN';
+/** Mã loại khách hàng (danh mục /customer-types; mặc định KHACH_LE, DOANH_NGHIEP, DAI_LY, KHACH_SAN) */
+export type CustomerType = string;
 export type LocationType = 'SAN_BAY' | 'KHACH_SAN' | 'DIEM_THAM_QUAN' | 'BEN_XE' | 'KHAC';
 
 export interface AuthUser {
@@ -151,6 +152,16 @@ export type SurchargeRule = 'BAN_DEM' | 'LE_TET' | 'THU_CONG';
 /** Mã nguồn khách trong danh mục Nguồn khách */
 export type BookingSource = string;
 
+export interface CustomerKind {
+  code: string;
+  name: string;
+  color: string | null;
+  /** Hưởng giá đại lý (xe ghép), booking mặc định nguồn Đại lý */
+  isAgent: boolean;
+  sortOrder: number;
+  isActive: boolean;
+  _count?: { customers: number };
+}
 export interface CustomerSource {
   code: string;
   name: string;

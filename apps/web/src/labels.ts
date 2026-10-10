@@ -1,6 +1,5 @@
 import type {
   BookingStatus,
-  CustomerType,
   DriverStatus,
   LocationType,
   Ownership,
@@ -37,13 +36,6 @@ export const DRIVER_STATUS: Labels<DriverStatus> = {
   DANG_LAM: { label: 'Đang làm', color: 'green' },
   NGHI_PHEP: { label: 'Nghỉ phép', color: 'orange' },
   NGHI_VIEC: { label: 'Nghỉ việc', color: 'default' },
-};
-
-export const CUSTOMER_TYPE: Labels<CustomerType> = {
-  KHACH_LE: { label: 'Khách lẻ' },
-  DOANH_NGHIEP: { label: 'Doanh nghiệp', color: 'blue' },
-  DAI_LY: { label: 'Đại lý', color: 'purple' },
-  KHACH_SAN: { label: 'Khách sạn', color: 'cyan' },
 };
 
 export const LOCATION_TYPE: Labels<LocationType> = {
