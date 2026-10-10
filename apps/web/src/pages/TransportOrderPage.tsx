@@ -1,6 +1,6 @@
 import { PrinterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Flex, QRCode, Spin } from 'antd';
+import { Button, Flex, QRCode, Result, Spin } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
@@ -67,17 +67,28 @@ const hm = (s: string) => dayjs(s).format('HH:mm');
 const dm = (s: string) => dayjs(s).format('DD/MM/YYYY');
 
 /** Lệnh vận chuyển (mẫu Phụ lục IV – TT 36/2024/TT-BGTVT): /transport-orders/trip/:id hoặc /transport-orders/run/:id */
-export default function TransportOrderPage() {
-  const { kind, id } = useParams();
-  const { data, isLoading } = useQuery({
+/** publicOrder: mở từ app lái xe bằng đường dẫn có chữ ký /e/lvc/trip|run/:id/:sig (không cần đăng nhập) */
+export default function TransportOrderPage({ publicOrder }: { publicOrder?: { kind: string; id: string; sig: string } }) {
+  const params = useParams();
+  const kind = publicOrder?.kind ?? params.kind;
+  const id = publicOrder?.id ?? params.id;
+  const { data, isLoading, error } = useQuery({
     queryKey: ['/transport-orders', kind, Number(id)],
-    queryFn: () => api<TripOrder | RunOrder>(`/transport-orders/${kind === 'run' ? 'run' : 'trip'}/${id}`),
+    queryFn: () =>
+      publicOrder
+        ? fetch(`/api/public/transport-orders/${publicOrder.kind}/${publicOrder.id}/${publicOrder.sig}`).then(async (r) => {
+            if (!r.ok) throw new Error('Không tìm thấy lệnh vận chuyển');
+            return (await r.json()) as TripOrder | RunOrder;
+          })
+        : api<TripOrder | RunOrder>(`/transport-orders/${kind === 'run' ? 'run' : 'trip'}/${id}`),
+    retry: publicOrder ? false : undefined,
   });
 
   useEffect(() => {
     if (data) document.title = `Lệnh vận chuyển ${data.number}`;
   }, [data]);
 
+  if (error) return <Result status="404" title="Không tìm thấy lệnh vận chuyển" subTitle="Đường dẫn không đúng hoặc chuyến không còn." />;
   if (isLoading || !data) {
     return (
       <Flex justify="center" style={{ padding: 48 }}>
@@ -313,4 +324,12 @@ const ORDER_CSS = `
   .order-sign { display: flex; justify-content: space-between; text-align: center; margin-top: 6mm; page-break-inside: avoid; }
   .order-sign > div { width: 32%; }
   .order-sign .space { height: 20mm; }
+  @media (max-width: 820px) {
+    .order-top { flex-direction: column; gap: 2mm; }
+    .order-boss { width: auto; text-align: left; }
+    .order-boss .space { display: none; }
+    .order-sign { flex-wrap: wrap; gap: 4mm; }
+    .order-sign > div { width: 45%; }
+    .order-grid { font-size: 10.5pt; }
+  }
 `;

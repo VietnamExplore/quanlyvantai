@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, TripStatus } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { bookingTotals } from '../bookings/bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AcceptContractDto, SaveContractDto } from './contracts.dto';
@@ -22,6 +22,21 @@ const COMPANY_KEYS = [
   'bankInfo',
   'contractTerms',
 ];
+
+/**
+ * Đường dẫn lệnh vận chuyển điện tử (không cần đăng nhập) cho lái xe xuất trình: /e/lvc/trip|run/:id/:chữ ký.
+ * Chữ ký HMAC theo khóa bí mật của máy chủ nên không đoán được đường dẫn của chuyến khác.
+ */
+export type OrderKind = 'trip' | 'run';
+export const orderSig = (kind: OrderKind, id: number) =>
+  createHmac('sha256', process.env.JWT_SECRET ?? 'transfer').update(`lvc:${kind}:${id}`).digest('base64url').slice(0, 22);
+export const orderPath = (kind: OrderKind, id: number) => `/e/lvc/${kind}/${id}/${orderSig(kind, id)}`;
+export function checkOrderSig(kind: string, id: number, sig: string) {
+  if (kind !== 'trip' && kind !== 'run') return false;
+  const want = Buffer.from(orderSig(kind, id));
+  const got = Buffer.from(sig ?? '');
+  return want.length === got.length && timingSafeEqual(want, got);
+}
 
 const pad = (n: number, len = 4) => String(n).padStart(len, '0');
 /** Số hợp đồng: 0001/2026/HĐVC */

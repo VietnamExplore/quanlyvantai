@@ -11,6 +11,10 @@ export interface AuthUser {
 
 export interface Trip {
   id: number;
+  /** Chuyến xe ghép */
+  shuttleRunId?: number | null;
+  /** Đường dẫn lệnh vận chuyển điện tử (mở bằng trình duyệt, không cần đăng nhập) */
+  orderPath?: string;
   /** Khách đã ký nhận hoàn thành chuyến */
   signoffName?: string | null;
   signoffAt?: string | null;

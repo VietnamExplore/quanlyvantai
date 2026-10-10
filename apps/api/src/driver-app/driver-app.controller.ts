@@ -1,3 +1,4 @@
+import { orderPath } from '../contracts/contracts.service';
 import {
   BadRequestException,
   Body,
@@ -102,6 +103,7 @@ class PushTokenDto {
 /** Thông tin chuyến cho lái xe: không gồm giá bán, chi phí */
 const driverTripSelect = {
   id: true,
+  shuttleRunId: true,
   // Ký nhận điện tử của khách
   signoffName: true,
   signoffAt: true,
@@ -197,6 +199,8 @@ export class DriverAppController {
     const companyCar = trip.vehicle?.ownership === 'CONG_TY';
     return {
       ...trip,
+      // Giấy tờ chuyến: lệnh vận chuyển điện tử (chuyến xe ghép: lệnh của cả chuyến ghép)
+      orderPath: trip.shuttleRunId ? orderPath('run', trip.shuttleRunId) : orderPath('trip', trip.id),
       trackKm: companyCar,
       suggestStartKm: companyCar && trip.startKm === null ? await this.odometer.previousEndKm({ id: trip.id, vehicleId: trip.vehicleId, pickupTime: trip.pickupTime }) : null,
     };

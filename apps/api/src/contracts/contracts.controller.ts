@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Put, Req } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Public, Roles } from '../auth/auth.decorators';
 import { assertCanEditBooking } from '../bookings/booking-access';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcceptContractDto, SaveContractDto } from './contracts.dto';
-import { ContractsService } from './contracts.service';
+import { checkOrderSig, ContractsService } from './contracts.service';
 
 /** Hợp đồng vận chuyển + danh sách hành khách (NĐ 158/2024, TT 36/2024) và lệnh vận chuyển */
 @Controller()
@@ -45,6 +45,14 @@ export class ContractsController {
   @Public()
   byToken(@Param('token') token: string) {
     return this.contracts.byToken(token);
+  }
+
+  /** Lệnh vận chuyển điện tử: lái xe mở từ app để xuất trình khi kiểm tra */
+  @Get('public/transport-orders/:kind/:id/:sig')
+  @Public()
+  publicOrder(@Param('kind') kind: string, @Param('id', ParseIntPipe) id: number, @Param('sig') sig: string) {
+    if (!checkOrderSig(kind, id, sig)) throw new NotFoundException('Không tìm thấy lệnh vận chuyển');
+    return kind === 'run' ? this.contracts.runOrder(id) : this.contracts.tripOrder(id);
   }
 
   @Post('public/contracts/:token/accept')

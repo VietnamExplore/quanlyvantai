@@ -48,6 +48,9 @@ export default function App() {
   // Hợp đồng vận chuyển điện tử: mở bằng mã bí mật, không cần đăng nhập (lái xe xuất trình, khách xác nhận)
   const publicContract = /^\/e\/hd\/([A-Za-z0-9_-]+)\/?$/.exec(pathname);
   if (publicContract) return <PublicContractPage token={publicContract[1]} />;
+  // Lệnh vận chuyển điện tử (lái xe mở từ app)
+  const publicOrder = /^\/e\/lvc\/(trip|run)\/(\d+)\/([\w-]+)\/?$/.exec(pathname);
+  if (publicOrder) return <TransportOrderPage publicOrder={{ kind: publicOrder[1], id: publicOrder[2], sig: publicOrder[3] }} />;
 
   if (loading) {
     return (

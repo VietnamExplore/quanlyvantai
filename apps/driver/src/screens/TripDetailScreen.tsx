@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api, getServer } from '../api';
+import { api } from '../api';
 import { KEYBOARD_BEHAVIOR, keyboardScroll, MODAL_ORIENTATIONS } from '../platform';
 import { BRAND, colors, dayLabel, fmtDate, fmtHour, fmtTime, NEXT_STEP, SERVICE } from '../theme';
 import type { Passenger, Trip } from '../types';
@@ -13,6 +13,7 @@ import { ContactCard, ContactChooser, type GuestContact } from './ContactCard';
 import { SignScreen } from './SignScreen';
 import { SignoffCard } from './SignoffCard';
 import { AddPassengersCard } from './AddPassengersCard';
+import { DocsCard } from './DocsCard';
 import { IncidentSheet, TripIncidents } from './IncidentSheet';
 import { TripCosts } from './TripCosts';
 
@@ -190,9 +191,6 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           <QuickAction icon="🪧" label="Bảng đón" onPress={() => setSignOpen(true)} />
           <QuickAction icon="🧭" label="Chỉ đường" tone="green" onPress={() => openMap(trip.pickupAddress)} />
           {guestContact && <QuickAction icon="💬" label="Liên hệ" tone="purple" onPress={() => scrollRef.current?.scrollTo({ y: contactY - 12, animated: true })} />}
-          {b.contract && (
-            <QuickAction icon="📄" label="Hợp đồng" tone="orange" onPress={() => Linking.openURL(`${getServer()}/e/hd/${b.contract!.token}`)} />
-          )}
           {trip.status !== 'DA_GAN' && trip.status !== 'HUY' && <QuickAction icon="⚠️" label="Sự cố" tone="orange" onPress={() => setIncidentOpen(true)} />}
           {trip.dropoffAddress && <QuickAction icon="🏁" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
         </Card>
@@ -240,6 +238,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
         </Card>
 
         <CollectCard trip={trip} onChanged={setTrip} />
+
+        <DocsCard trip={trip} />
 
         <AddPassengersCard trip={trip} onChanged={(list) => setTrip({ ...trip, booking: { ...trip.booking, passengers: list } })} />
 

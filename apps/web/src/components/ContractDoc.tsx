@@ -25,6 +25,11 @@ export const LEGAL_CSS = `
   .qr-box { display: flex; gap: 3mm; align-items: center; font-size: 9.5pt; color: #444; margin-top: 4mm; page-break-inside: avoid; }
   .e-accepted { color: #237804; font-weight: 600; font-size: 10.5pt; }
   .page-break { page-break-before: always; break-before: page; height: 0; }
+  @media (max-width: 820px) {
+    .legal-head { flex-direction: column; gap: 3mm; }
+    .legal-head .unit, .legal-head .nation { width: auto; }
+    .party { grid-template-columns: 38% 1fr; }
+  }
   @media screen { .page-break { height: 8mm; border-top: 1px dashed #c0c6cf; margin-top: 10mm; } }
 `;
 

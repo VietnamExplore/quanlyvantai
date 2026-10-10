@@ -2,14 +2,14 @@
   "expo": {
     "name": "Lái Xe",
     "slug": "lai-xe",
-    "version": "1.5.4",
+    "version": "1.5.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "vn.vantai.laixe",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "vn.vantai.laixe",
-      "versionCode": 10,
+      "versionCode": 11,
       "adaptiveIcon": {
         "backgroundColor": "#1278FA",
         "foregroundImage": "./assets/android-icon-foreground.png",
