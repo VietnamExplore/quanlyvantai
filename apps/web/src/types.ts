@@ -96,6 +96,12 @@ export interface Customer extends Ref {
   email: string | null;
   taxCode: string | null;
   address: string | null;
+  /** Thông tin Bên A trên hợp đồng vận chuyển */
+  idNumber: string | null;
+  representative: string | null;
+  representativeTitle: string | null;
+  representativeIdNumber: string | null;
+  bankAccount: string | null;
   salesUserId: number | null;
   salesUser: { id: number; fullName: string } | null;
   creditLimit: string | null;

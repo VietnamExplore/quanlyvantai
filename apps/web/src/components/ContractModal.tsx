@@ -8,6 +8,25 @@ import { api } from '../api';
 import { useCopyText } from '../clipboard';
 import { contractUrl, type ContractForBooking, type TransportContract } from '../contract';
 
+const DRAFT_SOURCE = {
+  OTA: 'danh sách hành khách (booking nguồn OTA: trưởng đoàn hoặc khách đầu tiên)',
+  CUSTOMER: 'hồ sơ khách hàng',
+  CONTACT: 'người liên hệ của booking (chưa chọn khách hàng)',
+} as const;
+
+const HIRER_FIELDS = [
+  'hirerName',
+  'hirerIdNumber',
+  'hirerTaxCode',
+  'hirerAddress',
+  'hirerPhone',
+  'hirerEmail',
+  'hirerRepresentative',
+  'hirerPosition',
+  'hirerRepIdNumber',
+  'hirerBank',
+] as const;
+
 type FormValues = Omit<Partial<TransportContract>, 'signedDate'> & { signedDate: Dayjs; km: Record<string, number | null> };
 
 /**
@@ -29,6 +48,13 @@ export function ContractModal({ bookingId, open, onClose, canEdit }: { bookingId
     ...src,
     signedDate: dayjs(src?.signedDate),
     km: Object.fromEntries(data.trips.map((t) => [String(t.id), t.distanceKm])),
+  };
+  /** Điền lại Bên A theo hồ sơ khách hàng / danh sách hành khách hiện tại (sau khi bổ sung hồ sơ) */
+  const refill = () => {
+    if (!data) return;
+    const d = data.draft;
+    form.setFieldsValue(Object.fromEntries(HIRER_FIELDS.map((k) => [k, d[k] ?? null])) as Partial<FormValues>);
+    message.success('Đã điền lại thông tin Bên A – bấm Lưu để cập nhật hợp đồng');
   };
   const maxPax = data?.trips.reduce((m, t) => Math.max(m, t.passengers), 0) ?? 0;
   const missingCompany = data
@@ -121,6 +147,23 @@ export function ContractModal({ bookingId, open, onClose, canEdit }: { bookingId
       ) : (
         <>
           <Flex vertical gap={8} style={{ marginBottom: 12 }}>
+            <Alert
+              type="info"
+              showIcon
+              title={
+                <Flex justify="space-between" align="center" wrap gap={8}>
+                  <span>
+                    Bên A lấy từ <b>{DRAFT_SOURCE[data.draftSource]}</b>
+                    {data.draftSource === 'CONTACT' && ' – chọn khách hàng cho booking hoặc nhập tay'}
+                  </span>
+                  {canEdit && (
+                    <Button size="small" onClick={refill}>
+                      Lấy lại thông tin Bên A
+                    </Button>
+                  )}
+                </Flex>
+              }
+            />
             {data.shuttleTrips > 0 && (
               <Alert
                 type="info"

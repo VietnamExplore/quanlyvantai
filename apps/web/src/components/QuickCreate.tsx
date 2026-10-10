@@ -63,6 +63,41 @@ function CustomerFields() {
           <QuickSelect entity="salesUser" allowClear />
         </Form.Item>
       </Col>
+      <Col span={24}>
+        <Form.Item name="address" label="Địa chỉ">
+          <Input />
+        </Form.Item>
+      </Col>
+      <Col span={24}>
+        <Divider titlePlacement="start" style={{ margin: '0 0 8px' }}>
+          Thông tin ký hợp đồng vận chuyển (Bên A)
+        </Divider>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="idNumber" label="Số CCCD / hộ chiếu" tooltip="Khách cá nhân: bắt buộc trên hợp đồng vận chuyển (NĐ 158/2024)">
+          <Input />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="representative" label="Người đại diện ký" tooltip="Khách là tổ chức: người ký hợp đồng">
+          <Input />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="representativeTitle" label="Chức vụ">
+          <Input placeholder="vd: Giám đốc" />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="representativeIdNumber" label="Số CCCD người đại diện">
+          <Input />
+        </Form.Item>
+      </Col>
+      <Col span={24}>
+        <Form.Item name="bankAccount" label="Tài khoản ngân hàng">
+          <Input placeholder="vd: Vietcombank – STK 0123456789 – CTY ABC" />
+        </Form.Item>
+      </Col>
     </Row>
   );
 }

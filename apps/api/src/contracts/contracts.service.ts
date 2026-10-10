@@ -107,21 +107,66 @@ export class ContractsService {
     };
   }
 
-  /** Văn phòng xem hợp đồng: kèm bản nháp bên thuê lấy từ hồ sơ khách hàng khi chưa lập */
+  /**
+   * Văn phòng xem hợp đồng, kèm bản nháp Bên A (điền khi lập mới, hoặc bấm "Lấy lại thông tin"):
+   * - Booking nguồn OTA: khách đặt qua sàn, công ty không có hồ sơ khách hàng → lấy từ danh sách hành khách
+   *   (trưởng đoàn nếu có trong danh sách, không thì hành khách đầu tiên).
+   * - Nguồn khác: lấy từ hồ sơ khách hàng (thông tin xuất hóa đơn của booking được ưu tiên); khách lẻ chưa có hồ sơ → người liên hệ.
+   */
   async forBooking(bookingId: number) {
-    const [data, company] = await Promise.all([this.docData(bookingId), this.company()]);
-    const c = data.booking.customer;
-    const draft = {
-      signedDate: new Date(),
-      hirerName: data.booking.invoiceCompany || c?.name || data.booking.contactName,
-      hirerTaxCode: data.booking.invoiceTaxCode || c?.taxCode || null,
-      hirerAddress: data.booking.invoiceAddress || c?.address || null,
-      hirerPhone: c?.phone || data.booking.contactPhone,
-      hirerEmail: c?.email || null,
-      hirerRepresentative: c ? data.booking.contactName : null,
-      paymentMethod: 'Chuyển khoản hoặc tiền mặt',
-    };
-    return { ...data, company, draft };
+    const [data, company, extra] = await Promise.all([
+      this.docData(bookingId),
+      this.company(),
+      this.prisma.booking.findUniqueOrThrow({
+        where: { id: bookingId },
+        select: {
+          source: true,
+          customer: {
+            select: {
+              name: true, phone: true, email: true, taxCode: true, address: true, idNumber: true,
+              representative: true, representativeTitle: true, representativeIdNumber: true, bankAccount: true,
+            },
+          },
+          passengers: { orderBy: { seq: 'asc' }, select: { fullName: true, idNumber: true, phone: true, nationality: true } },
+        },
+      }),
+    ]);
+    const b = data.booking;
+    const base = { signedDate: new Date(), paymentMethod: 'Chuyển khoản hoặc tiền mặt' };
+    let draft: Record<string, unknown>;
+    let draftSource: 'OTA' | 'CUSTOMER' | 'CONTACT';
+    const norm = (s?: string | null) => (s ?? '').trim().toLowerCase();
+    if (extra.source === 'OTA' && extra.passengers.length) {
+      const p = extra.passengers.find((x) => b.leaderName && norm(x.fullName) === norm(b.leaderName)) ?? extra.passengers[0];
+      draftSource = 'OTA';
+      draft = {
+        ...base,
+        hirerName: p.fullName,
+        hirerIdNumber: p.idNumber,
+        hirerPhone: p.phone || b.leaderPhone || b.contactPhone,
+        hirerAddress: p.nationality ? `Quốc tịch: ${p.nationality}` : null,
+      };
+    } else if (extra.customer) {
+      const c = extra.customer;
+      draftSource = 'CUSTOMER';
+      draft = {
+        ...base,
+        hirerName: b.invoiceCompany || c.name,
+        hirerTaxCode: b.invoiceTaxCode || c.taxCode,
+        hirerAddress: b.invoiceAddress || c.address,
+        hirerPhone: c.phone || b.contactPhone,
+        hirerEmail: c.email,
+        hirerIdNumber: c.idNumber,
+        hirerRepresentative: c.representative,
+        hirerPosition: c.representativeTitle,
+        hirerRepIdNumber: c.representativeIdNumber,
+        hirerBank: c.bankAccount,
+      };
+    } else {
+      draftSource = 'CONTACT';
+      draft = { ...base, hirerName: b.invoiceCompany || b.contactName, hirerTaxCode: b.invoiceTaxCode, hirerAddress: b.invoiceAddress, hirerPhone: b.contactPhone };
+    }
+    return { ...data, company, draft, draftSource };
   }
 
   async save(bookingId: number, dto: SaveContractDto, userId: number) {

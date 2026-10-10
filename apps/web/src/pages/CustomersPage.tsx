@@ -1,5 +1,5 @@
 import { QuickSelect } from '../components/QuickCreate';
-import { Col, Form, Input, InputNumber, Row, Select, Switch, Tag } from 'antd';
+import { Col, Divider, Form, Input, InputNumber, Row, Select, Switch, Tag } from 'antd';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
 import { CustomerTypeTag, formatVnd, useCustomerTypes, useSalesStaffOptions } from '../components/common';
@@ -78,6 +78,41 @@ export default function CustomersPage() {
             <Form.Item name="address" label="Địa chỉ">
               <Input />
             </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Divider titlePlacement="start" style={{ margin: '0 0 8px' }}>
+              Thông tin ký hợp đồng vận chuyển (Bên A)
+            </Divider>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="idNumber" label="Số CCCD / hộ chiếu" tooltip="Khách cá nhân: bắt buộc trên hợp đồng vận chuyển (NĐ 158/2024)">
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="representative" label="Người đại diện ký" tooltip="Khách là tổ chức: người ký hợp đồng">
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="representativeTitle" label="Chức vụ">
+              <Input placeholder="vd: Giám đốc" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="representativeIdNumber" label="Số CCCD người đại diện">
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item name="bankAccount" label="Tài khoản ngân hàng">
+              <Input placeholder="vd: Vietcombank – STK 0123456789 – CTY ABC" />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Divider titlePlacement="start" style={{ margin: '0 0 8px' }}>
+              Công nợ, phụ trách
+            </Divider>
           </Col>
           <Col xs={24} md={8}>
             <Form.Item name="salesUserId" label="NV kinh doanh phụ trách">

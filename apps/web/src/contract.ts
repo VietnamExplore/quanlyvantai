@@ -76,6 +76,8 @@ export interface ContractData {
 
 export interface ContractForBooking extends ContractData {
   draft: Partial<TransportContract> & { signedDate: string };
+  /** Bên A của bản nháp lấy từ: danh sách hành khách (booking OTA) | hồ sơ khách hàng | người liên hệ */
+  draftSource: 'OTA' | 'CUSTOMER' | 'CONTACT';
 }
 
 /** Đường dẫn bản hợp đồng điện tử (QR, gửi khách, app lái xe) */

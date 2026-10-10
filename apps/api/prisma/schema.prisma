@@ -204,27 +204,33 @@ model CustomerKind {
 }
 
 model Customer {
-  id              Int          @id @default(autoincrement())
+  id                     Int          @id @default(autoincrement())
   /// Mã loại khách hàng (danh mục CustomerKind)
-  type            String       @default("KHACH_LE")
-  kind            CustomerKind @relation(fields: [type], references: [code], onUpdate: Cascade)
-  name            String
-  phone           String?
-  email           String?
-  taxCode         String?
-  address         String?
-  salesUserId     Int?
-  salesUser       User?        @relation("SalesOwner", fields: [salesUserId], references: [id])
-  creditLimit     Decimal?     @db.Decimal(15, 0) // Hạn mức công nợ (VND)
-  discountPercent Decimal?     @db.Decimal(5, 2)
-  paymentTermDays Int          @default(0) // Số ngày được nợ sau khi kết thúc chuyến
-  notes           String?
+  type                   String       @default("KHACH_LE")
+  kind                   CustomerKind @relation(fields: [type], references: [code], onUpdate: Cascade)
+  name                   String
+  phone                  String?
+  email                  String?
+  taxCode                String?
+  address                String?
+  /// Thông tin Bên A trên hợp đồng vận chuyển (NĐ 158/2024 Điều 17)
+  idNumber               String? // Số CCCD / hộ chiếu (khách cá nhân)
+  representative         String? // Người đại diện ký hợp đồng (tổ chức)
+  representativeTitle    String?
+  representativeIdNumber String?
+  bankAccount            String? // Tài khoản ngân hàng (số TK, ngân hàng, chủ TK)
+  salesUserId            Int?
+  salesUser              User?        @relation("SalesOwner", fields: [salesUserId], references: [id])
+  creditLimit            Decimal?     @db.Decimal(15, 0) // Hạn mức công nợ (VND)
+  discountPercent        Decimal?     @db.Decimal(5, 2)
+  paymentTermDays        Int          @default(0) // Số ngày được nợ sau khi kết thúc chuyến
+  notes                  String?
   /// Ngôn ngữ giấy tờ mặc định cho booking của khách: vi | en | ko | zh | ja
-  docLanguage     String       @default("vi")
-  isActive        Boolean      @default(true)
-  bookings        Booking[]
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  docLanguage            String       @default("vi")
+  isActive               Boolean      @default(true)
+  bookings               Booking[]
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 }
 
 // ───────────── Địa điểm ─────────────

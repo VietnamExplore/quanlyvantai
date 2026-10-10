@@ -22,6 +22,13 @@ export class CreateCustomerDto {
   @IsOptional() @IsString() taxCode?: string;
   @IsOptional() @IsString() address?: string;
 
+  /** Thông tin Bên A trên hợp đồng vận chuyển */
+  @IsOptional() @IsString() idNumber?: string | null;
+  @IsOptional() @IsString() representative?: string | null;
+  @IsOptional() @IsString() representativeTitle?: string | null;
+  @IsOptional() @IsString() representativeIdNumber?: string | null;
+  @IsOptional() @IsString() bankAccount?: string | null;
+
   /** Nhân viên kinh doanh phụ trách */
   @IsOptional()
   @IsInt()
