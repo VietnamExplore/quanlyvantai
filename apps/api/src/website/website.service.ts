@@ -1,9 +1,9 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { BookingStatus, Prisma, Role } from '@prisma/client';
+import { BookingStatus, PaymentMethod, Prisma, Role, TripStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { AuthUser } from '../auth/auth.decorators';
-import { BookingsService } from '../bookings/bookings.service';
+import { BookingsService, bookingTotals } from '../bookings/bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { ShuttleService } from '../shuttle/shuttle.service';
@@ -185,6 +185,7 @@ interface WooOrder {
   date_created_gmt?: string;
   date_modified_gmt?: string;
   date_paid_gmt?: string | null;
+  date_completed_gmt?: string | null;
   payment_method_title?: string;
   transaction_id?: string;
   customer_note?: string;
@@ -356,10 +357,11 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
         if (await this.handle(o, c.url)) created++;
         if (o.date_modified_gmt && (!state.cursor || o.date_modified_gmt > state.cursor)) state.cursor = o.date_modified_gmt;
       }
+      const completed = await this.reconcileCompleted();
       state.lastOkAt = new Date().toISOString();
       state.lastError = null;
       state.imported = (state.imported ?? 0) + created;
-      return { ok: true, fetched: orders.length, created };
+      return { ok: true, fetched: orders.length, created, completed };
     } catch (e) {
       state.lastError = (e as Error).message;
       this.logger.warn(`Không lấy được đơn website: ${state.lastError}`);
@@ -605,6 +607,77 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
     }
     trips.unshift(...shuttleGroups.values());
     return { trips, skipped, others };
+  }
+
+/**
+   * Đơn website "Hoàn tất": booking tự chuyển Đã xác nhận (đang Nháp / Báo giá, đã có chuyến) và ghi nhận khách đã trả
+   * (phiếu thu "Website #số đơn", số tiền = số còn phải thu, tối đa bằng số tiền đơn website). Chạy sau mỗi lần lấy đơn,
+   * nên đơn chuyển Hoàn tất sau khi đã nhận booking cũng được cập nhật. Booking có chuyến sắp chạy thì báo điều hành xếp xe.
+   * Trả về số booking vừa cập nhật.
+   */
+  private async reconcileCompleted() {
+    const rows = await this.prisma.websiteOrder.findMany({
+      where: { status: 'completed', bookingId: { not: null }, booking: { status: { not: BookingStatus.HUY } } },
+      include: {
+        booking: {
+          select: {
+            id: true,
+            status: true,
+            discountAmount: true,
+            vatPercent: true,
+            depositAmount: true,
+            trips: { select: { amount: true, status: true, pickupTime: true, shuttleRunId: true } },
+            payments: { select: { amount: true, reference: true } },
+          },
+        },
+      },
+    });
+    let bot: AuthUser | null = null;
+    let changed = 0;
+    for (const w of rows) {
+      const b = w.booking!;
+      const raw = w.raw as unknown as WooOrder;
+      const ref = `Website #${w.number}`;
+      let touched = false;
+      bot ??= await this.botUser();
+      // 1. Đã xác nhận
+      const live = b.trips.filter((t) => t.status !== TripStatus.HUY);
+      if ((b.status === BookingStatus.NHAP || b.status === BookingStatus.BAO_GIA) && live.length) {
+        const upcoming = live.some((t) => t.pickupTime.getTime() > Date.now());
+        if (upcoming) {
+          // Chuyến sắp chạy: đi đúng quy trình (báo điều hành xếp xe)
+          await this.bookings.changeStatus(b.id, { status: BookingStatus.XAC_NHAN }, bot);
+        } else {
+          // Chuyến đã qua (đơn cũ): chỉ đổi trạng thái, không báo điều hành
+          await this.prisma.booking.update({ where: { id: b.id }, data: { status: BookingStatus.XAC_NHAN } });
+          await this.shuttle.syncRuns(b.trips.map((t) => t.shuttleRunId));
+        }
+        touched = true;
+      }
+      // 2. Đã thu đủ: một phiếu thu cho đơn website (không ghi trùng)
+      if (!b.payments.some((x) => x.reference === ref)) {
+        const { balance } = bookingTotals(b);
+        const amount = Math.min(balance, Math.round(Number(w.total) || 0));
+        if (amount > 0) {
+          const bank = /chuyen khoan|bank|bacs/.test(norm(raw.payment_method_title ?? ''));
+          const paidAt = raw.date_paid_gmt || raw.date_completed_gmt || raw.date_created_gmt;
+          await this.prisma.payment.create({
+            data: {
+              bookingId: b.id,
+              amount,
+              method: bank ? PaymentMethod.CHUYEN_KHOAN : PaymentMethod.KHAC,
+              paidAt: new Date(`${new Date(paidAt ? `${paidAt}Z` : Date.now()).toISOString().slice(0, 10)}T00:00:00Z`),
+              reference: ref,
+              note: [`Khách thanh toán online trên website`, raw.payment_method_title, raw.transaction_id && `mã GD ${raw.transaction_id}`].filter(Boolean).join(' · '),
+              createdById: bot.id,
+            },
+          });
+          touched = true;
+        }
+      }
+      if (touched) changed++;
+    }
+    return changed;
   }
 
   /** Ngôn ngữ giấy tờ: theo ngôn ngữ trang khách đặt (TranslatePress / WPML), không có thì theo quốc gia */
