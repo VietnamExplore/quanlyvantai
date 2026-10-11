@@ -6,7 +6,7 @@ import { api, apiUpload } from '../api';
 import { logoUrl } from '../components/PrintDoc';
 import { useSettings } from '../components/common';
 import { FuelPriceCard } from '../components/FuelPriceCard';
-import { DEFAULT_CONTRACT_TERMS } from '../contract';
+import { DEFAULT_CONTRACT_TERMS, DEFAULT_CONTRACT_TERMS_EN } from '../contract';
 import type { Settings } from '../types';
 
 const FOREIGN = [
@@ -289,6 +289,20 @@ export default function SettingsPage() {
               }
             >
               <Input.TextArea rows={8} placeholder={DEFAULT_CONTRACT_TERMS} />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              name="contractTerms_en"
+              label="Điều khoản hợp đồng tiếng Anh (bản song ngữ)"
+              extra={
+                <>
+                  Dùng khi in hợp đồng song ngữ Việt – Anh. Mỗi điều bắt đầu bằng ARTICLE … theo đúng thứ tự Điều 4, 5… của bản tiếng Việt. Bỏ trống = dùng bản dịch của điều khoản mẫu.{' '}
+                  <a onClick={() => form.setFieldValue('contractTerms_en', DEFAULT_CONTRACT_TERMS_EN)}>Chép bản dịch mẫu vào để sửa</a>
+                </>
+              }
+            >
+              <Input.TextArea rows={6} placeholder={DEFAULT_CONTRACT_TERMS_EN} />
             </Form.Item>
           </Col>
         </Row>

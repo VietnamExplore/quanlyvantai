@@ -21,6 +21,7 @@ const COMPANY_KEYS = [
   'companyHotline',
   'bankInfo',
   'contractTerms',
+  'contractTerms_en',
 ];
 
 /**
@@ -98,6 +99,7 @@ export class ContractsService {
         id: b.id,
         code: b.code,
         status: b.status,
+        docLanguage: b.docLanguage,
         customerRef: b.customerRef,
         contactName: b.contactName,
         contactPhone: b.contactPhone,

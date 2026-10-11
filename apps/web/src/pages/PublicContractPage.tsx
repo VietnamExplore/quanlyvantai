@@ -1,6 +1,6 @@
 import { CheckCircleFilled, PrinterOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Card, Checkbox, Flex, Input, Result, Spin, Typography } from 'antd';
+import { Alert, App, Button, Card, Checkbox, Flex, Input, Result, Segmented, Spin, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { ContractDoc, LEGAL_CSS } from '../components/ContractDoc';
@@ -34,6 +34,7 @@ export default function PublicContractPage({ token }: { token: string }) {
   const [name, setName] = useState('');
   const [agree, setAgree] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lang, setLang] = useState<'vi' | 'bi' | null>(null);
 
   useEffect(() => {
     if (data?.contract) document.title = `Hợp đồng vận chuyển ${data.contract.number}`;
@@ -49,6 +50,7 @@ export default function PublicContractPage({ token }: { token: string }) {
   if (error || !data?.contract) return <Result status="404" title="Không tìm thấy hợp đồng" subTitle="Đường dẫn không đúng hoặc hợp đồng không còn hiệu lực." />;
 
   const c = data.contract;
+  const bi = lang ? lang === 'bi' : !!data.booking.docLanguage && data.booking.docLanguage !== 'vi';
   const accept = async () => {
     setSaving(true);
     try {
@@ -71,6 +73,15 @@ export default function PublicContractPage({ token }: { token: string }) {
             <Typography.Text strong>
               Hợp đồng điện tử số {c.number} · {data.trips.length} chuyến · {data.passengers.length || '—'} hành khách
             </Typography.Text>
+            <Segmented
+              size="small"
+              value={bi ? 'bi' : 'vi'}
+              onChange={(v) => setLang(v as 'vi' | 'bi')}
+              options={[
+                { value: 'vi', label: 'Tiếng Việt' },
+                { value: 'bi', label: 'Việt – English' },
+              ]}
+            />
             <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
               In / Lưu PDF
             </Button>
@@ -99,7 +110,7 @@ export default function PublicContractPage({ token }: { token: string }) {
         </Flex>
       </div>
       <div className="doc" lang="vi">
-        <ContractDoc data={data} contract={c} />
+        <ContractDoc data={data} contract={c} bi={bi} />
       </div>
     </>
   );

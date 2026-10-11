@@ -56,6 +56,8 @@ export const SETTING_KEYS = [
   'companyTransportLicense',
   'companyHotline',
   'contractTerms',
+  // Điều khoản hợp đồng tiếng Anh (hợp đồng song ngữ)
+  'contractTerms_en',
 ] as const;
 
 /** Logo công ty: apps/api/uploads/logo (đổi bằng biến môi trường UPLOAD_DIR); tên file lưu ở cài đặt "companyLogo" */

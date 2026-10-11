@@ -52,6 +52,8 @@ export interface ContractData {
     id?: number;
     code: string;
     status: string;
+    /** Ngôn ngữ giấy tờ: khác "vi" thì mặc định in song ngữ */
+    docLanguage?: string;
     customerRef: string | null;
     contactName: string;
     contactPhone: string;
@@ -158,5 +160,58 @@ export function moneyInWords(amount: number): string {
     if (unit) parts.push(unit);
   }
   const s = parts.join(' ').replace(/\s+/g, ' ').trim() + ' đồng';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Bản tiếng Anh của điều khoản mẫu (hợp đồng song ngữ); sửa ở Cài đặt → Điều khoản hợp đồng (tiếng Anh) */
+export const DEFAULT_CONTRACT_TERMS_EN = `ARTICLE 4. RIGHTS AND OBLIGATIONS OF PARTY A (THE HIRER)
+1. Provide an accurate passenger list (full name, year of birth), pick-up and drop-off times and places; notify Party B of any change at least 12 hours in advance.
+2. Pay the contract value in full and on time as specified in Article 3.
+3. Ensure passengers comply with traffic safety rules and wear seat belts while the vehicle is moving; do not bring prohibited, flammable, explosive or toxic goods on board.
+4. Compensate for any damage caused by Party A's passengers to Party B's vehicle or property (if any).
+
+ARTICLE 5. RIGHTS AND OBLIGATIONS OF PARTY B (THE CARRIER)
+1. Provide a vehicle of the agreed type that meets technical safety and environmental standards, displays the "CONTRACT VEHICLE" badge and carries compulsory insurance; drivers hold an appropriate driving licence.
+2. Pick up and drop off passengers at the times and places stated in the contract; carry only the passengers named in the attached list; take no passengers outside the contract.
+3. The driver carries the contract (paper copy or a device to access the electronic contract) and the passenger list throughout the journey.
+4. Party B may refuse to carry passengers who violate regulations or endanger order and safety on board.
+5. Fulfil all tax obligations to the State and issue invoices as required by law.
+
+ARTICLE 6. COMPENSATION AND DISPUTE RESOLUTION
+1. The party in breach of the contract shall compensate the injured party in accordance with the law. Party B compensates for injury to passengers and loss of luggage caused by Party B's fault in accordance with the law and the insurance policy.
+2. In case of a breakdown on the road, Party B provides an equivalent replacement vehicle as soon as possible at no extra cost to Party A.
+3. If Party A cancels a confirmed trip, Party A pays the actual costs incurred (if any) as agreed by both parties.
+4. Disputes are settled by negotiation; failing that, they are referred to the competent court.
+
+ARTICLE 7. GENERAL COMMITMENTS
+1. Both parties undertake to comply fully with the terms of this contract.
+2. Hotline for passengers' feedback, complaints and denunciations: {hotline}.
+3. This contract takes effect from the date of signing until both parties have fulfilled their obligations. The electronic contract has the same legal validity as a paper contract; if printed, it is made in 02 copies, each party keeping 01 copy of equal validity.`;
+
+// ───── Đọc số tiền bằng chữ (tiếng Anh) ─────
+
+const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+function enTriple(n: number): string {
+  const h = Math.floor(n / 100);
+  const r = n % 100;
+  const parts: string[] = [];
+  if (h) parts.push(`${ONES[h]} hundred`);
+  if (r) parts.push(r < 20 ? ONES[r] : TENS[Math.floor(r / 10)] + (r % 10 ? `-${ONES[r % 10]}` : ''));
+  return parts.join(' and ');
+}
+
+/** 1250000 → "One million two hundred and fifty thousand Vietnam dong" */
+export function moneyInWordsEn(amount: number): string {
+  let n = Math.round(Math.abs(amount));
+  if (n === 0) return 'Zero Vietnam dong';
+  const scales = ['', 'thousand', 'million', 'billion', 'trillion'];
+  const out: string[] = [];
+  for (let i = 0; n > 0; i++, n = Math.floor(n / 1000)) {
+    const g = n % 1000;
+    if (g) out.unshift(`${enTriple(g)}${scales[i] ? ` ${scales[i]}` : ''}`);
+  }
+  const s = `${out.join(' ')} Vietnam dong`;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }

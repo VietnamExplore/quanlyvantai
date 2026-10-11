@@ -538,6 +538,7 @@ export type Settings = Partial<
     | 'companyTransportLicense'
     | 'companyHotline'
     | 'contractTerms'
+    | 'contractTerms_en'
     | 'zaloDriverGroup'
     | `${'companyName' | 'companyAddress' | 'bankInfo' | 'quoteFooter'}_${ForeignLang}`
     // Dịch tự động: dịch vụ đang dùng; khóa API chỉ báo đã cài + 4 ký tự cuối
