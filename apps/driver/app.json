@@ -2,14 +2,14 @@
   "expo": {
     "name": "Lái Xe",
     "slug": "lai-xe",
-    "version": "1.5.5",
+    "version": "1.6.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "vn.vantai.laixe",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "vn.vantai.laixe",
-      "versionCode": 11,
+      "versionCode": 12,
       "adaptiveIcon": {
         "backgroundColor": "#1278FA",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -66,6 +66,16 @@
           "android": {
             "usesCleartextTraffic": true
           }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Ứng dụng gửi vị trí xe cho văn phòng điều hành trong lúc bạn chạy chuyến (kể cả khi tắt màn hình), tự dừng khi hoàn thành chuyến.",
+          "locationWhenInUsePermission": "Ứng dụng gửi vị trí xe cho văn phòng điều hành trong lúc bạn chạy chuyến.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
         }
       ]
     ],

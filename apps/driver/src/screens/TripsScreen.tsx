@@ -3,6 +3,7 @@ import { AppState, Pressable, RefreshControl, SectionList, StyleSheet, Text, Vie
 import { api } from '../api';
 import { colors, dayLabel, fmtDate, fmtHour, SERVICE, shadow } from '../theme';
 import type { Trip } from '../types';
+import { syncTracking } from '../gps';
 import { Card, Chip, StatusBadge } from '../ui';
 
 const POLL_MS = 30_000;
@@ -109,6 +110,8 @@ export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
       const data = await api<Trip[]>(`/driver/trips?scope=${scope}`);
       if (scope !== tabRef.current) return;
       setTrips(data);
+      // Giám sát hành trình: còn chuyến đang chạy thì gửi vị trí, hết thì tắt
+      if (scope === 'active') void syncTracking(data);
       setError(null);
       setUpdatedAt(new Date());
     } catch (e) {

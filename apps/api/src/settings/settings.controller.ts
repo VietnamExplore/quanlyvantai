@@ -49,6 +49,14 @@ export const SETTING_KEYS = [
   'invoiceEmail',
   // Link mời vào nhóm Zalo lái xe (mở nhanh để dán lệnh điều xe)
   'zaloDriverGroup',
+  // Giám sát GPS: giới hạn tốc độ (km/h), số phút dừng lâu khi chở khách, số phút mất tín hiệu
+  'gpsSpeedLimit',
+  'gpsStopMinutes',
+  'gpsLostMinutes',
+  // Khóa VietMap (bản đồ Việt Nam, đúng chủ quyền) – ưu tiên hơn Google Maps
+  'vietmapKey',
+  // Khóa Google Maps JavaScript API (khóa dùng trên trình duyệt, giới hạn theo tên miền)
+  'googleMapsKey',
   // Hợp đồng vận chuyển (NĐ 158/2024): người đại diện ký, giấy phép kinh doanh vận tải, số điện thoại tiếp nhận phản ánh, điều khoản
   'companyRepresentative',
   'companyRepresentativeTitle',

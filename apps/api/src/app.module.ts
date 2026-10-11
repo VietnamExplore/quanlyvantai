@@ -17,6 +17,7 @@ import { CustomerSourcesModule } from './customer-sources/customer-sources.modul
 import { CustomerTypesModule } from './customer-types/customer-types.module';
 import { ContractsModule } from './contracts/contracts.module';
 import { FieldModule } from './field/field.module';
+import { GpsModule } from './gps/gps.module';
 import { TranslateModule } from './translate/translate.module';
 import { FinanceModule } from './finance/finance.module';
 import { PricingModule } from './pricing/pricing.module';
@@ -71,6 +72,7 @@ import { ShuttleModule } from './shuttle/shuttle.module';
     CustomerTypesModule,
     ContractsModule,
     FieldModule,
+    GpsModule,
     TranslateModule,
     FinanceModule,
   ],

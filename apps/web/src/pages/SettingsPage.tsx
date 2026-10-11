@@ -238,6 +238,39 @@ export default function SettingsPage() {
               <Input placeholder="https://zalo.me/g/abcxyz" />
             </Form.Item>
           </Col>
+          <Col xs={8} md={4}>
+            <Form.Item name="gpsSpeedLimit" label="Giới hạn tốc độ" tooltip="Giám sát GPS: cảnh báo khi xe chạy quá tốc độ này (km/h). Mặc định 80.">
+              <Input inputMode="numeric" placeholder="80" suffix="km/h" />
+            </Form.Item>
+          </Col>
+          <Col xs={8} md={4}>
+            <Form.Item name="gpsStopMinutes" label="Dừng lâu" tooltip="Cảnh báo khi xe đứng yên quá số phút này lúc đang chở khách. Mặc định 20.">
+              <Input inputMode="numeric" placeholder="20" suffix="phút" />
+            </Form.Item>
+          </Col>
+          <Col xs={8} md={4}>
+            <Form.Item name="gpsLostMinutes" label="Mất tín hiệu" tooltip="Cảnh báo khi chuyến đang chạy mà quá số phút này không nhận được vị trí. Mặc định 10.">
+              <Input inputMode="numeric" placeholder="10" suffix="phút" />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              name="googleMapsKey"
+              label="Khóa Google Maps (API key)"
+              extra="Có khóa thì trang Giám sát GPS dùng Google Maps. Tạo ở console.cloud.google.com → APIs & Services → bật Maps JavaScript API → Credentials → Create API key; nên giới hạn khóa theo địa chỉ web của công ty (HTTP referrers). Google tính phí theo lượt tải bản đồ, có hạn mức miễn phí hằng tháng."
+            >
+              <Input placeholder="AIza…" />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              name="vietmapKey"
+              label="Khóa VietMap (khuyên dùng)"
+              extra="Bản đồ của doanh nghiệp Việt Nam, thể hiện đúng chủ quyền (Hoàng Sa, Trường Sa). Đăng ký tại maps.vietmap.vn → Console → tạo API key; nên giới hạn khóa theo tên miền / IP của công ty. Có khóa VietMap thì dùng VietMap, không thì dùng Google Maps."
+            >
+              <Input placeholder="Khóa API VietMap" />
+            </Form.Item>
+          </Col>
           <Col span={24}>
             <FuelPriceCard />
           </Col>
