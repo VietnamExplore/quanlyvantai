@@ -105,7 +105,30 @@ export function routeEnds(name: string): { from: Place; to: Place; hints: string
 /** Sản phẩm xe ghép / bus (không phải xe riêng, tour, vé) */
 export function isBusProduct(name: string) {
   const n = norm(name);
-  return /\bbus\b|xe ghep|shuttle/.test(n) && !/private|xe rieng|tour\b|tickets?|\bve\b/.test(n);
+  // "bus", "xe bus", mã sản phẩm cũ dạng "[BUS101] HỘI AN"
+  return /\bbus\d*\b|xe ghep|shuttle/.test(n) && !/private|xe rieng|tour\b|tickets?|\bve\b/.test(n);
+}
+
+/** Không phải dịch vụ vận chuyển: tour, vé tham quan / show / cáp treo, khách sạn… */
+const NOT_TRANSPORT = /\btour\b|tickets?|\bve\b|\bshow\b|cable car|cap treo|jeep|du lich|kham pha|hang dong|\bcave\b|khach san|hotel|\bspa\b|massage|cruise|du thuyen/;
+/** Xe riêng / đưa đón (có chọn loại xe, hoặc tên là private car, xe riêng, đưa đón sân bay, thuê xe…) */
+export function isCarProduct(name: string, vehicleLabel = '') {
+  const n = norm(name);
+  if (NOT_TRANSPORT.test(n)) return false;
+  return !!vehicleLabel || /private car|xe rieng|luxury car|car to|car from|\btransfer\b|dua don|don tien|san bay|airport|thue xe|car rental/.test(n);
+}
+
+/** Sản phẩm vận chuyển (bus / xe ghép, xe riêng, đưa đón) – chỉ đơn có sản phẩm loại này mới tạo booking */
+export function isTransportProduct(name: string, vehicleLabel = '') {
+  return isBusProduct(name) || isCarProduct(name, vehicleLabel);
+}
+
+/** Đơn có ít nhất một sản phẩm vận chuyển */
+export function isTransportOrder(o: { line_items?: { name: string; meta_data?: WooMeta[] }[] }) {
+  return (o.line_items ?? []).some((i) => {
+    const vLabel = (i.meta_data ?? []).find((m) => norm(m.display_key ?? m.key) === 'loai xe');
+    return isTransportProduct(i.name.replace(/<[^>]+>/g, ' '), vLabel ? String(vLabel.display_value ?? vLabel.value ?? '') : '');
+  });
 }
 
 const sameKey = (a: string, b: string) => a === b || a.includes(b) || b.includes(a);
@@ -231,7 +254,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
     const orders = await this.prisma.websiteOrder.findMany({
       orderBy: { createdAt: 'desc' },
       take: 15,
-      select: { orderId: true, number: true, status: true, total: true, currency: true, customer: true, createdAt: true, booking: { select: { id: true, code: true } } },
+      select: { orderId: true, number: true, status: true, total: true, currency: true, customer: true, createdAt: true, raw: true, booking: { select: { id: true, code: true } } },
     });
     return {
       url: c.url,
@@ -240,7 +263,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       keyHint: c.key ? `…${c.key.slice(-4)}` : null,
       hasSecret: !!c.secret,
       state: c.state,
-      orders: orders.map((o) => ({ ...o, total: Number(o.total), statusLabel: WOO_STATUS[o.status] ?? o.status })),
+      orders: orders.map(({ raw, ...o }) => ({ ...o, total: Number(o.total), statusLabel: WOO_STATUS[o.status] ?? o.status, transport: isTransportOrder(raw as unknown as WooOrder) })),
     };
   }
 
@@ -367,6 +390,8 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       return false;
     }
     if (rec.bookingId || !IMPORT_STATUSES.includes(o.status)) return false;
+    // Đơn chỉ có tour / vé / khách sạn…: không tạo booking vận chuyển
+    if (!isTransportOrder(o)) return false;
 
     const bot = await this.botUser();
     const plan = await this.planTrips(o);
@@ -386,6 +411,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
     const summary = [
       plan.trips.length ? `Đã tự tạo ${plan.trips.length} chuyến từ đơn – kiểm tra rồi gán xe.` : null,
       ...plan.skipped.map((x) => `Chưa tự tạo chuyến: ${x}`),
+      plan.others.length ? `Sản phẩm khác trong đơn (không phải vận chuyển, không xử lý ở booking này): ${plan.others.join('; ')}` : null,
     ].filter((x): x is string => !!x);
     let booking: Awaited<ReturnType<BookingsService['create']>>;
     try {
@@ -470,6 +496,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
   private async planTrips(o: WooOrder) {
     const trips: TripPlan[] = [];
     const skipped: string[] = [];
+    const others: string[] = [];
     const [routes, types, services] = await Promise.all([
       this.prisma.shuttleRoute.findMany({ where: { isActive: true }, include: { stops: { where: { isActive: true }, orderBy: { seq: 'asc' } } }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),
       this.prisma.vehicleType.findMany({ where: { isActive: true }, select: { id: true, code: true } }),
@@ -491,6 +518,11 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       const child = /tre em|child|kid/.test(norm(meta('nguoi')));
       const total = Math.round(Number(item.total) || 0);
       const qty = Math.max(1, Math.round(item.quantity || 1));
+      // Tour, vé, khách sạn… trong cùng đơn: không thuộc vận chuyển
+      if (!isTransportProduct(name, meta('loai xe'))) {
+        others.push(short);
+        continue;
+      }
       if (!iso) {
         skipped.push(`${short} (không đọc được ngày / giờ đi)`);
         continue;
@@ -547,7 +579,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
         continue;
       }
       const vLabel = meta('loai xe');
-      const isCar = /private car|xe rieng|luxury car|car to|car from/.test(norm(name)) || !!vLabel;
+      const isCar = isCarProduct(name, vLabel);
       if (isCar) {
         const code = vehicleCode(vLabel);
         const type = types.find((t) => t.code === code);
@@ -569,10 +601,10 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
         });
         continue;
       }
-      skipped.push(`${short} (tour / vé – điều hành xử lý)`);
+      others.push(short);
     }
     trips.unshift(...shuttleGroups.values());
-    return { trips, skipped };
+    return { trips, skipped, others };
   }
 
   /** Ngôn ngữ giấy tờ: theo ngôn ngữ trang khách đặt (TranslatePress / WPML), không có thì theo quốc gia */

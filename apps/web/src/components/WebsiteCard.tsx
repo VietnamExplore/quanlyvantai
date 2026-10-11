@@ -24,6 +24,8 @@ interface WebsiteStatus {
     customer: string;
     createdAt: string;
     booking: { id: number; code: string } | null;
+    /** Đơn có dịch vụ vận chuyển (bus / xe ghép, xe riêng, đưa đón) */
+    transport: boolean;
   }[];
 }
 
@@ -100,7 +102,7 @@ export function WebsiteCard() {
       }
     >
       <Typography.Paragraph type="secondary" style={{ fontSize: 13 }}>
-        Mỗi 2 phút phần mềm lấy đơn đặt hàng mới trên website (WooCommerce). Đơn <b>đã thanh toán</b>, <b>chờ chuyển khoản</b> hoặc <b>hoàn tất</b> tự tạo booking
+        Mỗi 2 phút phần mềm lấy đơn đặt hàng mới trên website (WooCommerce). Chỉ nhận đơn có <b>dịch vụ vận chuyển</b> (bus / xe ghép, xe riêng, đưa đón); đơn chỉ có tour, vé, khách sạn… bỏ qua. Đơn <b>đã thanh toán</b>, <b>chờ chuyển khoản</b> hoặc <b>hoàn tất</b> tự tạo booking
         nguồn &quot;Website&quot;, trạng thái Nháp, kèm đủ thông tin đơn trong ghi chú nội bộ; Admin và Điều hành nhận thông báo để thêm chuyến và xác nhận. Đơn bị hủy /
         hoàn tiền sau đó cũng được báo. Website không cần cài thêm gì.
       </Typography.Paragraph>
@@ -198,7 +200,18 @@ export function WebsiteCard() {
               { title: 'Khách', dataIndex: 'customer' },
               { title: 'Tổng tiền', dataIndex: 'total', align: 'right', render: (v, r) => `${formatVnd(v)} ${r.currency === 'VND' ? 'đ' : r.currency}` },
               { title: 'Trạng thái', dataIndex: 'statusLabel', render: (v, r) => <Tag color={STATUS_COLOR[r.status]}>{v}</Tag> },
-              { title: 'Booking', dataIndex: 'booking', render: (b) => (b ? <Link to={`/bookings/${b.id}`}>{b.code}</Link> : <Typography.Text type="secondary">—</Typography.Text>) },
+              {
+                title: 'Booking',
+                dataIndex: 'booking',
+                render: (b, r) =>
+                  b ? (
+                    <Link to={`/bookings/${b.id}`}>{b.code}</Link>
+                  ) : !r.transport ? (
+                    <Typography.Text type="secondary">Không phải vận chuyển</Typography.Text>
+                  ) : (
+                    <Typography.Text type="secondary">—</Typography.Text>
+                  ),
+              },
               { title: 'Nhận lúc', dataIndex: 'createdAt', render: (v) => dayjs(v).format('HH:mm DD/MM') },
             ]}
           />
