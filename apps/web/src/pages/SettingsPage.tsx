@@ -128,7 +128,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <Card style={{ maxWidth: 860 }}>
+    <Card style={{ maxWidth: 920 }}>
       <Typography.Title level={4} style={{ marginTop: 0 }}>
         Thông tin công ty
       </Typography.Title>
@@ -168,6 +168,9 @@ export default function SettingsPage() {
         </div>
       </Flex>
       <Form form={form} layout="vertical" onFinish={(v) => save.mutate(Object.fromEntries(Object.entries(v).map(([k, x]) => [k, x ?? ''])))}>
+        <Divider titlePlacement="start" style={{ marginTop: 0 }}>
+          Thông tin công ty
+        </Divider>
         <Row gutter={16}>
           <Col span={24}>
             <Form.Item name="companyName" label="Tên công ty" rules={[{ required: true, message: 'Nhập tên công ty' }]}>
@@ -194,19 +197,19 @@ export default function SettingsPage() {
               <Input />
             </Form.Item>
           </Col>
-          <Col xs={24} md={12}>
+          <Col xs={24} md={8}>
             <Form.Item name="companyWebsite" label="Website">
               <Input placeholder="vd: www.congty.vn" />
             </Form.Item>
           </Col>
-          <Col xs={24} md={12}>
+          <Col xs={24} md={16}>
             <Form.Item name="companySlogan" label="Khẩu hiệu / dịch vụ" tooltip="Hiện dưới tên công ty trên bảng đón khách, ví dụ: Dịch vụ đưa đón sân bay & du lịch">
               <Input placeholder="vd: Airport Transfer & Travel Service" />
             </Form.Item>
           </Col>
           <Col span={24}>
-            <Form.Item name="bankInfo" label="Thông tin chuyển khoản" extra="Ví dụ: Vietcombank – STK 0123456789 – CTY TNHH DU LỊCH ABC">
-              <Input.TextArea rows={2} />
+            <Form.Item name="bankInfo" label="Thông tin chuyển khoản" tooltip="Ví dụ: Vietcombank – STK 0123456789 – CTY TNHH DU LỊCH ABC">
+              <Input.TextArea rows={3} />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
@@ -219,15 +222,6 @@ export default function SettingsPage() {
               <Input placeholder="Email công ty" />
             </Form.Item>
           </Col>
-          <Col xs={24} md={8}>
-            <Form.Item
-              name="fuelPrice"
-              label="Giá xăng dầu chung (đ/lít)"
-              tooltip="Dùng cho xe chưa chọn loại nhiên liệu, hoặc khi chưa lấy được giá Petrolimex. Bỏ trống = giá bình quân các lần đổ xăng 60 ngày gần đây."
-            >
-              <Input placeholder="Giá bình quân các lần đổ xăng" inputMode="numeric" suffix="đ/lít" />
-            </Form.Item>
-          </Col>
           <Col xs={24} md={16}>
             <Form.Item
               name="zaloDriverGroup"
@@ -238,89 +232,115 @@ export default function SettingsPage() {
               <Input placeholder="https://zalo.me/g/abcxyz" />
             </Form.Item>
           </Col>
-          <Col xs={8} md={4}>
+        </Row>
+
+        <Divider titlePlacement="start">Vận hành &amp; giám sát hành trình</Divider>
+        <Row gutter={16}>
+          <Col xs={12} md={6}>
             <Form.Item name="gpsSpeedLimit" label="Giới hạn tốc độ" tooltip="Giám sát GPS: cảnh báo khi xe chạy quá tốc độ này (km/h). Mặc định 80.">
               <Input inputMode="numeric" placeholder="80" suffix="km/h" />
             </Form.Item>
           </Col>
-          <Col xs={8} md={4}>
-            <Form.Item name="gpsStopMinutes" label="Dừng lâu" tooltip="Cảnh báo khi xe đứng yên quá số phút này lúc đang chở khách. Mặc định 20.">
+          <Col xs={12} md={6}>
+            <Form.Item name="gpsStopMinutes" label="Dừng lâu khi chở khách" tooltip="Cảnh báo khi xe đứng yên quá số phút này lúc đang chở khách. Mặc định 20.">
               <Input inputMode="numeric" placeholder="20" suffix="phút" />
             </Form.Item>
           </Col>
-          <Col xs={8} md={4}>
-            <Form.Item name="gpsLostMinutes" label="Mất tín hiệu" tooltip="Cảnh báo khi chuyến đang chạy mà quá số phút này không nhận được vị trí. Mặc định 10.">
+          <Col xs={12} md={6}>
+            <Form.Item name="gpsLostMinutes" label="Mất tín hiệu GPS" tooltip="Cảnh báo khi chuyến đang chạy mà quá số phút này không nhận được vị trí. Mặc định 10.">
               <Input inputMode="numeric" placeholder="10" suffix="phút" />
             </Form.Item>
           </Col>
-          <Col xs={24} md={12}>
+          <Col xs={12} md={6}>
             <Form.Item
               name="preTripCheckRequired"
-              label="Kiểm tra trước chuyến (xe công ty)"
+              label="Kiểm tra trước chuyến"
               // Chưa cài = bắt buộc
               getValueProps={(v) => ({ value: v === '0' ? '0' : '1' })}
               tooltip="Bắt buộc: trước mỗi chuyến xe công ty, lái xe kiểm tra trên app – đo nồng độ cồn (ảnh máy đo không bắt buộc), sức khỏe, giấy tờ, km, nhiên liệu, kỹ thuật xe. Chưa kiểm tra trong ngày hoặc lái xe không đạt (có cồn > 0 mg/L…) thì không bắt đầu được chuyến; điều hành được báo ngay."
             >
               <Select
                 options={[
-                  { value: '1', label: 'Bắt buộc trước mỗi chuyến' },
-                  { value: '0', label: 'Không bắt buộc (lái xe tự kiểm tra nếu muốn)' },
+                  { value: '1', label: 'Bắt buộc' },
+                  { value: '0', label: 'Không bắt buộc' },
                 ]}
               />
             </Form.Item>
           </Col>
-          <Col span={24}>
-            <Typography.Text strong>Tỷ lệ đóng bảo hiểm (% trên mức lương đóng bảo hiểm, cài ở Lương lái xe)</Typography.Text>
-          </Col>
-          {(
-            [
-              ['lai_xe', 'Lái xe đóng (trừ lương)', { bhxh: '8', bhyt: '1.5', bhtn: '1' }],
-              ['cong_ty', 'Công ty đóng (chi phí)', { bhxh: '17.5', bhyt: '3', bhtn: '1' }],
-            ] as const
-          ).flatMap(([who, whoLabel, def]) =>
-            (['bhxh', 'bhyt', 'bhtn'] as const).map((k) => (
-              <Col xs={8} md={4} key={`${who}_${k}`}>
+        </Row>
+
+        <Divider titlePlacement="start">Tỷ lệ đóng bảo hiểm lái xe</Divider>
+        <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginTop: -4 }}>
+          % trên mức lương đóng bảo hiểm (cài ở Lương lái xe). Bỏ trống = tỷ lệ mặc định theo luật hiện hành.
+        </Typography.Paragraph>
+        {(
+          [
+            ['lai_xe', 'Lái xe đóng', 'trừ vào lương', { bhxh: '8', bhyt: '1.5', bhtn: '1' }],
+            ['cong_ty', 'Công ty đóng', 'chi phí công ty', { bhxh: '17.5', bhyt: '3', bhtn: '1' }],
+          ] as const
+        ).map(([who, whoLabel, whoHint, def], row) => (
+          <Row gutter={16} key={who} align="bottom">
+            <Col xs={24} md={6}>
+              <div style={{ paddingBottom: 24 }}>
+                <Typography.Text strong>{whoLabel}</Typography.Text>
+                <div>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {whoHint}
+                  </Typography.Text>
+                </div>
+              </div>
+            </Col>
+            {(['bhxh', 'bhyt', 'bhtn'] as const).map((k) => (
+              <Col xs={8} md={6} key={k}>
                 <Form.Item
                   name={`insuranceRate_${who}_${k}`}
-                  label={`${k.toUpperCase()} – ${whoLabel}`}
-                  tooltip={`Bỏ trống = mặc định ${def[k].replace('.', ',')}%`}
+                  label={row === 0 ? k.toUpperCase() : undefined}
                   rules={[{ pattern: /^\d{1,2}([.,]\d{1,2})?$/, message: 'Nhập số %' }]}
                   normalize={(v: string) => v?.replace(',', '.')}
                 >
-                  <Input inputMode="decimal" placeholder={def[k]} suffix="%" />
+                  <Input inputMode="decimal" placeholder={def[k].replace('.', ',')} suffix="%" />
                 </Form.Item>
               </Col>
-            )),
-          )}
-          <Col span={24}>
+            ))}
+          </Row>
+        ))}
+
+        <Divider titlePlacement="start">Bản đồ giám sát GPS</Divider>
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="vietmapKey"
+              label="Khóa VietMap (khuyên dùng)"
+              tooltip="Bản đồ của doanh nghiệp Việt Nam, thể hiện đúng chủ quyền (Hoàng Sa, Trường Sa). Đăng ký tại maps.vietmap.vn → Console → tạo API key; nên giới hạn khóa theo tên miền / IP của công ty. Có khóa VietMap thì dùng VietMap."
+            >
+              <Input placeholder="Khóa API VietMap" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
             <Form.Item
               name="googleMapsKey"
-              label="Khóa Google Maps (API key)"
-              extra="Có khóa thì trang Giám sát GPS dùng Google Maps. Tạo ở console.cloud.google.com → APIs & Services → bật Maps JavaScript API → Credentials → Create API key; nên giới hạn khóa theo địa chỉ web của công ty (HTTP referrers). Google tính phí theo lượt tải bản đồ, có hạn mức miễn phí hằng tháng."
+              label="Khóa Google Maps"
+              tooltip="Dùng khi chưa có khóa VietMap. Tạo ở console.cloud.google.com → APIs & Services → bật Maps JavaScript API → Credentials → Create API key; nên giới hạn theo địa chỉ web của công ty. Google tính phí theo lượt tải bản đồ, có hạn mức miễn phí hằng tháng."
             >
               <Input placeholder="AIza…" />
             </Form.Item>
           </Col>
           <Col span={24}>
-            <Form.Item
-              name="vietmapKey"
-              label="Khóa VietMap (khuyên dùng)"
-              extra="Bản đồ của doanh nghiệp Việt Nam, thể hiện đúng chủ quyền (Hoàng Sa, Trường Sa). Đăng ký tại maps.vietmap.vn → Console → tạo API key; nên giới hạn khóa theo tên miền / IP của công ty. Có khóa VietMap thì dùng VietMap, không thì dùng Google Maps."
-            >
-              <Input placeholder="Khóa API VietMap" />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <FuelPriceCard />
-          </Col>
-          <Col span={24}>
-            <Form.Item name="quoteFooter" label="Ghi chú cuối báo giá" extra="Điều khoản giá bao gồm / không bao gồm, hiệu lực báo giá, chính sách hủy…">
-              <Input.TextArea rows={5} />
-            </Form.Item>
+            <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginTop: -8 }}>
+              Chưa có khóa: dùng Google Maps nhúng miễn phí (tiếng Việt, vùng Việt Nam), mỗi lần xem một xe / một tuyến.
+            </Typography.Paragraph>
           </Col>
         </Row>
 
-        <Divider titlePlacement="start" style={{ marginTop: 8 }}>
+        <Divider titlePlacement="start">Giá nhiên liệu</Divider>
+        <FuelPriceCard />
+
+        <Divider titlePlacement="start">Báo giá</Divider>
+        <Form.Item name="quoteFooter" label="Ghi chú cuối báo giá" tooltip="Điều khoản giá bao gồm / không bao gồm, hiệu lực báo giá, chính sách hủy…">
+          <Input.TextArea rows={5} />
+        </Form.Item>
+
+        <Divider titlePlacement="start">
           Hợp đồng vận chuyển &amp; lệnh vận chuyển (NĐ 158/2024, TT 36/2024)
         </Divider>
         <Row gutter={16}>

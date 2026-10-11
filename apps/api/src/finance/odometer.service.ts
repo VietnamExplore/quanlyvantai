@@ -25,20 +25,18 @@ export class OdometerService {
     private readonly fuel: FuelPriceService,
   ) {}
 
-  /** Giá xăng dầu đang áp dụng: theo loại nhiên liệu của xe (giá Petrolimex), không có thì giá chung */
+  /** Giá xăng dầu đang áp dụng: theo loại nhiên liệu của xe (giá Petrolimex), không có thì giá bình quân các lần đổ xăng */
   async config(fuelType?: string | null): Promise<{ price: number | null; priceSource: 'petrolimex' | 'setting' | 'average' | null }> {
     const plx = await this.fuel.priceOf(fuelType);
     if (plx) return { price: plx, priceSource: 'petrolimex' };
     return this.generalConfig();
   }
 
-  /** Giá chung: cài đặt "Giá xăng dầu", chưa cài thì giá bình quân các lần đổ xăng 60 ngày */
+  /** Xe chưa chọn loại nhiên liệu / chưa lấy được giá Petrolimex: giá bình quân các lần đổ xăng 60 ngày */
   private async generalConfig() {
-    const row = await this.prisma.setting.findUnique({ where: { key: 'fuelPrice' } });
-    const set = Number(row?.value?.replace(/[^\d]/g, '') || 0);
-    let price = set > 0 ? set : null;
-    let priceSource: 'petrolimex' | 'setting' | 'average' | null = price ? 'setting' : null;
-    if (!price) {
+    let price: number | null = null;
+    let priceSource: 'petrolimex' | 'setting' | 'average' | null = null;
+    {
       const since = new Date(Date.now() - 60 * 86_400_000);
       const agg = await this.prisma.cashVoucher.aggregate({ where: { type: 'CHI', liters: { gt: 0 }, date: { gte: since } }, _sum: { amount: true, liters: true } });
       const liters = Number(agg._sum.liters ?? 0);

@@ -43,8 +43,6 @@ export const SETTING_KEYS = [
   ...(['en', 'ko', 'zh', 'ja'] as const).flatMap((l) => [`companyName_${l}`, `companyAddress_${l}`, `bankInfo_${l}`] as const),
   // Dịch vụ dịch tự động: claude | google | deepl
   PROVIDER_KEY,
-  // Giá xăng dầu (đ/lít) để tính chi phí xăng từng chuyến (định mức cài ở Loại xe / Xe)
-  'fuelPrice',
   // Email nhận hóa đơn do nhà xe đối tác xuất cho công ty (trống = email công ty)
   'invoiceEmail',
   // Link mời vào nhóm Zalo lái xe (mở nhanh để dán lệnh điều xe)
