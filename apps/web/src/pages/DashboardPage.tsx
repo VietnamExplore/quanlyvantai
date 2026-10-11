@@ -130,7 +130,7 @@ function KpiTile({ title, value, suffix, footer, icon, color }: { title: string;
   return (
     <Card style={{ height: '100%' }}>
       <Flex justify="space-between" align="flex-start" gap={12}>
-        <Statistic title={title} value={value} suffix={suffix} formatter={(v) => (typeof v === 'number' ? formatVnd(v) : v)} />
+        <Statistic style={{ minWidth: 0 }} title={title} value={value} suffix={suffix} formatter={(v) => (typeof v === 'number' ? formatVnd(v) : v)} />
         <IconBadge icon={icon} color={color} />
       </Flex>
       <div style={{ marginTop: 6, fontSize: 13 }}>{footer}</div>

@@ -8,8 +8,8 @@ import type { Location } from '../types';
 
 const mapUrl = (r: Location) =>
   r.lat !== null && r.lng !== null
-    ? `https://www.google.com/maps?q=${r.lat},${r.lng}`
-    : `https://www.google.com/maps/search/${encodeURIComponent(r.address || r.name)}`;
+    ? `https://www.google.com/maps?q=${r.lat},${r.lng}&hl=vi&gl=vn`
+    : `https://www.google.com/maps/search/${encodeURIComponent(r.address || r.name)}?hl=vi&gl=vn`;
 
 export default function LocationsPage() {
   const { hasRole } = useAuth();

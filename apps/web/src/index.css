@@ -97,9 +97,14 @@ body {
 }
 
 /* Số liệu thống kê */
-.ant-statistic-content {
+.ant-statistic .ant-statistic-content {
   font-weight: 700;
   letter-spacing: -0.02em;
+  /* Số tiền lớn co theo bề rộng màn hình để không rớt chữ "đ" xuống dòng / tràn khung trên điện thoại */
+  font-size: clamp(17px, 1.6vw, 24px);
+}
+.ant-statistic .ant-statistic-content-suffix {
+  font-size: 0.8em;
 }
 
 /* Hộp thoại */

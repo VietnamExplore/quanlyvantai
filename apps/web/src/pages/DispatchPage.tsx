@@ -32,7 +32,7 @@ import { api } from "../api";
 import { fmtTime, routeText, toTripPayload, type TripDraft } from "../booking-utils";
 import { useAuth } from "../auth";
 import { TripModal, type QuickContact } from "../components/TripModal";
-import { EnumTag, paged, byText } from "../components/common";
+import { Clamp, EnumTag, paged, byText } from "../components/common";
 import { MonthGrid, WeekGrid, YearGrid } from "../components/ScheduleViews";
 import { TripDispatchDrawer } from "../components/TripDispatchDrawer";
 import { ShuttlePendingNote } from "../components/ShuttlePendingNote";
@@ -305,14 +305,16 @@ function WaitingCard({
       styles={{ body: { padding: 10 } }}
       style={{ borderLeft: `3px solid ${late ? "#e34948" : "#eb6834"}` }}
     >
-      <Flex justify="space-between">
-        <b>{dayjs(t.pickupTime).format("HH:mm DD/MM")}</b>
-        <Typography.Text type="secondary">{t.booking.code}</Typography.Text>
+      <Flex justify="space-between" gap={8}>
+        <b className="nowrap">{dayjs(t.pickupTime).format("HH:mm DD/MM")}</b>
+        <Typography.Text type="secondary" ellipsis style={{ fontSize: 12 }}>
+          {t.booking.code}
+        </Typography.Text>
       </Flex>
-      <div style={{ fontSize: 13 }}>
+      <Typography.Text ellipsis style={{ fontSize: 13, display: "block" }}>
         {t.booking.customer?.name ?? t.booking.contactName}
-      </div>
-      <div style={{ fontSize: 13 }}>{routeText(t)}</div>
+      </Typography.Text>
+      <Clamp style={{ fontSize: 13 }}>{routeText(t)}</Clamp>
       <Flex justify="space-between" style={{ fontSize: 12, marginTop: 2 }}>
         <span>
           {t.vehicleType.name} · {t.passengers} khách
@@ -658,7 +660,7 @@ export default function DispatchPage() {
       ) : (
         <Row gutter={[16, 16]}>
           {/* Theo ngày: cột chờ điều bên trái lịch; tuần / tháng / năm: lịch trải rộng, cột chờ điều xuống dưới */}
-          <Col xs={24} xl={wide ? 8 : 6} style={{ order: wide ? 2 : 1 }}>
+          <Col xs={24} xl={wide ? 8 : 7} xxl={wide ? 8 : 6} style={{ order: wide ? 2 : 1 }}>
             <Card
               title={
                 <Space>
@@ -705,7 +707,7 @@ export default function DispatchPage() {
               )}
             </Card>
           </Col>
-          <Col xs={24} xl={wide ? 24 : 18} style={{ order: wide ? 1 : 2 }}>
+          <Col xs={24} xl={wide ? 24 : 17} xxl={wide ? 24 : 18} style={{ order: wide ? 1 : 2 }}>
             <Card
               title={`Lịch xe công ty · ${periodTitle}`}
               loading={isLoading}

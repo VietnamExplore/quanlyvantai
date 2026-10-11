@@ -12,7 +12,7 @@ import { BookingBulkBar } from '../components/BookingBulkBar';
 import { BookingCard } from '../components/BookingCard';
 import { BookingFilterBar, useBookingFilters } from '../components/BookingFilters';
 import { BookingStatusMenu } from '../components/BookingStatusMenu';
-import { EnumTag, Money, ServiceTag, formatVnd, paged, byText } from '../components/common';
+import { Clamp, EnumTag, Money, ServiceTag, formatVnd, paged, byText } from '../components/common';
 import { PaidTag } from '../components/finance';
 import { BOOKING_STATUS } from '../labels';
 import type { Booking } from '../types';
@@ -209,13 +209,13 @@ export default function BookingsPage() {
               const list = trips.length ? trips : r.trips;
               if (!list.length) return null;
               return (
-                <div style={{ minWidth: 130, maxWidth: 260, whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 13, lineHeight: '18px' }}>
+                <div style={{ minWidth: 150, maxWidth: 270, fontSize: 13, lineHeight: '18px' }}>
                   {list.slice(0, 2).map((t) => (
-                    <div key={t.id} style={{ marginBottom: 2 }}>
+                    <Clamp key={t.id} lines={2} style={{ marginBottom: 2 }}>
                       {list.length > 1 && <Typography.Text type="secondary">{dayjs(t.pickupTime).format('HH:mm DD/MM')} · </Typography.Text>}
                       {routeText(t)}
                       {flightText(t) && <Typography.Text type="secondary"> · ✈ {flightText(t)}</Typography.Text>}
-                    </div>
+                    </Clamp>
                   ))}
                   {list.length > 2 && <Typography.Text type="secondary">+{list.length - 2} chuyến khác</Typography.Text>}
                 </div>
@@ -224,7 +224,7 @@ export default function BookingsPage() {
           },
           {
             title: 'Lịch trình',
-            responsive: ['xl'],
+            responsive: ['xxl'],
             sorter: (a, b) => byText(liveTrips(a).map((t) => t.itinerary ?? '').join(''), liveTrips(b).map((t) => t.itinerary ?? '').join('')),
             render: (_, r) => {
               const list = r.trips.filter((t) => t.status !== 'HUY' && t.itinerary?.trim());

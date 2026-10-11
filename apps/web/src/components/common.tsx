@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { InputNumber, Tag, Tooltip, type InputNumberProps } from 'antd';
 import dayjs from 'dayjs';
+import type { CSSProperties, ReactNode } from 'react';
 import { api } from '../api';
 import type { Customer, CustomerKind, Driver, Location, Partner, Service, Settings, VehicleType } from '../types';
 
@@ -18,6 +19,30 @@ export const paged = (unit = 'dòng') => ({
   showSizeChanger: false,
   showTotal: (total: number, [a, b]: [number, number]) => `${a}–${b} / ${total} ${unit}`,
 });
+
+/**
+ * Chữ dài (hành trình, địa chỉ, lịch trình) gọn trong vài dòng để bảng không bị dòng quá cao;
+ * rê chuột để xem đầy đủ.
+ */
+export function Clamp({ lines = 2, children, full, style }: { lines?: number; children: ReactNode; full?: ReactNode; style?: CSSProperties }) {
+  return (
+    <Tooltip title={full ?? children} placement="topLeft" mouseEnterDelay={0.35} styles={{ root: { maxWidth: 420 } }}>
+      <div
+        style={{
+          display: '-webkit-box',
+          WebkitLineClamp: lines,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          ...style,
+        }}
+      >
+        {children}
+      </div>
+    </Tooltip>
+  );
+}
 
 export function EnumTag<K extends string>({ labels, value }: { labels: Record<K, { label: string; color?: string }>; value: K }) {
   const item = labels[value];

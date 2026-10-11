@@ -34,7 +34,7 @@ export const NEXT_STEP: Record<string, { status: string; label: string }> = {
 /** Tra giờ bay thực tế (trễ / sớm) của số hiệu chuyến bay */
 const flightUrl = (flight: string) => `https://www.google.com/search?q=${encodeURIComponent(`${flight} flight status`)}`;
 
-const mapUrl = (address: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+const mapUrl = (address: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&hl=vi&gl=vn`;
 
 /** Chi tiết chuyến cho nhà xe (bố cục giống app lái xe): lộ trình, liên hệ đón khách, đoàn khách, bảng đón, xe & tài xế */
 export function PartnerTripDetail({

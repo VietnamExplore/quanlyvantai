@@ -5,7 +5,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { MoneyInput, formatVnd, paged, useVehicleTypeOptions } from '../components/common';
+import { Clamp, MoneyInput, formatVnd, paged, useVehicleTypeOptions } from '../components/common';
 import { ResponsiveTable } from '../components/ResponsiveTable';
 import { QuickScheduleGen } from '../components/QuickScheduleGen';
 import { WEEKDAYS, type ShuttleRoute, type ShuttleStopKind } from '../shuttle-types';
@@ -178,12 +178,12 @@ export default function ShuttleRoutesPage() {
           {
             title: 'Điểm đón / trả',
             render: (_, r) => (
-              <div style={{ maxWidth: 320, whiteSpace: 'normal' }}>
+              <Clamp style={{ maxWidth: 360 }}>
                 {r.stops
                   .filter((s) => s.isActive)
                   .map((s) => `${s.kind === 'KHU_VUC' ? '🏨' : '📍'} ${s.name}`)
                   .join(' → ')}
-              </div>
+              </Clamp>
             ),
           },
           {

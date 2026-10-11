@@ -65,13 +65,13 @@ function GoogleEmbed({ markers, line, focus, height = 560 }: Props) {
     const pts = sample(line, 10);
     const [first, ...rest] = pts;
     src = `https://maps.google.com/maps?saddr=${ll(first)}&daddr=${rest.map(ll).join('+to:')}&hl=vi&gl=vn&output=embed`;
-    open = `https://www.google.com/maps/dir/${pts.map(ll).join('/')}`;
+    open = `https://www.google.com/maps/dir/${pts.map(ll).join('/')}?hl=vi&gl=vn`;
   } else {
     const target = focus ?? (markers.find((m) => !m.ring) ? [markers.find((m) => !m.ring)!.lat, markers.find((m) => !m.ring)!.lng] : null);
     if (target) {
       const t = target as [number, number];
       src = `https://maps.google.com/maps?q=${ll(t)}&z=15&hl=vi&gl=vn&output=embed`;
-      open = `https://www.google.com/maps?q=${ll(t)}`;
+      open = `https://www.google.com/maps?q=${ll(t)}&hl=vi&gl=vn`;
     }
   }
   if (!src) {

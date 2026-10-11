@@ -48,7 +48,7 @@ function PassengerRow({ p, onContact }: { p: Passenger; onContact: (c: GuestCont
 const openFlight = (flight: string) => Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(`${flight} flight status`)}`);
 
 const openMap = (address: string) =>
-  Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`);
+  Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&hl=vi&gl=vn`);
 
 export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: () => void }) {
   const [trip, setTrip] = useState<Trip | null>(null);

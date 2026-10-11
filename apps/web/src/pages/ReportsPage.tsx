@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { routeText } from '../booking-utils';
-import { formatVnd, paged } from '../components/common';
+import { Clamp, formatVnd, paged } from '../components/common';
 import { DriverSalaryModal } from '../components/DriverSalary';
 import { fileSlug } from '../components/FinanceFilter';
 import { downloadExcel, type ExcelSheet } from '../excel';
@@ -883,7 +883,7 @@ function TripDetail({ trips: rows, loading, onExport, filtered }: { trips: Repor
           },
           { title: 'Khách hàng', render: (_, t) => customerName(t) },
           { title: 'Dịch vụ', render: (_, t) => t.service.name },
-          { title: 'Hành trình', render: (_, t) => <div style={{ maxWidth: 260, whiteSpace: 'normal' }}>{routeText(t)}</div> },
+          { title: 'Hành trình', render: (_, t) => <Clamp style={{ maxWidth: 300 }}>{routeText(t)}</Clamp> },
           { title: 'Loại xe', render: (_, t) => `${t.vehicleType.name} · ${t.passengers} khách` },
           { title: 'Xe / nhà xe', render: (_, t) => (t.vehicle || t.partnerId ? assignment(t) : <Typography.Text type="warning">Chưa điều xe</Typography.Text>) },
           { title: 'Doanh thu', dataIndex: 'revenue', align: 'right', render: money, sorter: (a, b) => a.revenue - b.revenue },
@@ -1406,7 +1406,7 @@ function DriverPayDetail({ pay, trips, multiMonth }: { pay: DriverPay; trips: Re
             { title: 'Giờ đón', render: (_, r) => dayjs(r.trip.pickupTime).format('DD/MM/YYYY HH:mm') },
             { title: 'Booking', render: (_, r) => <Link to={`/bookings/${r.trip.booking.id}`}>{r.trip.booking.code}</Link> },
             { title: 'Khách', render: (_, r) => customerName(r.trip) },
-            { title: 'Hành trình', render: (_, r) => <div style={{ maxWidth: 300, whiteSpace: 'normal' }}>{routeText(r.trip)}</div> },
+            { title: 'Hành trình', render: (_, r) => <Clamp style={{ maxWidth: 320 }}>{routeText(r.trip)}</Clamp> },
             { title: 'Xe', render: (_, r) => r.trip.vehicle?.plateNumber },
             { title: 'Doanh thu', align: 'right', render: (_, r) => money(r.trip.revenue) },
             { title: '%', align: 'right', render: (_, r) => `${r.pct}%` },
