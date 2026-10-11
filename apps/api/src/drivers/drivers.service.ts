@@ -74,7 +74,7 @@ export class DriversService {
     const driver = await this.prisma.driver.findUniqueOrThrow({ where: { id: driverId } });
     if (driver.partnerId) throw new BadRequestException('Chỉ cài lương cho lái xe công ty');
     const effectiveFrom = new Date(`${dto.effectiveFrom}-01T00:00:00Z`);
-    const data = { baseSalary: dto.baseSalary, commissionPercent: dto.commissionPercent, note: dto.note?.trim() || null };
+    const data = { baseSalary: dto.baseSalary, commissionPercent: dto.commissionPercent, insuranceSalary: dto.insuranceSalary ?? 0, note: dto.note?.trim() || null };
     return this.prisma.driverSalary.upsert({
       where: { driverId_effectiveFrom: { driverId, effectiveFrom } },
       create: { driverId, effectiveFrom, createdById: userId, ...data },

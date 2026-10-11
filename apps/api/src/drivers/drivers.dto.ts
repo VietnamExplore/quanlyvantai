@@ -60,5 +60,12 @@ export class DriverSalaryDto {
   @Max(100, { message: '% doanh số tối đa 100' })
   commissionPercent: number;
 
+  /** Mức lương đóng bảo hiểm / tháng; 0 = không đóng */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Mức lương đóng bảo hiểm không hợp lệ' })
+  @Min(0, { message: 'Mức lương đóng bảo hiểm không được âm' })
+  insuranceSalary?: number;
+
   @IsOptional() @IsString() note?: string | null;
 }

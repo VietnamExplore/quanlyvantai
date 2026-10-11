@@ -18,6 +18,10 @@ interface Earnings {
   trips?: number;
   commission?: number;
   total?: number;
+  /** Bảo hiểm lái xe đóng (BHXH, BHYT, BHTN) trừ vào lương */
+  insuranceSalary?: number;
+  insuranceEmployeePercent?: number;
+  insuranceEmployee?: number;
   reimbursement?: number;
   /** Tạm ứng đã nhận trong tháng (trừ lương) */
   advanceTaken?: number;
@@ -102,6 +106,14 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
             <Line label="Lương cứng" hint={d.baseSalary ? `${vnd(d.baseSalary)}/tháng, tính theo ngày làm` : undefined} value={vnd(d.baseAmount ?? 0)} />
             <Line label="Tổng hoa hồng" hint={`${d.trips ?? 0} chuyến đã hoàn thành`} value={vnd(d.commission ?? 0)} />
             <Line label="Tổng lương" value={vnd(d.total ?? 0)} strong />
+            {(d.insuranceEmployee ?? 0) > 0 && (
+              <Line
+                label="Trừ bảo hiểm (BHXH, BHYT, BHTN)"
+                hint={`${String(d.insuranceEmployeePercent ?? 10.5).replace('.', ',')}% × lương đóng bảo hiểm ${vnd(d.insuranceSalary ?? 0)}`}
+                value={`− ${vnd(d.insuranceEmployee!)}`}
+                color={colors.danger}
+              />
+            )}
             <Line label="Hoàn tiền bạn chi hộ" hint="Chi phí chuyến + xăng bạn tự trả" value={`+ ${vnd(d.reimbursement ?? 0)}`} color={colors.success} />
             {(d.advanceTaken ?? 0) > 0 && <Line label="Trừ tạm ứng đã nhận" value={`− ${vnd(d.advanceTaken!)}`} color={colors.danger} />}
             <Line label="Thực nhận" value={vnd(d.netPay ?? 0)} strong color={colors.primary} />

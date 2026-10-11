@@ -167,6 +167,8 @@ model DriverSalary {
   effectiveFrom     DateTime @db.Date // luôn là ngày 01 của tháng bắt đầu áp dụng
   baseSalary        Decimal  @db.Decimal(14, 0)
   commissionPercent Decimal  @db.Decimal(5, 2)
+  /// Mức lương đóng bảo hiểm (BHXH, BHYT, BHTN) / tháng; 0 = không đóng. Lái xe đóng 10,5%, công ty đóng 21,5% (tỷ lệ ở Cài đặt)
+  insuranceSalary   Decimal  @default(0) @db.Decimal(14, 0)
   note              String?
   createdById       Int?
   createdAt         DateTime @default(now())

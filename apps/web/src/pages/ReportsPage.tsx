@@ -81,6 +81,10 @@ interface PayMonth {
   revenue: number;
   commission: number;
   total: number;
+  /** Mức lương đóng bảo hiểm của tháng; tiền bảo hiểm lái xe đóng (trừ lương) / công ty đóng */
+  insuranceSalary: number;
+  insuranceEmployee: number;
+  insuranceEmployer: number;
   reimbursement: number;
   advanceTaken: number;
   netPay: number;
@@ -112,6 +116,13 @@ interface DriverPay {
   baseAmount: number;
   commission: number;
   total: number;
+  insuranceSalary: number;
+  insuranceEmployeePercent: number;
+  insuranceEmployerPercent: number;
+  /** Bảo hiểm lái xe đóng (trừ vào lương) */
+  insuranceEmployee: number;
+  /** Bảo hiểm công ty đóng (chi phí công ty, không trừ lương) */
+  insuranceEmployer: number;
   reimbursement: number;
   /** Tạm ứng đã chi trong kỳ (trừ lương) */
   advanceTaken: number;
@@ -1076,12 +1087,14 @@ function DriverPayTable({ pay, loading, trips, rangeText, from, to }: { pay?: Dr
       baseAmount: s.baseAmount + r.baseAmount,
       commission: s.commission + r.commission,
       total: s.total + r.total,
+      insuranceEmployee: s.insuranceEmployee + r.insuranceEmployee,
+      insuranceEmployer: s.insuranceEmployer + r.insuranceEmployer,
       trips: s.trips + r.trips,
       reimbursement: s.reimbursement + r.reimbursement,
       advanceTaken: s.advanceTaken + r.advanceTaken,
       netPay: s.netPay + r.netPay,
     }),
-    { revenue: 0, baseAmount: 0, commission: 0, total: 0, trips: 0, reimbursement: 0, advanceTaken: 0, netPay: 0 },
+    { revenue: 0, baseAmount: 0, commission: 0, total: 0, insuranceEmployee: 0, insuranceEmployer: 0, trips: 0, reimbursement: 0, advanceTaken: 0, netPay: 0 },
   );
   const missing = rows.filter((r) => r.missingRate);
   const pendingCount = rows.reduce((n, r) => n + r.pendingTrips.length, 0);
@@ -1094,7 +1107,7 @@ function DriverPayTable({ pay, loading, trips, rangeText, from, to }: { pay?: Dr
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
         Lương = lương cứng + % × doanh thu các chuyến đã <b>Hoàn thành</b> (đã trừ giảm giá, chưa VAT); kỳ không trọn tháng thì lương cứng tính theo số
-        ngày. Thực nhận = lương + hoàn ứng (chi phí lái xe tự ứng, ghi trên app). Bấm vào dòng để xem từng chuyến và khoản ứng.
+        ngày. Thực nhận = lương − bảo hiểm lái xe đóng (BHXH, BHYT, BHTN trên mức lương đóng bảo hiểm) + hoàn ứng (chi phí lái xe tự ứng, ghi trên app) − tạm ứng. Bấm vào dòng để xem từng chuyến và khoản ứng.
       </Typography.Paragraph>
       {missing.length > 0 && (
         <Alert
@@ -1222,6 +1235,22 @@ function DriverPayTable({ pay, loading, trips, rangeText, from, to }: { pay?: Dr
           { title: 'Lương cứng', dataIndex: 'baseAmount', align: 'right', render: money },
           { title: 'Tiền % doanh số', dataIndex: 'commission', align: 'right', render: money, sorter: (a, b) => a.commission - b.commission },
           { title: 'Tổng lương', dataIndex: 'total', align: 'right', render: (v) => <b>{money(v)}</b>, sorter: (a, b) => a.total - b.total },
+          {
+            title: 'Trừ BHXH',
+            dataIndex: 'insuranceEmployee',
+            align: 'right',
+            render: (v, r) => (
+              <Tooltip
+                title={
+                  r.insuranceSalary
+                    ? `Lương đóng bảo hiểm ${formatVnd(r.insuranceSalary)} đ/tháng · lái xe đóng ${r.insuranceEmployeePercent}% (BHXH 8%, BHYT 1,5%, BHTN 1%) · công ty đóng ${r.insuranceEmployerPercent}%: ${formatVnd(r.insuranceEmployer)} đ`
+                    : 'Không đóng bảo hiểm'
+                }
+              >
+                {v ? <Typography.Text type="danger">−{money(v)}</Typography.Text> : money(0)}
+              </Tooltip>
+            ),
+          },
           { title: 'Hoàn ứng', dataIndex: 'reimbursement', align: 'right', render: money },
           {
             title: 'Trừ tạm ứng',
@@ -1296,12 +1325,17 @@ function DriverPayTable({ pay, loading, trips, rangeText, from, to }: { pay?: Dr
                   <b>{money(sum.total)}</b>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={8} align="right">
-                  <b>{money(sum.reimbursement)}</b>
+                  <Tooltip title={`Công ty đóng bảo hiểm: ${formatVnd(sum.insuranceEmployer)} đ`}>
+                    <b>−{money(sum.insuranceEmployee)}</b>
+                  </Tooltip>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={9} align="right">
-                  <b>−{money(sum.advanceTaken)}</b>
+                  <b>{money(sum.reimbursement)}</b>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={10} align="right">
+                  <b>−{money(sum.advanceTaken)}</b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={11} align="right">
                   <b>{money(sum.netPay)}</b>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
@@ -1332,6 +1366,7 @@ function DriverPayDetail({ pay, trips, multiMonth }: { pay: DriverPay; trips: Re
             { title: 'Lương cứng', dataIndex: 'baseAmount', align: 'right', render: money },
             { title: 'Tiền % DS', dataIndex: 'commission', align: 'right', render: money },
             { title: 'Lương', dataIndex: 'total', align: 'right', render: (v) => <b>{money(v)}</b> },
+            { title: 'Trừ BHXH', dataIndex: 'insuranceEmployee', align: 'right', render: (v) => (v ? `−${money(v)}` : money(0)) },
             { title: 'Hoàn ứng', dataIndex: 'reimbursement', align: 'right', render: money },
             { title: 'Tạm ứng', dataIndex: 'advanceTaken', align: 'right', render: (v) => (v ? `−${money(v)}` : money(0)) },
             { title: 'Thực nhận', dataIndex: 'netPay', align: 'right', render: (v) => <b>{money(v)}</b> },
@@ -1412,9 +1447,9 @@ function payrollSheets(pay: DriverPayReport, trips: ReportTrip[], rangeText: str
     {
       name: 'Bảng lương lái xe',
       title: `BẢNG LƯƠNG LÁI XE · ${rangeText}`,
-      headers: ['Lái xe', 'SĐT', 'Lương cứng / tháng', '% doanh số', 'Chuyến hoàn thành', 'Doanh thu tính lương', 'Lương cứng kỳ này', 'Tiền % doanh số', 'Tổng lương', 'Hoàn ứng', 'Trừ tạm ứng', 'Thực nhận', 'Ghi chú'],
-      sumColumns: [4, 5, 6, 7, 8, 9, 10, 11],
-      numberColumns: [2],
+      headers: ['Lái xe', 'SĐT', 'Lương cứng / tháng', '% doanh số', 'Chuyến hoàn thành', 'Doanh thu tính lương', 'Lương cứng kỳ này', 'Tiền % doanh số', 'Tổng lương', 'Lương đóng BH / tháng', 'Trừ BHXH, BHYT, BHTN (lái xe đóng)', 'Hoàn ứng', 'Trừ tạm ứng', 'Thực nhận', 'BH công ty đóng (chi phí công ty)', 'Ghi chú'],
+      sumColumns: [4, 5, 6, 7, 8, 10, 11, 12, 13, 14],
+      numberColumns: [2, 9],
       totalLabel: 'Tổng cộng',
       rows: pay.drivers.map((d) => [
         d.fullName,
@@ -1426,9 +1461,12 @@ function payrollSheets(pay: DriverPayReport, trips: ReportTrip[], rangeText: str
         d.baseAmount,
         d.commission,
         d.total,
+        d.insuranceSalary,
+        d.insuranceEmployee,
         d.reimbursement,
         d.advanceTaken,
         d.netPay,
+        d.insuranceEmployer,
         [
           d.missingRate ? 'Chưa cài lương đủ các tháng' : '',
           d.pendingTrips.length ? `${d.pendingTrips.length} chuyến chưa bấm Hoàn thành` : '',

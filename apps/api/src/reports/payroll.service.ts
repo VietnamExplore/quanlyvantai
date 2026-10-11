@@ -12,11 +12,17 @@ export const startOfVnDay = (ymd: string) => new Date(`${ymd}T00:00:00+07:00`);
 export const endOfVnDay = (ymd: string) => new Date(`${ymd}T23:59:59.999+07:00`);
 export const isYmd = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
+/** Tỷ lệ đóng bảo hiểm mặc định (BHXH + BHYT + BHTN): lái xe 8 + 1,5 + 1 = 10,5%; công ty 17,5 + 3 + 1 = 21,5% */
+export const INSURANCE_DEFAULT = { employee: 10.5, employer: 21.5 };
+
 const subtotal = (trips: { amount: Prisma.Decimal; status: TripStatus }[]) =>
   trips.filter((t) => t.status !== TripStatus.HUY).reduce((s, t) => s + Number(t.amount), 0);
 
 /**
- * Lương lái xe công ty trong khoảng ngày = lương cứng + % doanh số; thực nhận = lương + hoàn ứng − tạm ứng.
+ * Lương lái xe công ty trong khoảng ngày = lương cứng + % doanh số; thực nhận = lương − bảo hiểm lái xe đóng + hoàn ứng − tạm ứng.
+ * - Bảo hiểm (BHXH, BHYT, BHTN) tính trên mức lương đóng bảo hiểm của tháng (DriverSalary.insuranceSalary):
+ *   lái xe đóng insuranceEmployeePercent (mặc định 10,5%) – trừ vào lương; công ty đóng insuranceEmployerPercent (mặc định 21,5%) – chi phí công ty.
+ *   Kỳ không trọn tháng thì tính theo số ngày như lương cứng.
  * - Lương cứng tính theo tháng; kỳ không trọn tháng thì tính theo số ngày (lương × số ngày / số ngày của tháng).
  * - Doanh số = doanh thu (đã phân bổ giảm giá, chưa VAT) các chuyến lái xe đã HOÀN THÀNH
  *   (xe công ty, booking đã xác nhận / hoàn thành), theo ngày đón.
@@ -43,7 +49,7 @@ export class PayrollService {
       partnerId: null,
       booking: { status: { in: REVENUE_STATUSES } },
     };
-    const [drivers, salaries, trips, pending, advances, fuel, loans] = await Promise.all([
+    const [drivers, salaries, trips, pending, advances, fuel, loans, insRows] = await Promise.all([
       this.prisma.driver.findMany({ where: { partnerId: null, ...(driverId && { id: driverId }) }, select: { id: true, fullName: true, phone: true, status: true }, orderBy: { fullName: 'asc' } }),
       this.prisma.driverSalary.findMany({ where: { driver: { partnerId: null }, ...(driverId && { driverId }) }, orderBy: { effectiveFrom: 'desc' } }),
       this.prisma.bookingTrip.findMany({
@@ -95,7 +101,14 @@ export class PayrollService {
         select: { id: true, code: true, amount: true, date: true, driverId: true, advanceRequest: { select: { id: true, reason: true } } },
         orderBy: { date: 'asc' },
       }),
+      this.prisma.setting.findMany({ where: { key: { in: ['insuranceEmployeePercent', 'insuranceEmployerPercent'] } } }),
     ]);
+    const pctSetting = (key: string, def: number) => {
+      const v = Number(insRows.find((r) => r.key === key)?.value);
+      return insRows.some((r) => r.key === key && r.value.trim() !== '') && Number.isFinite(v) && v >= 0 && v <= 100 ? v : def;
+    };
+    const insEmpPct = pctSetting('insuranceEmployeePercent', INSURANCE_DEFAULT.employee);
+    const insCoPct = pctSetting('insuranceEmployerPercent', INSURANCE_DEFAULT.employer);
 
     // Các tháng (có thể chỉ một phần tháng) nằm trong kỳ
     const months: { month: string; from: string; to: string; days: number; daysInMonth: number }[] = [];
@@ -152,9 +165,29 @@ export class PayrollService {
         const reimbursement = Math.round(advanceSum.get(`${d.id}|${m.month}`) ?? 0);
         const advanceTaken = Math.round(loanSum.get(`${d.id}|${m.month}`) ?? 0);
         const total = baseAmount + commission;
-        return { ...m, hasRate: !!rate, baseSalary, commissionPercent, baseAmount, trips: r.trips, revenue: Math.round(r.revenue), commission, total, reimbursement, advanceTaken, netPay: total + reimbursement - advanceTaken };
+        // Bảo hiểm theo mức lương đóng bảo hiểm của tháng (kỳ không trọn tháng tính theo ngày)
+        const insuranceSalary = rate ? Number(rate.insuranceSalary) : 0;
+        const insuranceEmployee = Math.round((insuranceSalary * insEmpPct * m.days) / 100 / m.daysInMonth);
+        const insuranceEmployer = Math.round((insuranceSalary * insCoPct * m.days) / 100 / m.daysInMonth);
+        return {
+          ...m,
+          hasRate: !!rate,
+          baseSalary,
+          commissionPercent,
+          baseAmount,
+          trips: r.trips,
+          revenue: Math.round(r.revenue),
+          commission,
+          total,
+          insuranceSalary,
+          insuranceEmployee,
+          insuranceEmployer,
+          reimbursement,
+          advanceTaken,
+          netPay: total - insuranceEmployee + reimbursement - advanceTaken,
+        };
       });
-      const sum = (k: 'baseAmount' | 'revenue' | 'commission' | 'trips' | 'total' | 'reimbursement' | 'advanceTaken' | 'netPay') => detail.reduce((s, x) => s + x[k], 0);
+      const sum = (k: 'baseAmount' | 'revenue' | 'commission' | 'trips' | 'total' | 'insuranceEmployee' | 'insuranceEmployer' | 'reimbursement' | 'advanceTaken' | 'netPay') => detail.reduce((s, x) => s + x[k], 0);
       const last = detail[detail.length - 1];
       const myPending = pending.filter((t) => t.driverId === d.id);
       return {
@@ -170,6 +203,12 @@ export class PayrollService {
         baseAmount: sum('baseAmount'),
         commission: sum('commission'),
         total: sum('total'),
+        // Mức lương đóng bảo hiểm (tháng cuối kỳ), tỷ lệ lái xe / công ty đóng
+        insuranceSalary: last.insuranceSalary,
+        insuranceEmployeePercent: insEmpPct,
+        insuranceEmployerPercent: insCoPct,
+        insuranceEmployee: sum('insuranceEmployee'),
+        insuranceEmployer: sum('insuranceEmployer'),
         reimbursement: sum('reimbursement'),
         advanceTaken: sum('advanceTaken'),
         netPay: sum('netPay'),

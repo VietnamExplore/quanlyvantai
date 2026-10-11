@@ -55,6 +55,9 @@ export const SETTING_KEYS = [
   'gpsLostMinutes',
   // Bắt buộc kiểm tra xe và lái xe (gồm nồng độ cồn) trước khi bắt đầu chuyến xe công ty: '1' (mặc định) | '0'
   'preTripCheckRequired',
+  // Tỷ lệ đóng bảo hiểm (BHXH + BHYT + BHTN) trên mức lương đóng bảo hiểm: lái xe (mặc định 10,5) / công ty (mặc định 21,5)
+  'insuranceEmployeePercent',
+  'insuranceEmployerPercent',
   // Khóa VietMap (bản đồ Việt Nam, đúng chủ quyền) – ưu tiên hơn Google Maps
   'vietmapKey',
   // Khóa Google Maps JavaScript API (khóa dùng trên trình duyệt, giới hạn theo tên miền)

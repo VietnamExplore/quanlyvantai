@@ -440,6 +440,10 @@ export class DriverAppController {
         revenue: null,
         commission: row.commission,
         total: row.total,
+        // Bảo hiểm lái xe đóng (trừ vào lương)
+        insuranceSalary: row.insuranceSalary,
+        insuranceEmployeePercent: row.insuranceEmployeePercent,
+        insuranceEmployee: row.insuranceEmployee,
         reimbursement: row.reimbursement,
         advanceTaken: row.advanceTaken,
         loans: row.loans,

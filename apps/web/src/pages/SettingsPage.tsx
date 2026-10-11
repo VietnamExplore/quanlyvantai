@@ -269,6 +269,28 @@ export default function SettingsPage() {
               />
             </Form.Item>
           </Col>
+          <Col xs={12} md={6}>
+            <Form.Item
+              name="insuranceEmployeePercent"
+              label="Lái xe đóng bảo hiểm"
+              tooltip="Tỷ lệ BHXH + BHYT + BHTN người lao động đóng trên mức lương đóng bảo hiểm (cài ở Lương lái xe), trừ vào thực nhận. Mặc định 10,5% (8% + 1,5% + 1%)."
+              rules={[{ pattern: /^\d{1,2}([.,]\d{1,2})?$/, message: 'Nhập số %, ví dụ 10.5' }]}
+              normalize={(v: string) => v?.replace(',', '.')}
+            >
+              <Input inputMode="decimal" placeholder="10.5" suffix="%" />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item
+              name="insuranceEmployerPercent"
+              label="Công ty đóng bảo hiểm"
+              tooltip="Tỷ lệ BHXH + BHYT + BHTN công ty đóng cho lái xe (chi phí công ty, không trừ lương). Mặc định 21,5% (17,5% + 3% + 1%)."
+              rules={[{ pattern: /^\d{1,2}([.,]\d{1,2})?$/, message: 'Nhập số %, ví dụ 21.5' }]}
+              normalize={(v: string) => v?.replace(',', '.')}
+            >
+              <Input inputMode="decimal" placeholder="21.5" suffix="%" />
+            </Form.Item>
+          </Col>
           <Col span={24}>
             <Form.Item
               name="googleMapsKey"
