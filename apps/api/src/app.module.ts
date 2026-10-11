@@ -33,6 +33,7 @@ import { VehicleTypesModule } from './vehicle-types/vehicle-types.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { SystemModule } from './system/system.module';
 import { ShuttleModule } from './shuttle/shuttle.module';
+import { WebsiteModule } from './website/website.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { ShuttleModule } from './shuttle/shuttle.module';
     VehiclesModule,
     SystemModule,
     ShuttleModule,
+    WebsiteModule,
     DriversModule,
     PartnersModule,
     CustomersModule,

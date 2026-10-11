@@ -10,5 +10,6 @@ import { SignFileController } from './sign-file.controller';
   imports: [TranslateModule, ShuttleModule],
   controllers: [BookingsController, SignFileController, BookingTranslationsController],
   providers: [BookingsService],
+  exports: [BookingsService],
 })
 export class BookingsModule {}

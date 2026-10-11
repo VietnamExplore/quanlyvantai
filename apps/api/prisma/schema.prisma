@@ -454,6 +454,8 @@ model Booking {
   signFile        String? // Tên file bảng đón khách gửi (lưu trong thư mục uploads/signs)
   signFileName    String? // Tên file gốc
   signFileType    String? // image/png, image/jpeg, image/webp, application/pdf
+  /// Đơn đặt hàng trên website công ty (nếu booking đến từ website)
+  websiteOrder    WebsiteOrder?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 }
@@ -1063,4 +1065,22 @@ model ShuttleRun {
 
   @@unique([routeId, departAt])
   @@index([departAt])
+}
+
+/// Đơn đặt hàng WooCommerce trên website công ty đã lấy về (mỗi đơn tạo một booking, không trùng)
+model WebsiteOrder {
+  id        Int      @id @default(autoincrement())
+  /// Mã đơn WooCommerce (id)
+  orderId   Int      @unique
+  number    String
+  status    String
+  total     Decimal  @db.Decimal(15, 0)
+  currency  String
+  customer  String
+  /// Đơn gốc (JSON WooCommerce) để đối chiếu
+  raw       Json
+  bookingId Int?     @unique
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

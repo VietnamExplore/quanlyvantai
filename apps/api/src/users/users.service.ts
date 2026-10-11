@@ -26,6 +26,8 @@ export class UsersService {
     return this.prisma.user.findMany({
       where: {
         deletedAt: null,
+        // Tài khoản hệ thống (vd. "Website công ty" đứng tên booking lấy từ website) không hiện
+        NOT: { username: { startsWith: '__' } },
         ...(role && { roles: { has: role } }),
         ...(q && {
           OR: [
