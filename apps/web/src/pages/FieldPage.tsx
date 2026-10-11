@@ -159,6 +159,14 @@ const failedText = (items: { label: string; ok: boolean; note: string | null }[]
 function checkSheets(rows: VehicleCheckRow[], rangeText: string, filterText: string | null): ExcelSheet[] {
   const info = [`Kỳ: ${rangeText}`, ...(filterText ? [`Lọc: ${filterText}`] : []), `Số lần kiểm tra: ${rows.length}`];
   const head = (r: VehicleCheckRow) => [dayjs(r.createdAt).format('DD/MM/YYYY HH:mm'), r.trip?.booking.code ?? CHECK_KIND[r.kind], r.trip ? dayjs(r.trip.pickupTime).format('DD/MM/YYYY HH:mm') : '', r.vehicle.plateNumber, r.driver.fullName];
+  const columnsOf = (list: (r: VehicleCheckRow) => { key: string; label: string }[]) => {
+    const seen = new Map<string, string>();
+    for (const r of rows) for (const i of list(r)) if (!seen.has(i.key)) seen.set(i.key, i.label);
+    return [...seen].map(([key, label]) => ({ key, label }));
+  };
+  const driverCols = columnsOf((r) => r.driverItems ?? []);
+  const vehicleCols = columnsOf((r) => r.items);
+  const mark = (i?: { ok: boolean; note: string | null }) => (!i ? '' : i.ok ? '✓' : `✗ ${i.note ?? ''}`.trim());
   return [
     {
       name: 'Tổng hợp kiểm tra',
@@ -203,16 +211,32 @@ function checkSheets(rows: VehicleCheckRow[], rangeText: string, filterText: str
       ]),
     },
     {
+      // Mỗi lần kiểm tra một dòng, mỗi hạng mục một cột: đạt ghi ✓, không đạt ghi ✗ kèm tình trạng
       name: 'Chi tiết hạng mục',
-      title: 'CHI TIẾT TỪNG HẠNG MỤC KIỂM TRA TRƯỚC CHUYẾN',
+      title: 'CHI TIẾT TỪNG HẠNG MỤC KIỂM TRA TRƯỚC CHUYẾN (✓ đạt · ✗ không đạt / lỗi)',
       info,
-      headers: ['Thời điểm kiểm tra', 'Chuyến (booking)', 'Giờ đón', 'Xe', 'Lái xe', 'Nhóm', 'Hạng mục', 'Kết quả', 'Tình trạng / ghi chú'],
-      rows: rows.flatMap((r) => [
-        ...(r.alcoholOk != null ? [[...head(r), 'Lái xe', 'Nồng độ cồn', r.alcoholOk ? 'Đạt' : 'Có cồn', `${mglText(r.alcoholMgL)} mg/L khí thở`]] : []),
-        ...(r.driverItems ?? []).map((i) => [...head(r), 'Lái xe', i.label, i.ok ? 'Đạt' : 'Không đạt', i.note ?? '']),
-        ...(r.odometerKm != null ? [[...head(r), 'Xe', 'Km đồng hồ', '', r.odometerKm.toLocaleString('vi-VN')]] : []),
-        ...(r.fuelLevel != null ? [[...head(r), 'Xe', 'Mức nhiên liệu', '', FUEL_LABEL[r.fuelLevel] ?? `${r.fuelLevel}%`]] : []),
-        ...r.items.map((i) => [...head(r), 'Xe', i.label, i.ok ? 'Tốt' : 'Lỗi', i.note ?? '']),
+      headers: [
+        'Thời điểm kiểm tra',
+        'Chuyến (booking)',
+        'Giờ đón',
+        'Xe',
+        'Lái xe',
+        'Nồng độ cồn (mg/L)',
+        ...driverCols.map((c) => `Lái xe: ${c.label}`),
+        'Km đồng hồ',
+        'Nhiên liệu',
+        ...vehicleCols.map((c) => `Xe: ${c.label}`),
+        'Kết luận',
+      ],
+      numberColumns: [6 + driverCols.length],
+      rows: rows.map((r) => [
+        ...head(r),
+        r.alcoholOk == null ? '' : r.alcoholOk ? `✓ ${mglText(r.alcoholMgL)}` : `✗ ${mglText(r.alcoholMgL)} – có cồn`,
+        ...driverCols.map((c) => mark((r.driverItems ?? []).find((i) => i.key === c.key))),
+        r.odometerKm,
+        r.fuelLevel == null ? '' : (FUEL_LABEL[r.fuelLevel] ?? `${r.fuelLevel}%`),
+        ...vehicleCols.map((c) => mark(r.items.find((i) => i.key === c.key))),
+        [r.driverOk == null ? '' : r.driverOk ? 'Lái xe đủ điều kiện' : 'Lái xe KHÔNG ĐẠT', r.defects ? `${r.defects} lỗi xe` : 'Xe tốt'].filter(Boolean).join(' · '),
       ]),
     },
   ];
