@@ -71,6 +71,7 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
       { key: '/finance/payables', label: 'Công nợ nhà xe', icon: <ShopOutlined />, roles: ['ADMIN', 'KE_TOAN', 'DIEU_HANH'] },
       { key: '/finance/ledger', label: 'Sổ thu chi', icon: <BookOutlined />, roles: ['ADMIN', 'KE_TOAN', 'DIEU_HANH'] },
       { key: '/finance/advances', label: 'Tạm ứng lái xe', icon: <DollarOutlined />, roles: ['ADMIN', 'KE_TOAN'] },
+      { key: '/finance/tolls', label: 'Phí đường ePass', icon: <CarOutlined />, roles: ['ADMIN', 'KE_TOAN', 'DIEU_HANH'] },
     ],
   },
   {

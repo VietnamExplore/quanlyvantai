@@ -85,36 +85,38 @@ enum VehicleStatus {
 }
 
 model Vehicle {
-  id                 Int             @id @default(autoincrement())
-  plateNumber        String          @unique
+  id                 Int               @id @default(autoincrement())
+  plateNumber        String            @unique
   vehicleTypeId      Int
-  vehicleType        VehicleType     @relation(fields: [vehicleTypeId], references: [id])
+  vehicleType        VehicleType       @relation(fields: [vehicleTypeId], references: [id])
   brand              String?
   model              String?
   year               Int?
   color              String?
-  ownership          Ownership       @default(CONG_TY)
+  ownership          Ownership         @default(CONG_TY)
   partnerId          Int?
-  partner            Partner?        @relation(fields: [partnerId], references: [id])
-  status             VehicleStatus   @default(SAN_SANG)
-  registrationExpiry DateTime?       @db.Date // Hạn đăng kiểm
-  insuranceExpiry    DateTime?       @db.Date // Hạn bảo hiểm
-  badgeExpiry        DateTime?       @db.Date // Hạn phù hiệu
+  partner            Partner?          @relation(fields: [partnerId], references: [id])
+  status             VehicleStatus     @default(SAN_SANG)
+  registrationExpiry DateTime?         @db.Date // Hạn đăng kiểm
+  insuranceExpiry    DateTime?         @db.Date // Hạn bảo hiểm
+  badgeExpiry        DateTime?         @db.Date // Hạn phù hiệu
   odometerKm         Int?
   /// Định mức xăng dầu riêng của xe (lít/100km); trống = theo loại xe
-  fuelNorm           Decimal?        @db.Decimal(5, 2)
+  fuelNorm           Decimal?          @db.Decimal(5, 2)
   /// Loại nhiên liệu (mặt hàng Petrolimex): XANG_95_V | XANG_95_III | XANG_92 | DO_0001 | DO_005 | DIEN
   fuelType           String?
   defaultDriverId    Int?
-  defaultDriver      Driver?         @relation(fields: [defaultDriverId], references: [id])
+  defaultDriver      Driver?           @relation(fields: [defaultDriverId], references: [id])
   trips              BookingTrip[]
   shuttleRuns        ShuttleRun[]
   vouchers           CashVoucher[]
   notes              String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
   incidents          FieldIncident[]
   checks             VehicleCheck[]
+  /// Lượt qua trạm thu phí (ePass)
+  tollTransactions   TollTransaction[]
 }
 
 // ───────────── Lái xe ─────────────
@@ -567,8 +569,10 @@ model BookingTrip {
   events           TripEvent[]
   costs            TripCost[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  /// Lượt qua trạm thu phí (ePass) gắn vào chuyến
+  tollTransactions TollTransaction[]
 
   @@index([pickupTime])
   @@index([vehicleId, pickupTime])
@@ -776,20 +780,22 @@ model CostCategory {
 
 /// Chi phí thực tế phát sinh của chuyến
 model TripCost {
-  id           Int          @id @default(autoincrement())
-  tripId       Int
-  trip         BookingTrip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  categoryCode String
-  category     CostCategory @relation(fields: [categoryCode], references: [code], onUpdate: Cascade)
-  amount       Decimal      @db.Decimal(15, 0)
-  spentAt      DateTime     @default(now()) @db.Date
-  note         String?
-  byDriver     Boolean      @default(false) // Lái xe nhập trên app
-  receiptFile  String? // Ảnh hóa đơn / vé (lưu trong uploads/receipts)
-  receiptType  String? // image/jpeg, image/png, image/webp
-  createdById  Int?
-  createdBy    User?        @relation("CostCreator", fields: [createdById], references: [id])
-  createdAt    DateTime     @default(now())
+  id              Int              @id @default(autoincrement())
+  tripId          Int
+  trip            BookingTrip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  categoryCode    String
+  category        CostCategory     @relation(fields: [categoryCode], references: [code], onUpdate: Cascade)
+  amount          Decimal          @db.Decimal(15, 0)
+  spentAt         DateTime         @default(now()) @db.Date
+  note            String?
+  byDriver        Boolean          @default(false) // Lái xe nhập trên app
+  receiptFile     String? // Ảnh hóa đơn / vé (lưu trong uploads/receipts)
+  receiptType     String? // image/jpeg, image/png, image/webp
+  createdById     Int?
+  createdBy       User?            @relation("CostCreator", fields: [createdById], references: [id])
+  createdAt       DateTime         @default(now())
+  /// Lượt qua trạm ePass tạo ra khoản chi phí này
+  tollTransaction TollTransaction?
 
   @@index([tripId])
   @@index([spentAt])
@@ -1083,4 +1089,36 @@ model WebsiteOrder {
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Lượt xe qua trạm thu phí không dừng (ePass), đọc từ hóa đơn điện tử; mỗi lượt gắn vào chi phí một chuyến (nếu khớp)
+model TollTransaction {
+  id           Int          @id @default(autoincrement())
+  /// Mã giao dịch của nhà cung cấp (không nhập trùng)
+  txId         String       @unique
+  provider     String       @default("EPASS")
+  /// Biển số trên hóa đơn (vd 43F00747)
+  plate        String
+  vehicleId    Int?
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  station      String
+  vehicleClass Int?
+  passedAt     DateTime
+  /// Số tiền đã gồm thuế (số thực trả)
+  amount       Decimal      @db.Decimal(15, 0)
+  amountNet    Decimal      @db.Decimal(15, 2)
+  vatPercent   Decimal      @default(0) @db.Decimal(5, 2)
+  /// CAU_DUONG | PHI_SAN_BAY
+  categoryCode String
+  invoiceNo    String?
+  invoiceDate  DateTime?    @db.Date
+  tripId       Int?
+  trip         BookingTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  tripCostId   Int?         @unique
+  tripCost     TripCost?    @relation(fields: [tripCostId], references: [id], onDelete: SetNull)
+  importedById Int?
+  createdAt    DateTime     @default(now())
+
+  @@index([passedAt])
+  @@index([vehicleId, passedAt])
 }

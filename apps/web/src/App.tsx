@@ -4,6 +4,7 @@ import { isPartnerArea } from './api';
 import { isPartnerOnly, useAuth } from './auth';
 import { AppLayout } from './components/AppLayout';
 import AdvancesPage from './pages/AdvancesPage';
+import TollsPage from './pages/TollsPage';
 import AuditLogPage from './pages/AuditLogPage';
 import SystemPage from './pages/SystemPage';
 import PartnerPortalPage from './pages/PartnerPortalPage';
@@ -138,6 +139,7 @@ export default function App() {
         {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/payables" element={<PayablesPage />} />}
         {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/ledger" element={<LedgerPage />} />}
         {hasRole('ADMIN', 'KE_TOAN') && <Route path="finance/advances" element={<AdvancesPage />} />}
+        {hasRole('ADMIN', 'KE_TOAN', 'DIEU_HANH') && <Route path="finance/tolls" element={<TollsPage />} />}
         {hasRole('ADMIN') && <Route path="users" element={<UsersPage />} />}
         {hasRole('ADMIN') && <Route path="settings" element={<SettingsPage />} />}
         {hasRole('ADMIN') && <Route path="audit-logs" element={<AuditLogPage />} />}
