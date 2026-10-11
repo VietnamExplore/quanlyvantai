@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { AuthUser } from '../auth/auth.decorators';
 import { BookingsService, bookingTotals } from '../bookings/bookings.service';
+import { nationalityFromPhone } from '../common/nationality';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { ShuttleService } from '../shuttle/shuttle.service';
@@ -358,6 +359,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
         if (o.date_modified_gmt && (!state.cursor || o.date_modified_gmt > state.cursor)) state.cursor = o.date_modified_gmt;
       }
       const completed = await this.reconcileCompleted();
+      await this.fillPassengers();
       state.lastOkAt = new Date().toISOString();
       state.lastError = null;
       state.imported = (state.imported ?? 0) + created;
@@ -403,6 +405,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       contactPhone: (o.billing.phone ?? '').trim(),
       source: 'WEBSITE',
       docLanguage: this.language(o),
+      ...(this.passengerOf(o) && { passengers: [this.passengerOf(o)] }),
     };
     const create = (trips: TripPlan[], extra: string[]) =>
       this.bookings.create(
@@ -678,6 +681,40 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       if (touched) changed++;
     }
     return changed;
+  }
+
+/**
+   * Hành khách từ thông tin người đặt trên website: họ tên, số điện thoại, năm sinh, CCCD / hộ chiếu;
+   * quốc tịch theo mã nước của số điện thoại (không xác định được thì theo quốc gia khách chọn).
+   * Website chỉ có thông tin người đặt: các khách đi cùng do điều hành / lái xe bổ sung.
+   */
+  private passengerOf(o: WooOrder) {
+    const fullName = [o.billing.first_name, o.billing.last_name].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    if (!fullName) return null;
+    const meta = (...keys: string[]) => {
+      const m = (o.meta_data ?? []).find((x) => keys.includes(x.key));
+      return m?.value == null || typeof m.value === 'object' ? '' : String(m.value).trim();
+    };
+    const year = Number(meta('_billing_birth_date', 'billing_birth_date').match(/\b(19|20)\d{2}\b/)?.[0] ?? 0);
+    const idNumber = meta('_cccd_passport', 'cccd_passport', '_billing_passport');
+    return {
+      fullName,
+      birthYear: year >= 1900 && year < new Date().getFullYear() ? year : null,
+      idNumber: idNumber.replace(/\s/g, '').length >= 5 ? idNumber : null,
+      nationality: nationalityFromPhone(o.billing.phone, o.billing.country),
+      phone: o.billing.phone?.trim() || null,
+      note: 'Người đặt trên website',
+    };
+  }
+
+  /** Booking website chưa có hành khách nào: thêm người đặt (booking nhận trước khi có tính năng này) */
+  private async fillPassengers() {
+    const rows = await this.prisma.websiteOrder.findMany({ where: { booking: { passengers: { none: {} } } }, select: { raw: true, bookingId: true } });
+    for (const w of rows) {
+      const pax = this.passengerOf(w.raw as unknown as WooOrder);
+      if (pax && w.bookingId) await this.prisma.bookingPassenger.create({ data: { bookingId: w.bookingId, seq: 1, ...pax } });
+    }
+    return rows.length;
   }
 
   /** Ngôn ngữ giấy tờ: theo ngôn ngữ trang khách đặt (TranslatePress / WPML), không có thì theo quốc gia */
