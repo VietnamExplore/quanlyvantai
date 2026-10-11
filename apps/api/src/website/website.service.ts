@@ -360,10 +360,11 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       }
       const completed = await this.reconcileCompleted();
       await this.fillPassengers();
+      const finished = await this.autoComplete();
       state.lastOkAt = new Date().toISOString();
       state.lastError = null;
       state.imported = (state.imported ?? 0) + created;
-      return { ok: true, fetched: orders.length, created, completed };
+      return { ok: true, fetched: orders.length, created, completed, finished };
     } catch (e) {
       state.lastError = (e as Error).message;
       this.logger.warn(`Không lấy được đơn website: ${state.lastError}`);
@@ -705,6 +706,40 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       phone: o.billing.phone?.trim() || null,
       note: 'Người đặt trên website',
     };
+  }
+
+  /**
+   * Booking website đã xác nhận (đơn web Hoàn tất – khách đã trả), mọi chuyến kết thúc quá 1 ngày mà chưa bấm Hoàn thành:
+   * tự hoàn thành chuyến và booking (đơn cũ đã chạy thực tế trước khi dùng phần mềm, chuyến quên bấm).
+   * Booking còn chuyến đang chạy (đang đến đón / đã đón khách) thì để lái xe tự bấm. Trả về số booking vừa hoàn thành.
+   */
+  private async autoComplete() {
+    const cutoff = new Date(Date.now() - 24 * 3600_000);
+    const closed: TripStatus[] = [TripStatus.HOAN_THANH, TripStatus.HUY];
+    const list = await this.prisma.booking.findMany({
+      where: {
+        status: BookingStatus.XAC_NHAN,
+        websiteOrder: { status: 'completed' },
+        trips: { some: {}, none: { status: { in: [TripStatus.DANG_DEN_DON, TripStatus.DA_DON_KHACH] } } },
+      },
+      select: { id: true, trips: { select: { id: true, status: true, endTime: true, shuttleRunId: true } } },
+    });
+    let done = 0;
+    for (const b of list) {
+      const open = b.trips.filter((t) => !closed.includes(t.status));
+      if (open.some((t) => t.endTime > cutoff)) continue;
+      const bot = await this.botUser();
+      await this.prisma.$transaction([
+        this.prisma.bookingTrip.updateMany({ where: { id: { in: open.map((t) => t.id) } }, data: { status: TripStatus.HOAN_THANH } }),
+        this.prisma.tripEvent.createMany({
+          data: open.map((t) => ({ tripId: t.id, status: TripStatus.HOAN_THANH, note: 'Tự hoàn thành: đơn website đã hoàn tất, chuyến đã qua', userId: bot.id })),
+        }),
+        this.prisma.booking.update({ where: { id: b.id }, data: { status: BookingStatus.HOAN_THANH } }),
+      ]);
+      await this.shuttle.syncRuns(b.trips.map((t) => t.shuttleRunId));
+      done++;
+    }
+    return done;
   }
 
   /** Booking website chưa có hành khách nào: thêm người đặt (booking nhận trước khi có tính năng này) */
