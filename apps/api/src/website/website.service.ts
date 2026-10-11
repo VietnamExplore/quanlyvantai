@@ -295,7 +295,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
   private notes(o: WooOrder, siteUrl: string) {
     const items = o.line_items.map((i) => {
       const meta = (i.meta_data ?? []).filter((m) => !m.key.startsWith('_')).map(metaText).filter(Boolean);
-      return [`• ${i.name.replace(/<[^>]+>/g, '').replace(/s+/g, ' ').trim()} × ${i.quantity} — ${money(i.total, o.currency)}`, ...meta.map((m) => `   ${m}`)].join('\n');
+      return [`• ${i.name.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()} × ${i.quantity} — ${money(i.total, o.currency)}`, ...meta.map((m) => `   ${m}`)].join('\n');
     });
     const paid = o.date_paid_gmt ? `đã thanh toán ${money(o.total, o.currency)}` : `tổng ${money(o.total, o.currency)}`;
     const admin = (() => {
