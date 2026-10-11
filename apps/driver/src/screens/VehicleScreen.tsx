@@ -18,8 +18,9 @@ const FUEL = [
 ];
 const fuelLabel = (v: number | null) => FUEL.find((f) => f.value === v)?.label ?? '—';
 const km = (v: number | null) => (v == null ? '—' : `${v.toLocaleString('vi-VN')} km`);
+const mgl = (v: number | null) => `${(v ?? 0).toLocaleString('vi-VN', { maximumFractionDigits: 3 })} mg/L`;
 
-/** Form nhận / trả xe: km, nhiên liệu, danh mục kiểm tra, ảnh, ghi chú */
+/** Form nhận / trả xe: (nhận xe) đo nồng độ cồn, km, nhiên liệu, danh mục kiểm tra, ảnh, ghi chú */
 function CheckForm({
   state,
   kind,
@@ -39,12 +40,22 @@ function CheckForm({
   const [items, setItems] = useState<CheckItem[]>(state.items.map((i) => ({ ...i, ok: true, note: '' })));
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [note, setNote] = useState('');
+  const [alcohol, setAlcohol] = useState('');
+  const [alcoholPhoto, setAlcoholPhoto] = useState<Photo[]>([]);
   const [busy, setBusy] = useState(false);
   const vehicle = state.vehicles.find((v) => v.id === vehicleId);
+  const askAlcohol = kind === 'NHAN';
+  const alcoholVal = alcohol.trim() ? Number(alcohol.trim().replace(',', '.')) : null;
+  const positive = alcoholVal != null && alcoholVal > 0;
 
   const setItem = (key: string, patch: Partial<CheckItem>) => setItems((list) => list.map((i) => (i.key === key ? { ...i, ...patch } : i)));
 
   const save = async () => {
+    if (askAlcohol && state.alcoholRequired) {
+      if (alcoholVal == null) return Alert.alert('Đo nồng độ cồn', 'Thổi máy đo rồi nhập kết quả (mg/L). Không có cồn bấm "0 – Không có cồn".');
+      if (!alcoholPhoto.length) return Alert.alert('Chụp ảnh máy đo', 'Chụp màn hình máy đo nồng độ cồn để làm bằng chứng.');
+    }
+    if (alcoholVal != null && (!Number.isFinite(alcoholVal) || alcoholVal < 0 || alcoholVal > 5)) return Alert.alert('Kết quả đo không hợp lệ', 'Nhập số mg/L, ví dụ 0 hoặc 0,15');
     if (!vehicleId) return Alert.alert('Chọn xe');
     const odometerKm = odo.trim() ? Number(odo.replace(/\D/g, '')) : null;
     if (odometerKm == null) return Alert.alert('Nhập số km trên đồng hồ xe');
@@ -53,10 +64,16 @@ function CheckForm({
     if (bad.some((i) => !i.note?.trim())) return Alert.alert('Ghi rõ lỗi', 'Hạng mục chọn "Lỗi" cần ghi ngắn tình trạng.');
     setBusy(true);
     try {
-      const c = await api<VehicleCheck>('/driver/vehicle-checks', { method: 'POST', body: { vehicleId, kind, odometerKm, fuelLevel: fuel, items, note: note.trim() || null } });
-      const failed = await uploadPhotos(`/driver/vehicle-checks/${c.id}/photos`, photos);
+      const c = await api<VehicleCheck>('/driver/vehicle-checks', { method: 'POST', body: { vehicleId, kind, odometerKm, fuelLevel: fuel, items, note: note.trim() || null, ...(askAlcohol && { alcoholMgL: alcoholVal }) } });
+      const failed = (await uploadPhotos(`/driver/vehicle-checks/${c.id}/alcohol-photo`, alcoholPhoto)) + (await uploadPhotos(`/driver/vehicle-checks/${c.id}/photos`, photos));
       onSaved();
       onClose();
+      if (c.alcoholOk === false) {
+        return Alert.alert(
+          '🚫 Có nồng độ cồn – không được lái xe',
+          `Kết quả ${mgl(c.alcoholMgL)} đã báo về điều hành. Bạn không được nhận xe và bắt đầu chuyến hôm nay cho đến khi đo lại đạt 0 mg/L.`,
+        );
+      }
       Alert.alert(
         kind === 'NHAN' ? 'Đã nhận xe' : 'Đã trả xe',
         [bad.length ? `${bad.length} hạng mục lỗi đã được báo về văn phòng.` : 'Xe đủ điều kiện.', failed ? `${failed} ảnh chưa gửi được.` : ''].filter(Boolean).join(' '),
@@ -75,6 +92,23 @@ function CheckForm({
           <ScrollView contentContainerStyle={[{ padding: 16, paddingBottom: 40 }, sheetFrame]} {...keyboardScroll}>
             <Text style={s.title}>{kind === 'NHAN' ? '🔑 Nhận xe' : '🅿️ Trả xe'}</Text>
             <Text style={s.sub}>Kiểm tra xe, ghi km và nhiên liệu. Hạng mục lỗi được báo ngay về văn phòng.</Text>
+
+            {askAlcohol && (
+              <Card style={positive ? { borderColor: colors.danger, borderWidth: 1.5 } : undefined}>
+                <Text style={s.alcoholTitle}>🍺 Kiểm tra nồng độ cồn{state.alcoholRequired ? ' (bắt buộc)' : ''}</Text>
+                <Text style={s.histSub}>Thổi máy đo trước khi nhận xe. Luật giao thông cấm lái xe có nồng độ cồn – chỉ đạt khi kết quả bằng 0.</Text>
+                <View style={[s.chips, { marginTop: 10, marginBottom: 6 }]}>
+                  <Pressable onPress={() => setAlcohol('0')} style={[s.fuel, { paddingHorizontal: 12 }, alcohol.trim() === '0' && { backgroundColor: colors.success, borderColor: colors.success }]}>
+                    <Text style={[s.chipText, alcohol.trim() === '0' && { color: '#fff' }]}>0 – Không có cồn</Text>
+                  </Pressable>
+                </View>
+                <Text style={ui.label}>Kết quả đo (mg/L khí thở)</Text>
+                <TextInput style={ui.input} keyboardType="decimal-pad" value={alcohol} onChangeText={setAlcohol} placeholder="Ví dụ 0 hoặc 0,15" />
+                {positive && <Text style={s.defect}>🚫 Có nồng độ cồn: không được lái xe. Kết quả vẫn được gửi về điều hành.</Text>}
+                <Text style={[ui.label, { marginTop: 6 }]}>Ảnh màn hình máy đo</Text>
+                <PhotoStrip photos={alcoholPhoto} onChange={setAlcoholPhoto} max={1} title="Ảnh máy đo nồng độ cồn" />
+              </Card>
+            )}
 
             <Text style={ui.label}>Xe</Text>
             <View style={s.chips}>
@@ -145,6 +179,9 @@ function CheckRow({ c }: { c: VehicleCheck }) {
         {km(c.odometerKm)} · Nhiên liệu {fuelLabel(c.fuelLevel)}
         {c.photos.length ? ` · ${c.photos.length} ảnh` : ''}
       </Text>
+      {c.alcoholOk != null && (
+        <Text style={c.alcoholOk ? s.alcoholOk : s.defect}>{c.alcoholOk ? `✅ Nồng độ cồn: ${mgl(c.alcoholMgL)} – đạt` : `🚫 Nồng độ cồn: ${mgl(c.alcoholMgL)} – không giao xe`}</Text>
+      )}
       {c.defects > 0 && (
         <Text style={s.defect}>
           ⚠ {c.defects} lỗi: {c.items.filter((i) => !i.ok).map((i) => (i.note ? `${i.label} (${i.note})` : i.label)).join('; ')}
@@ -194,6 +231,7 @@ export function VehicleScreen() {
     return <View style={{ padding: 24, alignItems: 'center' }}>{error ? <Text style={ui.error}>{error}</Text> : <ActivityIndicator color={colors.primary} />}</View>;
   }
   const holdingIds = new Set(state.holding.map((h) => h.vehicleId));
+  const today = state.alcoholToday;
   const suggest = state.defaultVehicleId && !holdingIds.has(state.defaultVehicleId) ? state.defaultVehicleId : null;
 
   return (
@@ -210,6 +248,23 @@ export function VehicleScreen() {
         />
       }
     >
+      {(state.alcoholRequired || today) && (
+        <Card style={today && !today.alcoholOk ? { borderColor: colors.danger, borderWidth: 1.5 } : undefined}>
+          <Section icon="🍺" title="Nồng độ cồn hôm nay" />
+          {!today ? (
+            <Text style={s.histSub}>Chưa đo. Bấm Nhận xe và đo nồng độ cồn trước khi bắt đầu chuyến.</Text>
+          ) : today.alcoholOk ? (
+            <Text style={s.alcoholOk}>
+              ✅ Đạt ({mgl(today.alcoholMgL)}) lúc {fmtHour(today.createdAt)}
+            </Text>
+          ) : (
+            <Text style={s.defect}>
+              🚫 Có cồn ({mgl(today.alcoholMgL)}) lúc {fmtHour(today.createdAt)} – không được lái xe. Liên hệ điều hành; khi đo lại đạt 0 mg/L thì bấm Nhận xe để đo lại.
+            </Text>
+          )}
+        </Card>
+      )}
+
       <Card>
         <Section icon="🚐" title="Xe đang nhận" />
         {state.holding.length ? (
@@ -273,4 +328,6 @@ const s = StyleSheet.create({
   histTitle: { fontWeight: '700', color: colors.text },
   histSub: { color: colors.text2, marginTop: 2, fontSize: 13.5 },
   defect: { color: colors.danger, marginTop: 3, fontSize: 13.5, fontWeight: '600' },
+  alcoholOk: { color: colors.success, marginTop: 3, fontSize: 13.5, fontWeight: '600' },
+  alcoholTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
 });

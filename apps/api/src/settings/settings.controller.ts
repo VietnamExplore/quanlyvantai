@@ -53,6 +53,8 @@ export const SETTING_KEYS = [
   'gpsSpeedLimit',
   'gpsStopMinutes',
   'gpsLostMinutes',
+  // Bắt buộc đo nồng độ cồn khi nhận xe và trước khi bắt đầu chuyến xe công ty: '1' (mặc định) | '0'
+  'alcoholCheckRequired',
   // Khóa VietMap (bản đồ Việt Nam, đúng chủ quyền) – ưu tiên hơn Google Maps
   'vietmapKey',
   // Khóa Google Maps JavaScript API (khóa dùng trên trình duyệt, giới hạn theo tên miền)

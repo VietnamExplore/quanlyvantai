@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const trimOrNull = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() || null : value);
@@ -52,6 +52,8 @@ export class CreateVehicleCheckDto {
   @IsOptional() @IsIn([0, 25, 50, 75, 100]) fuelLevel?: number | null;
   @IsArray() @ValidateNested({ each: true }) @Type(() => CheckItemDto) items: CheckItemDto[];
   @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(2000) note?: string | null;
+  /** Kết quả đo nồng độ cồn khi nhận xe (mg/L khí thở) */
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 3 }, { message: 'Nồng độ cồn không hợp lệ' }) @Min(0) @Max(5) alcoholMgL?: number | null;
 }
 
 export class DriverPassengerDto {

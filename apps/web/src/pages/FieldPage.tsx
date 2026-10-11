@@ -148,13 +148,13 @@ function IncidentsTab() {
 function ChecksTab() {
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>([dayjs().subtract(30, 'day'), dayjs()]);
   const [vehicleId, setVehicleId] = useState<number | undefined>();
-  const [defects, setDefects] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'loi' | 'con'>('all');
   const { data: vehicles = [] } = useQuery({ queryKey: ['/vehicles', {}], queryFn: () => api<{ id: number; plateNumber: string; ownership: string }[]>('/vehicles') });
   const { data = [], isLoading } = useQuery({
-    queryKey: ['/field/vehicle-checks', range?.[0]?.format('YYYY-MM-DD'), range?.[1]?.format('YYYY-MM-DD'), vehicleId, defects],
+    queryKey: ['/field/vehicle-checks', range?.[0]?.format('YYYY-MM-DD'), range?.[1]?.format('YYYY-MM-DD'), vehicleId, filter],
     queryFn: () =>
       api<VehicleCheckRow[]>('/field/vehicle-checks', {
-        query: { from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD'), vehicleId, defects: defects ? 1 : undefined },
+        query: { from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD'), vehicleId, defects: filter === 'loi' ? 1 : undefined, alcohol: filter === 'con' ? 1 : undefined },
       }),
   });
   return (
@@ -171,7 +171,15 @@ function ChecksTab() {
           onChange={setVehicleId}
           options={vehicles.filter((v) => v.ownership === 'CONG_TY').map((v) => ({ value: v.id, label: v.plateNumber }))}
         />
-        <Segmented value={defects ? 'loi' : 'all'} onChange={(v) => setDefects(v === 'loi')} options={[{ value: 'all', label: 'Tất cả' }, { value: 'loi', label: 'Có hạng mục lỗi' }]} />
+        <Segmented
+          value={filter}
+          onChange={(v) => setFilter(v as typeof filter)}
+          options={[
+            { value: 'all', label: 'Tất cả' },
+            { value: 'loi', label: 'Có hạng mục lỗi' },
+            { value: 'con', label: 'Có nồng độ cồn' },
+          ]}
+        />
       </Flex>
       <Table<VehicleCheckRow>
         rowKey="id"
@@ -181,7 +189,7 @@ function ChecksTab() {
         scroll={{ x: 900 }}
         pagination={{ pageSize: 30, hideOnSinglePage: true }}
         expandable={{
-          rowExpandable: (r) => r.items.length > 0 || r.photos.length > 0 || !!r.note,
+          rowExpandable: (r) => r.items.length > 0 || r.photos.length > 0 || !!r.note || !!r.alcoholPhoto,
           expandedRowRender: (r) => (
             <Space direction="vertical" size={8}>
               <Flex gap={6} wrap>
@@ -193,6 +201,12 @@ function ChecksTab() {
                 ))}
               </Flex>
               {r.note && <span>Ghi chú: {r.note}</span>}
+              {r.alcoholPhoto && (
+                <Flex gap={8} align="center">
+                  <span>Ảnh máy đo nồng độ cồn:</span>
+                  <FieldPhotos photos={[r.alcoholPhoto]} size={96} />
+                </Flex>
+              )}
               <FieldPhotos photos={r.photos} size={96} />
             </Space>
           ),
@@ -204,6 +218,19 @@ function ChecksTab() {
           { title: 'Lái xe', render: (_, r) => r.driver.fullName },
           { title: 'Km đồng hồ', dataIndex: 'odometerKm', width: 120, align: 'right', render: (v) => (v == null ? '' : v.toLocaleString('vi-VN')) },
           { title: 'Nhiên liệu', dataIndex: 'fuelLevel', width: 100, align: 'center', render: (v) => (v == null ? '' : FUEL_LABEL[v] ?? `${v}%`) },
+          {
+            title: 'Nồng độ cồn',
+            dataIndex: 'alcoholMgL',
+            width: 150,
+            render: (v: number | null, r) =>
+              r.alcoholOk == null ? (
+                ''
+              ) : r.alcoholOk ? (
+                <Tag color="green">0 mg/L · Đạt</Tag>
+              ) : (
+                <Tag color="red">{v?.toLocaleString('vi-VN')} mg/L · Có cồn</Tag>
+              ),
+          },
           {
             title: 'Kiểm tra',
             width: 200,

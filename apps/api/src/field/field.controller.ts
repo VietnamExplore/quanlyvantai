@@ -79,6 +79,14 @@ export class DriverFieldController {
     return this.field.addCheckPhoto(driverOf(user), id, file);
   }
 
+  @Post('vehicle-checks/:id/alcohol-photo')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', fieldUpload))
+  alcoholPhoto(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Chưa chọn ảnh');
+    return this.field.setAlcoholPhoto(driverOf(user), id, file);
+  }
+
   @Get('field-photos/:name')
   photo(@CurrentUser() user: AuthUser, @Param('name') name: string, @Res() res: Response) {
     return this.field.sendPhoto(res, name, driverOf(user));
@@ -108,8 +116,8 @@ export class FieldController {
   }
 
   @Get('vehicle-checks')
-  checks(@Query() q: { from?: string; to?: string; driverId?: string; vehicleId?: string; defects?: string }) {
-    return this.field.listChecks({ from: q.from, to: q.to, driverId: num(q.driverId), vehicleId: num(q.vehicleId), defects: q.defects === '1' });
+  checks(@Query() q: { from?: string; to?: string; driverId?: string; vehicleId?: string; defects?: string; alcohol?: string }) {
+    return this.field.listChecks({ from: q.from, to: q.to, driverId: num(q.driverId), vehicleId: num(q.vehicleId), defects: q.defects === '1', alcohol: q.alcohol === '1' });
   }
 
   @Get('photos/:name')

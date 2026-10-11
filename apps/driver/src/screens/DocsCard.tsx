@@ -20,7 +20,7 @@ export function DocsCard({ trip }: { trip: Trip }) {
       {contract ? (
         <Button title={`Hợp đồng vận chuyển ${contract.number}`} icon="📄" variant="soft" onPress={() => open(`/e/hd/${contract.token}`)} style={{ marginTop: 8 }} />
       ) : trip.shuttleRunId ? (
-        <Text style={s.note}>Chuyến xe ghép: xuất trình lệnh vận chuyển và danh sách khách của chuyến.</Text>
+        <Text style={s.note}>Chuyến xe ghép: dùng lệnh vận chuyển chung của cả chuyến ghép.</Text>
       ) : (
         <Text style={s.warn}>⚠️ Booking chưa có hợp đồng vận chuyển — báo văn phòng lập trước khi chạy.</Text>
       )}

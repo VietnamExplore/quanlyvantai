@@ -675,6 +675,11 @@ model VehicleCheck {
   defects    Int      @default(0)
   photos     String[] @default([])
   note       String?
+  /// Nồng độ cồn khi nhận xe (mg/L khí thở). Luật TTATGTĐB 2024 cấm lái xe có cồn → đạt khi = 0
+  alcoholMgL   Float?
+  alcoholOk    Boolean?
+  /// Ảnh màn hình máy đo nồng độ cồn
+  alcoholPhoto String?
   createdAt  DateTime @default(now())
 
   @@index([vehicleId, createdAt])

@@ -144,6 +144,10 @@ export interface VehicleCheck {
   defects: number;
   photos: string[];
   note: string | null;
+  /** Nồng độ cồn khi nhận xe (mg/L khí thở); đạt khi = 0 */
+  alcoholMgL: number | null;
+  alcoholOk: boolean | null;
+  alcoholPhoto: string | null;
   createdAt: string;
   vehicle: { id: number; plateNumber: string };
 }
@@ -154,4 +158,8 @@ export interface VehicleCheckState {
   holding: VehicleCheck[];
   recent: VehicleCheck[];
   items: { key: string; label: string }[];
+  /** Công ty bắt buộc đo nồng độ cồn khi nhận xe */
+  alcoholRequired: boolean;
+  /** Lần đo gần nhất hôm nay */
+  alcoholToday: { id: number; alcoholMgL: number | null; alcoholOk: boolean | null; createdAt: string } | null;
 }

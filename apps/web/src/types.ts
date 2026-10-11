@@ -543,6 +543,7 @@ export type Settings = Partial<
     | 'gpsSpeedLimit'
     | 'gpsStopMinutes'
     | 'gpsLostMinutes'
+    | 'alcoholCheckRequired'
     | 'vietmapKey'
     | 'googleMapsKey'
     | `${'companyName' | 'companyAddress' | 'bankInfo' | 'quoteFooter'}_${ForeignLang}`

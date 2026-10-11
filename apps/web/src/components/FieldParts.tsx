@@ -55,6 +55,10 @@ export interface VehicleCheckRow {
   defects: number;
   photos: string[];
   note: string | null;
+  /** Nồng độ cồn khi nhận xe (mg/L khí thở); đạt khi = 0 */
+  alcoholMgL: number | null;
+  alcoholOk: boolean | null;
+  alcoholPhoto: string | null;
   createdAt: string;
   vehicle: { id: number; plateNumber: string };
   driver: { id: number; fullName: string; phone: string };

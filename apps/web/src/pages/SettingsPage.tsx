@@ -253,6 +253,22 @@ export default function SettingsPage() {
               <Input inputMode="numeric" placeholder="10" suffix="phút" />
             </Form.Item>
           </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="alcoholCheckRequired"
+              label="Đo nồng độ cồn lái xe"
+              // Chưa cài = bắt buộc
+              getValueProps={(v) => ({ value: v === '0' ? '0' : '1' })}
+              tooltip="Bắt buộc: khi Nhận xe trên app, lái xe phải nhập kết quả đo và chụp ảnh máy đo; chưa đo đạt (0 mg/L) trong ngày thì không bắt đầu được chuyến xe công ty. Đo có cồn: không giao xe, báo ngay cho điều hành."
+            >
+              <Select
+                options={[
+                  { value: '1', label: 'Bắt buộc trước khi chạy xe công ty' },
+                  { value: '0', label: 'Không bắt buộc (lái xe tự ghi nếu có đo)' },
+                ]}
+              />
+            </Form.Item>
+          </Col>
           <Col span={24}>
             <Form.Item
               name="googleMapsKey"

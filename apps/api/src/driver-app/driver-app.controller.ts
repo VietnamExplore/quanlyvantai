@@ -1,4 +1,5 @@
 import { orderPath } from '../contracts/contracts.service';
+import { assertAlcoholOk } from '../field/field.service';
 import {
   BadRequestException,
   Body,
@@ -215,6 +216,8 @@ export class DriverAppController {
 
     // Xe công ty: ghi km đồng hồ lúc bắt đầu đi đón và lúc hoàn thành
     const vehicle = trip.vehicleId ? await this.prisma.vehicle.findUnique({ where: { id: trip.vehicleId }, select: { ownership: true } }) : null;
+    // Xe công ty: phải đo nồng độ cồn đạt (0 mg/L) trong ngày mới được bắt đầu chuyến
+    if (vehicle?.ownership === 'CONG_TY' && dto.status === TripStatus.DANG_DEN_DON) await assertAlcoholOk(this.prisma, this.driverId(user));
     if (vehicle?.ownership === 'CONG_TY') {
       if (dto.status === TripStatus.DANG_DEN_DON && trip.startKm === null) {
         const startKm = dto.startKm ?? (await this.odometer.previousEndKm(trip));
