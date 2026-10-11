@@ -34,7 +34,7 @@ const DA_NANG = { lat: 16.054, lng: 108.202 };
 /**
  * Bản đồ giám sát GPS – chỉ dùng bản đồ thể hiện đúng chủ quyền Việt Nam (Hoàng Sa, Trường Sa):
  * VietMap (ưu tiên, doanh nghiệp bản đồ Việt Nam) hoặc Google Maps hiển thị theo vùng Việt Nam.
- * Chưa cài khóa thì không vẽ bản đồ.
+ * Chưa cài khóa: dùng Google Maps nhúng miễn phí (một vị trí / một tuyến mỗi lần).
  */
 export function GpsMap(props: Props) {
   const settings = useSettings();
@@ -42,21 +42,71 @@ export function GpsMap(props: Props) {
   const google = settings.googleMapsKey?.trim();
   if (vietmap) return <VietMapView apiKey={vietmap} {...props} />;
   if (google) return <GoogleView apiKey={google} {...props} />;
-  return <NoMap height={props.height} />;
+  // Chưa có khóa: Google Maps nhúng (miễn phí, không cần khóa)
+  return <GoogleEmbed {...props} />;
 }
 
-function NoMap({ height = 560 }: { height?: number }) {
+/** Chọn đều tối đa n điểm (giữ điểm đầu, cuối) */
+const sample = (pts: [number, number][], n: number) => {
+  if (pts.length <= n) return pts;
+  return Array.from({ length: n }, (_, i) => pts[Math.round((i * (pts.length - 1)) / (n - 1))]);
+};
+const ll = ([lat, lng]: [number, number]) => `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+/**
+ * Google Maps nhúng – miễn phí, không cần khóa (tính năng "Nhúng bản đồ" của Google), tiếng Việt, vùng Việt Nam.
+ * Mỗi lần hiện một vị trí (xe đang chọn) hoặc một tuyến Google vẽ qua tối đa 10 điểm của lộ trình GPS.
+ */
+function GoogleEmbed({ markers, line, focus, height = 560 }: Props) {
   const { hasRole } = useAuth();
+  let src: string | null = null;
+  let open: string | null = null;
+  if (line && line.length > 1) {
+    const pts = sample(line, 10);
+    const [first, ...rest] = pts;
+    src = `https://maps.google.com/maps?saddr=${ll(first)}&daddr=${rest.map(ll).join('+to:')}&hl=vi&gl=vn&output=embed`;
+    open = `https://www.google.com/maps/dir/${pts.map(ll).join('/')}`;
+  } else {
+    const target = focus ?? (markers.find((m) => !m.ring) ? [markers.find((m) => !m.ring)!.lat, markers.find((m) => !m.ring)!.lng] : null);
+    if (target) {
+      const t = target as [number, number];
+      src = `https://maps.google.com/maps?q=${ll(t)}&z=15&hl=vi&gl=vn&output=embed`;
+      open = `https://www.google.com/maps?q=${ll(t)}`;
+    }
+  }
+  if (!src) {
+    return (
+      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa', borderRadius: 8, padding: 24 }}>
+        <Empty description="Chưa có vị trí để hiện trên bản đồ" />
+      </div>
+    );
+  }
   return (
-    <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa', borderRadius: 8, padding: 24 }}>
-      <Empty
-        description={
-          <Typography.Text type="secondary">
-            Chưa cài bản đồ. Nhập khóa <b>VietMap</b> (khuyên dùng) hoặc <b>Google Maps</b>{' '}
-            {hasRole('ADMIN') ? <Link to="/settings">ở Cài đặt → Thông tin công ty</Link> : 'ở Cài đặt (Admin)'}. Danh sách xe và cảnh báo vẫn dùng được.
-          </Typography.Text>
-        }
+    <div>
+      <iframe
+        title="Google Maps"
+        src={src}
+        style={{ width: '100%', height, border: 0, borderRadius: 8 }}
+        referrerPolicy="no-referrer-when-downgrade"
+        allowFullScreen
       />
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          {line && line.length > 1
+            ? 'Google vẽ đường đi qua 10 điểm chính của lộ trình GPS (gần đúng).'
+            : 'Bản đồ Google miễn phí hiện xe đang chọn – bấm xe trong danh sách để chuyển.'}{' '}
+          {hasRole('ADMIN') && (
+            <>
+              Muốn hiện tất cả xe cùng lúc: nhập khóa VietMap / Google Maps ở <Link to="/settings">Cài đặt</Link>.
+            </>
+          )}
+        </Typography.Text>
+        {open && (
+          <a href={open} target="_blank" rel="noreferrer" style={{ fontSize: 12.5 }}>
+            Mở trên Google Maps ↗
+          </a>
+        )}
+      </div>
     </div>
   );
 }
