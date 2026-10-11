@@ -398,30 +398,32 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       size={620}
       title={
         trip ? (
-          <Space wrap>
-            <span>Chuyến của</span>
-            <Link to={`/bookings/${trip.bookingId}`}>{trip.booking.code}</Link>
-            <EnumTag labels={TRIP_STATUS} value={trip.status} />
-          </Space>
+          // Tiêu đề một hàng, các nút thao tác xuống hàng dưới để không đè lên mã booking
+          <Flex vertical gap={8}>
+            <Space wrap size={6}>
+              <span>Chuyến của</span>
+              <Link to={`/bookings/${trip.bookingId}`} style={{ whiteSpace: 'nowrap' }}>
+                {trip.booking.code}
+              </Link>
+              <EnumTag labels={TRIP_STATUS} value={trip.status} />
+            </Space>
+            {trip.status !== 'CHO_DIEU' && (
+              <Space wrap size={6} style={{ fontWeight: 'normal' }}>
+                <Button size="small" icon={<CopyOutlined />} onClick={copyOrder}>
+                  Sao chép lệnh điều xe
+                </Button>
+                <Button size="small" icon={<AimOutlined />} href={`/gps?view=track&trip=${trip.id}`}>
+                  Lộ trình GPS
+                </Button>
+                {/* Lệnh vận chuyển theo mẫu TT 36/2024 (kèm QR hợp đồng điện tử nếu booking đã lập hợp đồng) */}
+                <Button size="small" icon={<FileProtectOutlined />} href={`/transport-orders/trip/${trip.id}`} target="_blank">
+                  Lệnh vận chuyển
+                </Button>
+              </Space>
+            )}
+          </Flex>
         ) : (
           'Chuyến'
-        )
-      }
-      extra={
-        trip &&
-        trip.status !== 'CHO_DIEU' && (
-          <Space wrap>
-            <Button icon={<CopyOutlined />} onClick={copyOrder}>
-              Sao chép lệnh điều xe
-            </Button>
-            <Button icon={<AimOutlined />} href={`/gps?view=track&trip=${trip.id}`}>
-              Lộ trình GPS
-            </Button>
-            {/* Lệnh vận chuyển theo mẫu TT 36/2024 (kèm QR hợp đồng điện tử nếu booking đã lập hợp đồng) */}
-            <Button icon={<FileProtectOutlined />} href={`/transport-orders/trip/${trip.id}`} target="_blank">
-              Lệnh vận chuyển
-            </Button>
-          </Space>
         )
       }
     >
