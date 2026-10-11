@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
+import { FileExcelOutlined } from '@ant-design/icons';
+import { downloadExcel, type ExcelSheet } from '../excel';
 import { FieldPhotos, FUEL_LABEL, INCIDENT_STATUS, IncidentTags, type FieldIncident, type VehicleCheckRow } from '../components/FieldParts';
 
 const fmt = (s: string) => dayjs(s).format('HH:mm DD/MM/YYYY');
@@ -145,7 +147,79 @@ function IncidentsTab() {
   );
 }
 
+const CHECK_KIND: Record<VehicleCheckRow['kind'], string> = { TRUOC_CHUYEN: 'Trước chuyến', NHAN: 'Nhận xe', TRA: 'Trả xe' };
+const mglText = (v: number | null) => (v == null ? '' : v.toLocaleString('vi-VN', { maximumFractionDigits: 3 }));
+const failedText = (items: { label: string; ok: boolean; note: string | null }[] | undefined) =>
+  (items ?? [])
+    .filter((i) => !i.ok)
+    .map((i) => (i.note ? `${i.label}: ${i.note}` : i.label))
+    .join('; ');
+
+/** Excel kiểm tra trước chuyến: sheet tổng hợp từng lần kiểm tra + sheet chi tiết từng hạng mục */
+function checkSheets(rows: VehicleCheckRow[], rangeText: string, filterText: string | null): ExcelSheet[] {
+  const info = [`Kỳ: ${rangeText}`, ...(filterText ? [`Lọc: ${filterText}`] : []), `Số lần kiểm tra: ${rows.length}`];
+  const head = (r: VehicleCheckRow) => [dayjs(r.createdAt).format('DD/MM/YYYY HH:mm'), r.trip?.booking.code ?? CHECK_KIND[r.kind], r.trip ? dayjs(r.trip.pickupTime).format('DD/MM/YYYY HH:mm') : '', r.vehicle.plateNumber, r.driver.fullName];
+  return [
+    {
+      name: 'Tổng hợp kiểm tra',
+      title: 'TỔNG HỢP KIỂM TRA XE VÀ LÁI XE TRƯỚC CHUYẾN',
+      info,
+      headers: [
+        'Thời điểm kiểm tra',
+        'Chuyến (booking)',
+        'Giờ đón',
+        'Xe',
+        'Lái xe',
+        'SĐT lái xe',
+        'Nồng độ cồn (mg/L)',
+        'Kết quả nồng độ cồn',
+        'Lái xe',
+        'Mục lái xe không đạt',
+        'Km đồng hồ',
+        'Nhiên liệu',
+        'Số hạng mục xe lỗi',
+        'Hạng mục xe lỗi',
+        'Ảnh máy đo',
+        'Số ảnh xe',
+        'Ghi chú',
+      ],
+      numberColumns: [10],
+      sumColumns: [12],
+      totalLabel: 'Tổng cộng',
+      rows: rows.map((r) => [
+        ...head(r),
+        r.driver.phone,
+        mglText(r.alcoholMgL),
+        r.alcoholOk == null ? '' : r.alcoholOk ? 'Đạt' : 'Có cồn',
+        r.driverOk == null ? '' : r.driverOk ? 'Đủ điều kiện' : 'Không đạt',
+        failedText(r.driverItems),
+        r.odometerKm,
+        r.fuelLevel == null ? '' : (FUEL_LABEL[r.fuelLevel] ?? `${r.fuelLevel}%`),
+        r.defects,
+        failedText(r.items),
+        r.alcoholPhoto ? 'Có' : '',
+        r.photos.length || '',
+        r.note ?? '',
+      ]),
+    },
+    {
+      name: 'Chi tiết hạng mục',
+      title: 'CHI TIẾT TỪNG HẠNG MỤC KIỂM TRA TRƯỚC CHUYẾN',
+      info,
+      headers: ['Thời điểm kiểm tra', 'Chuyến (booking)', 'Giờ đón', 'Xe', 'Lái xe', 'Nhóm', 'Hạng mục', 'Kết quả', 'Tình trạng / ghi chú'],
+      rows: rows.flatMap((r) => [
+        ...(r.alcoholOk != null ? [[...head(r), 'Lái xe', 'Nồng độ cồn', r.alcoholOk ? 'Đạt' : 'Có cồn', `${mglText(r.alcoholMgL)} mg/L khí thở`]] : []),
+        ...(r.driverItems ?? []).map((i) => [...head(r), 'Lái xe', i.label, i.ok ? 'Đạt' : 'Không đạt', i.note ?? '']),
+        ...(r.odometerKm != null ? [[...head(r), 'Xe', 'Km đồng hồ', '', r.odometerKm.toLocaleString('vi-VN')]] : []),
+        ...(r.fuelLevel != null ? [[...head(r), 'Xe', 'Mức nhiên liệu', '', FUEL_LABEL[r.fuelLevel] ?? `${r.fuelLevel}%`]] : []),
+        ...r.items.map((i) => [...head(r), 'Xe', i.label, i.ok ? 'Tốt' : 'Lỗi', i.note ?? '']),
+      ]),
+    },
+  ];
+}
+
 function ChecksTab() {
+  const { message } = App.useApp();
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>([dayjs().subtract(30, 'day'), dayjs()]);
   const [vehicleId, setVehicleId] = useState<number | undefined>();
   const [filter, setFilter] = useState<'all' | 'loi' | 'unfit'>('all');
@@ -180,6 +254,22 @@ function ChecksTab() {
             { value: 'loi', label: 'Xe có lỗi' },
           ]}
         />
+        <Button
+          icon={<FileExcelOutlined style={{ color: '#15803d' }} />}
+          disabled={!data.length}
+          style={{ marginLeft: 'auto' }}
+          onClick={async () => {
+            const rangeText = range ? `${range[0].format('DD/MM/YYYY')} – ${range[1].format('DD/MM/YYYY')}` : 'Tất cả';
+            const filterText = [vehicleId && vehicles.find((v) => v.id === vehicleId)?.plateNumber, filter === 'unfit' ? 'Lái xe không đạt' : filter === 'loi' ? 'Xe có lỗi' : null].filter(Boolean).join(' · ') || null;
+            try {
+              await downloadExcel(`kiem-tra-truoc-chuyen_${range?.[0]?.format('YYYY-MM-DD') ?? 'tat-ca'}_${range?.[1]?.format('YYYY-MM-DD') ?? ''}.xlsx`, checkSheets(data, rangeText, filterText));
+            } catch (e) {
+              message.error(`Không xuất được Excel: ${(e as Error).message}`);
+            }
+          }}
+        >
+          Xuất Excel
+        </Button>
       </Flex>
       <Table<VehicleCheckRow>
         rowKey="id"
