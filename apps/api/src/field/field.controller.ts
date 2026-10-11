@@ -116,8 +116,8 @@ export class FieldController {
   }
 
   @Get('vehicle-checks')
-  checks(@Query() q: { from?: string; to?: string; driverId?: string; vehicleId?: string; defects?: string; alcohol?: string }) {
-    return this.field.listChecks({ from: q.from, to: q.to, driverId: num(q.driverId), vehicleId: num(q.vehicleId), defects: q.defects === '1', alcohol: q.alcohol === '1' });
+  checks(@Query() q: { from?: string; to?: string; driverId?: string; vehicleId?: string; defects?: string; unfit?: string }) {
+    return this.field.listChecks({ from: q.from, to: q.to, driverId: num(q.driverId), vehicleId: num(q.vehicleId), defects: q.defects === '1', unfit: q.unfit === '1' });
   }
 
   @Get('photos/:name')

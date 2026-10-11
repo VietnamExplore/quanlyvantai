@@ -45,14 +45,17 @@ class CheckItemDto {
   @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(300) note?: string | null;
 }
 
+/** Kiểm tra xe và lái xe trước chuyến */
 export class CreateVehicleCheckDto {
-  @IsInt() vehicleId: number;
-  @IsIn(['NHAN', 'TRA']) kind: 'NHAN' | 'TRA';
+  @IsInt() tripId: number;
   @IsOptional() @IsInt() @Min(0) @Max(9_999_999) odometerKm?: number | null;
   @IsOptional() @IsIn([0, 25, 50, 75, 100]) fuelLevel?: number | null;
+  /** Tình trạng kỹ thuật xe */
   @IsArray() @ValidateNested({ each: true }) @Type(() => CheckItemDto) items: CheckItemDto[];
+  /** Tình trạng lái xe */
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => CheckItemDto) driverItems?: CheckItemDto[];
   @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(2000) note?: string | null;
-  /** Kết quả đo nồng độ cồn khi nhận xe (mg/L khí thở) */
+  /** Kết quả đo nồng độ cồn (mg/L khí thở) */
   @IsOptional() @IsNumber({ maxDecimalPlaces: 3 }, { message: 'Nồng độ cồn không hợp lệ' }) @Min(0) @Max(5) alcoholMgL?: number | null;
 }
 

@@ -17,6 +17,7 @@ import { DocsCard } from './DocsCard';
 import { startTracking, TRACK_STATUSES } from '../gps';
 import { IncidentSheet, TripIncidents } from './IncidentSheet';
 import { TripCosts } from './TripCosts';
+import { PreCheckCard, PreCheckForm, preCheckPassed } from './PreCheck';
 
 const LEADER_ROLE: Record<string, string> = { HDV: 'Hướng dẫn viên', TRUONG_DOAN: 'Trưởng đoàn' };
 const GENDER: Record<string, string> = { NAM: 'Nam', NU: 'Nữ' };
@@ -59,6 +60,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
   const [incidentOpen, setIncidentOpen] = useState(false);
   const [incidentKey, setIncidentKey] = useState(0);
   const [allPax, setAllPax] = useState(false);
+  const [checkOpen, setCheckOpen] = useState(false);
   // Hỏi km đồng hồ: lúc bắt đầu đi đón / lúc hoàn thành / sửa km kết thúc
   const [kmMode, setKmMode] = useState<'start' | 'end' | 'fix' | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -116,8 +118,15 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
 
   function advance() {
     if (!trip || !next) return;
-    // Xe công ty: bắt đầu đi đón → ghi km bắt đầu; hoàn thành → nhập km kết thúc
-    if (trip.trackKm && next.status === 'DANG_DEN_DON' && trip.startKm == null) return setKmMode('start');
+    // Xe công ty: phải kiểm tra xe và lái xe trước chuyến (đạt) mới được bắt đầu
+    if (next.status === 'DANG_DEN_DON' && trip.preCheckRequired && !preCheckPassed(trip.preCheck)) {
+      return Alert.alert('Kiểm tra trước chuyến', trip.preCheck?.driverOk === false ? 'Lần kiểm tra gần nhất chưa đạt. Báo điều hành; khi đủ điều kiện thì kiểm tra lại.' : 'Cần đo nồng độ cồn, kiểm tra sức khỏe, giấy tờ và xe trước khi bắt đầu chuyến.', [
+        { text: 'Để sau', style: 'cancel' },
+        { text: 'Kiểm tra ngay', onPress: () => setCheckOpen(true) },
+      ]);
+    }
+    // Xe công ty: bắt đầu đi đón → ghi km bắt đầu (đã ghi lúc kiểm tra thì thôi); hoàn thành → nhập km kết thúc
+    if (trip.trackKm && next.status === 'DANG_DEN_DON' && trip.startKm == null && trip.preCheck?.odometerKm == null) return setKmMode('start');
     if (trip.trackKm && next.status === 'HOAN_THANH') return setKmMode('end');
     Alert.alert(next.label, next.confirm, [
       { text: 'Không', style: 'cancel' },
@@ -198,6 +207,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           {trip.status !== 'DA_GAN' && trip.status !== 'HUY' && <QuickAction icon="⚠️" label="Sự cố" tone="orange" onPress={() => setIncidentOpen(true)} />}
           {trip.dropoffAddress && <QuickAction icon="🏁" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
         </Card>
+
+        <PreCheckCard trip={trip} onOpen={() => setCheckOpen(true)} />
 
         {/* Tuyến đường: đón → lịch trình → trả */}
         <Card>
@@ -341,6 +352,7 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
       )}
 
       {signOpen && <SignScreen trip={trip} onClose={() => setSignOpen(false)} />}
+      {checkOpen && <PreCheckForm trip={trip} onClose={() => setCheckOpen(false)} onSaved={() => load()} />}
       <IncidentSheet visible={incidentOpen} tripId={trip.id} onClose={() => setIncidentOpen(false)} onSent={() => setIncidentKey((k) => k + 1)} />
       {choosing && <ContactChooser contact={choosing} onClose={() => setChoosing(null)} />}
       <KmModal trip={trip} mode={kmMode === 'start' ? 'start' : 'end'} visible={!!kmMode} busy={busy} onClose={() => setKmMode(null)} onSubmit={saveKm} />

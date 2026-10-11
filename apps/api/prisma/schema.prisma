@@ -537,6 +537,8 @@ model BookingTrip {
   signoffSvg             String?
   signoffNote            String?
   incidents              FieldIncident[]
+  /// Kiểm tra xe và lái xe trước chuyến
+  preChecks              VehicleCheck[]
 
   /// Văn phòng nhờ lái xe thu tiền khách giúp
   collectAmount    Decimal?       @db.Decimal(15, 0)
@@ -659,30 +661,38 @@ model FieldIncident {
 
 /// Check-in nhận xe / trả xe của lái xe: km đồng hồ, nhiên liệu, danh mục kiểm tra, ảnh xe
 model VehicleCheck {
-  id         Int      @id @default(autoincrement())
-  vehicleId  Int
-  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id])
-  driverId   Int
-  driver     Driver   @relation(fields: [driverId], references: [id])
-  /// NHAN | TRA
-  kind       String
-  odometerKm Int?
+  id           Int          @id @default(autoincrement())
+  vehicleId    Int
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
+  driverId     Int
+  driver       Driver       @relation(fields: [driverId], references: [id])
+  /// TRUOC_CHUYEN: kiểm tra xe và lái xe trước khi bắt đầu chuyến · NHAN | TRA: nhận / trả xe (bản cũ)
+  kind         String
+  /// Chuyến được kiểm tra (TRUOC_CHUYEN)
+  tripId       Int?
+  trip         BookingTrip? @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  /// Tình trạng lái xe: [{ key, label, ok, note }]
+  driverItems  Json         @default("[]")
+  /// Lái xe đủ điều kiện: không có cồn và mọi mục tình trạng lái xe đạt
+  driverOk     Boolean?
+  odometerKm   Int?
   /// Mức nhiên liệu (%): 0 | 25 | 50 | 75 | 100
-  fuelLevel  Int?
+  fuelLevel    Int?
   /// [{ key, label, ok, note }]
-  items      Json     @default("[]")
+  items        Json         @default("[]")
   /// Số hạng mục lỗi
-  defects    Int      @default(0)
-  photos     String[] @default([])
-  note       String?
+  defects      Int          @default(0)
+  photos       String[]     @default([])
+  note         String?
   /// Nồng độ cồn khi nhận xe (mg/L khí thở). Luật TTATGTĐB 2024 cấm lái xe có cồn → đạt khi = 0
   alcoholMgL   Float?
   alcoholOk    Boolean?
   /// Ảnh màn hình máy đo nồng độ cồn
   alcoholPhoto String?
-  createdAt  DateTime @default(now())
+  createdAt    DateTime     @default(now())
 
   @@index([vehicleId, createdAt])
+  @@index([tripId, createdAt])
   @@index([driverId, createdAt])
 }
 

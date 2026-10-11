@@ -1,5 +1,5 @@
 import { orderPath } from '../contracts/contracts.service';
-import { assertAlcoholOk } from '../field/field.service';
+import { assertPreCheck, lastPreCheck, preCheckRequired } from '../field/field.service';
 import {
   BadRequestException,
   Body,
@@ -204,6 +204,9 @@ export class DriverAppController {
       orderPath: trip.shuttleRunId ? orderPath('run', trip.shuttleRunId) : orderPath('trip', trip.id),
       trackKm: companyCar,
       suggestStartKm: companyCar && trip.startKm === null ? await this.odometer.previousEndKm({ id: trip.id, vehicleId: trip.vehicleId, pickupTime: trip.pickupTime }) : null,
+      // Kiểm tra xe và lái xe trước chuyến (xe công ty)
+      preCheckRequired: companyCar && (await preCheckRequired(this.prisma)),
+      preCheck: companyCar ? await lastPreCheck(this.prisma, trip.id) : null,
     };
   }
 
@@ -216,11 +219,12 @@ export class DriverAppController {
 
     // Xe công ty: ghi km đồng hồ lúc bắt đầu đi đón và lúc hoàn thành
     const vehicle = trip.vehicleId ? await this.prisma.vehicle.findUnique({ where: { id: trip.vehicleId }, select: { ownership: true } }) : null;
-    // Xe công ty: phải đo nồng độ cồn đạt (0 mg/L) trong ngày mới được bắt đầu chuyến
-    if (vehicle?.ownership === 'CONG_TY' && dto.status === TripStatus.DANG_DEN_DON) await assertAlcoholOk(this.prisma, this.driverId(user));
+    // Xe công ty: phải kiểm tra xe và lái xe trước chuyến (đạt) mới được bắt đầu chuyến
+    const pre = vehicle?.ownership === 'CONG_TY' && dto.status === TripStatus.DANG_DEN_DON ? await assertPreCheck(this.prisma, id) : null;
     if (vehicle?.ownership === 'CONG_TY') {
       if (dto.status === TripStatus.DANG_DEN_DON && trip.startKm === null) {
-        const startKm = dto.startKm ?? (await this.odometer.previousEndKm(trip));
+        // Km bắt đầu: lái xe nhập > km lúc kiểm tra trước chuyến > km kết thúc chuyến trước của xe
+        const startKm = dto.startKm ?? pre?.odometerKm ?? (await this.odometer.previousEndKm(trip));
         if (startKm === null) throw new BadRequestException('Nhập số km trên đồng hồ xe lúc bắt đầu chuyến');
         await this.odometer.record(id, { startKm });
       }

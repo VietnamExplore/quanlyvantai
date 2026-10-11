@@ -30,40 +30,63 @@ export function removeFieldPhoto(name: string) {
   if (resolve(path).startsWith(FIELD_DIR) && existsSync(path)) unlinkSync(path);
 }
 
-/** Bắt buộc đo nồng độ cồn khi nhận xe (cài đặt alcoholCheckRequired, mặc định bật) */
-export async function alcoholRequired(prisma: PrismaService) {
-  const row = await prisma.setting.findUnique({ where: { key: 'alcoholCheckRequired' } });
+/** Bắt buộc kiểm tra xe và lái xe trước khi bắt đầu chuyến xe công ty (cài đặt preTripCheckRequired, mặc định bật) */
+export async function preCheckRequired(prisma: PrismaService) {
+  const row = await prisma.setting.findUnique({ where: { key: 'preTripCheckRequired' } });
   return row?.value !== '0';
 }
 
 /** Mốc 0 giờ hôm nay theo giờ Việt Nam */
 const vnToday = () => new Date(`${new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)}T00:00:00+07:00`);
+const mgl = (v: number | null) => (v ?? 0).toLocaleString('vi-VN', { maximumFractionDigits: 3 });
 
-/** Lần đo nồng độ cồn gần nhất trong ngày (giờ VN) của lái xe */
-export function alcoholToday(prisma: PrismaService, driverId: number) {
-  return prisma.vehicleCheck.findFirst({
-    where: { driverId, kind: 'NHAN', alcoholOk: { not: null }, createdAt: { gte: vnToday() } },
-    select: { id: true, alcoholMgL: true, alcoholOk: true, createdAt: true },
-    orderBy: { createdAt: 'desc' },
-  });
+export const PRE_CHECK_SELECT = {
+  id: true,
+  createdAt: true,
+  alcoholMgL: true,
+  alcoholOk: true,
+  driverOk: true,
+  driverItems: true,
+  defects: true,
+  odometerKm: true,
+  fuelLevel: true,
+} satisfies Prisma.VehicleCheckSelect;
+
+/** Lần kiểm tra trước chuyến gần nhất của chuyến */
+export function lastPreCheck(prisma: PrismaService, tripId: number) {
+  return prisma.vehicleCheck.findFirst({ where: { tripId, kind: 'TRUOC_CHUYEN' }, select: PRE_CHECK_SELECT, orderBy: { createdAt: 'desc' } });
 }
 
 /**
- * Chặn bắt đầu chuyến xe công ty khi lái xe chưa đo nồng độ cồn hôm nay, hoặc lần đo gần nhất có cồn
+ * Chặn bắt đầu chuyến xe công ty khi chưa kiểm tra trước chuyến trong ngày, hoặc lần kiểm tra gần nhất lái xe không đủ điều kiện
  * (Luật Trật tự, an toàn giao thông đường bộ 2024: cấm điều khiển xe mà trong hơi thở có nồng độ cồn).
+ * Trả về lần kiểm tra đạt (để lấy km đồng hồ làm km bắt đầu chuyến).
  */
-export async function assertAlcoholOk(prisma: PrismaService, driverId: number) {
-  if (!(await alcoholRequired(prisma))) return;
-  const last = await alcoholToday(prisma, driverId);
-  if (!last) throw new BadRequestException('Chưa đo nồng độ cồn hôm nay. Vào tab Nhận xe → Nhận xe, đo nồng độ cồn rồi mới bắt đầu chuyến.');
-  if (!last.alcoholOk) {
+export async function assertPreCheck(prisma: PrismaService, tripId: number) {
+  if (!(await preCheckRequired(prisma))) return null;
+  const c = await lastPreCheck(prisma, tripId);
+  if (!c || c.createdAt < vnToday()) {
+    throw new BadRequestException(c ? 'Lần kiểm tra trước chuyến đã từ hôm trước. Bấm "Kiểm tra trước chuyến" để kiểm tra lại.' : 'Chưa kiểm tra xe và lái xe trước chuyến. Bấm "Kiểm tra trước chuyến" trong màn hình chuyến.');
+  }
+  if (!c.driverOk) {
     throw new BadRequestException(
-      `Lần đo nồng độ cồn gần nhất có cồn (${last.alcoholMgL?.toLocaleString('vi-VN')} mg/L) – không được lái xe. Liên hệ điều hành; đo lại đạt 0 mg/L ở tab Nhận xe mới bắt đầu được chuyến.`,
+      c.alcoholOk === false
+        ? `Kiểm tra trước chuyến: có nồng độ cồn (${mgl(c.alcoholMgL)} mg/L) – không được lái xe. Báo điều hành để đổi lái xe; đo lại đạt 0 mg/L thì kiểm tra lại.`
+        : 'Kiểm tra trước chuyến: lái xe chưa đủ điều kiện (sức khỏe / giấy tờ). Báo điều hành; khi đủ điều kiện thì kiểm tra lại.',
     );
   }
+  return c;
 }
 
-/** Danh mục kiểm tra khi nhận / trả xe */
+/** Tình trạng lái xe trước chuyến */
+export const DRIVER_CHECK_ITEMS = [
+  { key: 'suc_khoe', label: 'Sức khỏe tốt, tỉnh táo (không mệt mỏi, buồn ngủ)' },
+  { key: 'chat_cam', label: 'Không dùng thuốc, chất kích thích ảnh hưởng đến lái xe' },
+  { key: 'giay_to_lx', label: 'Mang đủ giấy phép lái xe, căn cước' },
+  { key: 'trang_phuc', label: 'Trang phục gọn gàng, lịch sự' },
+];
+
+/** Tình trạng kỹ thuật xe trước chuyến */
 export const VEHICLE_CHECK_ITEMS = [
   { key: 'giay_to', label: 'Giấy tờ xe (đăng ký, đăng kiểm, bảo hiểm, phù hiệu)' },
   { key: 'lop', label: 'Lốp xe, lốp dự phòng' },
@@ -75,6 +98,9 @@ export const VEHICLE_CHECK_ITEMS = [
   { key: 've_sinh', label: 'Vệ sinh trong xe' },
   { key: 'dung_cu', label: 'Dụng cụ, bình chữa cháy, búa thoát hiểm' },
 ];
+
+/** Chuyến lái xe được kiểm tra: đã gán / đã nhận, chưa bắt đầu */
+const PRE_CHECK_STATUSES: TripStatus[] = [TripStatus.DA_GAN, TripStatus.TAI_XE_NHAN];
 
 const incidentInclude = {
   driver: { select: { id: true, fullName: true, phone: true } },
@@ -315,59 +341,51 @@ export class FieldService {
     return updated;
   }
 
-  // ───── Nhận / trả xe ─────
+  // ───── Kiểm tra xe và lái xe trước chuyến ─────
 
-  /** Màn hình nhận / trả xe của lái xe: xe công ty, xe đang giữ (nhận mà chưa trả), danh mục kiểm tra, lịch sử */
+  /** Màn hình Kiểm tra của lái xe: danh mục kiểm tra, lịch sử */
   async driverChecks(driverId: number) {
-    const [driver, vehicles, recent, alcohol, required] = await Promise.all([
-      this.prisma.driver.findUniqueOrThrow({ where: { id: driverId }, select: { defaultVehicles: { select: { id: true } } } }),
-      this.prisma.vehicle.findMany({
-        where: { ownership: 'CONG_TY', status: { not: 'NGUNG_HOAT_DONG' } },
-        select: { id: true, plateNumber: true, odometerKm: true, vehicleType: { select: { name: true } } },
-        orderBy: { plateNumber: 'asc' },
-      }),
+    const [recent, required] = await Promise.all([
       this.prisma.vehicleCheck.findMany({
         where: { driverId },
-        include: { vehicle: { select: { id: true, plateNumber: true } } },
+        include: { vehicle: { select: { id: true, plateNumber: true } }, trip: { select: { id: true, pickupTime: true, booking: { select: { code: true } } } } },
         orderBy: { createdAt: 'desc' },
         take: 30,
       }),
-      alcoholToday(this.prisma, driverId),
-      alcoholRequired(this.prisma),
+      preCheckRequired(this.prisma),
     ]);
-    // Xe đang giữ: lần nhận gần nhất của mỗi xe chưa có lần trả sau đó
-    const holding: typeof recent = [];
-    const seen = new Set<number>();
-    for (const c of recent) {
-      if (seen.has(c.vehicleId)) continue;
-      seen.add(c.vehicleId);
-      // Đo có cồn: không giao xe
-      if (c.kind === 'NHAN' && c.alcoholOk !== false) holding.push(c);
-    }
-    return { vehicles, defaultVehicleId: driver.defaultVehicles[0]?.id ?? null, holding, recent, items: VEHICLE_CHECK_ITEMS, alcoholRequired: required, alcoholToday: alcohol };
+    return { recent, items: VEHICLE_CHECK_ITEMS, driverItems: DRIVER_CHECK_ITEMS, required };
   }
 
   async createCheck(driverId: number, userId: number, dto: CreateVehicleCheckDto) {
-    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: dto.vehicleId }, select: { id: true, plateNumber: true, ownership: true, odometerKm: true } });
-    if (!vehicle || vehicle.ownership !== 'CONG_TY') throw new NotFoundException('Không tìm thấy xe công ty');
+    const trip = await this.ownTrip(driverId, dto.tripId);
+    if (!PRE_CHECK_STATUSES.includes(trip.status)) throw new BadRequestException('Chỉ kiểm tra trước khi bắt đầu chuyến');
+    const vehicle = trip.vehicleId ? await this.prisma.vehicle.findUnique({ where: { id: trip.vehicleId }, select: { id: true, plateNumber: true, ownership: true, odometerKm: true } }) : null;
+    if (!vehicle || vehicle.ownership !== 'CONG_TY') throw new BadRequestException('Chuyến chưa gán xe công ty');
     if (dto.odometerKm != null && vehicle.odometerKm != null && dto.odometerKm + 50 < vehicle.odometerKm) {
       throw new BadRequestException(`Số km ${dto.odometerKm.toLocaleString('vi-VN')} nhỏ hơn số km đã ghi của xe (${vehicle.odometerKm.toLocaleString('vi-VN')}). Kiểm tra lại đồng hồ.`);
     }
-    const defects = dto.items.filter((i) => !i.ok);
-    const alcoholMgL = dto.kind === 'NHAN' ? (dto.alcoholMgL ?? null) : null;
-    if (dto.kind === 'NHAN' && alcoholMgL == null && (await alcoholRequired(this.prisma))) throw new BadRequestException('Nhập kết quả đo nồng độ cồn');
+    const alcoholMgL = dto.alcoholMgL ?? null;
+    if (alcoholMgL == null && (await preCheckRequired(this.prisma))) throw new BadRequestException('Nhập kết quả đo nồng độ cồn');
     const alcoholOk = alcoholMgL == null ? null : alcoholMgL === 0;
+    const driverItems = (dto.driverItems ?? []).map((i) => ({ key: i.key, label: i.label, ok: i.ok, note: i.note ?? null }));
+    const unfit = driverItems.filter((i) => !i.ok);
+    const driverOk = alcoholOk !== false && unfit.length === 0;
+    const defects = dto.items.filter((i) => !i.ok);
     const driver = await this.prisma.driver.findUniqueOrThrow({ where: { id: driverId }, select: { fullName: true } });
     const check = await this.prisma.$transaction(async (tx) => {
       const c = await tx.vehicleCheck.create({
         data: {
           vehicleId: vehicle.id,
           driverId,
-          kind: dto.kind,
+          tripId: trip.id,
+          kind: 'TRUOC_CHUYEN',
           odometerKm: dto.odometerKm ?? null,
           fuelLevel: dto.fuelLevel ?? null,
           items: dto.items.map((i) => ({ key: i.key, label: i.label, ok: i.ok, note: i.note ?? null })),
           defects: defects.length,
+          driverItems,
+          driverOk,
           note: dto.note ?? null,
           alcoholMgL,
           alcoholOk,
@@ -379,14 +397,16 @@ export class FieldService {
       }
       return c;
     });
-    if (alcoholOk === false) {
+    const link = `/field?tab=checks&check=${check.id}`;
+    if (!driverOk) {
+      const reasons = [...(alcoholOk === false ? [`Nồng độ cồn ${mgl(alcoholMgL)} mg/L`] : []), ...unfit.map((d) => (d.note ? `${d.label}: ${d.note}` : d.label))];
       await this.push.notifyRoles(
         [Role.ADMIN, Role.DIEU_HANH],
         {
-          type: 'ALCOHOL_POSITIVE',
-          title: `🚫 ${driver.fullName}: có nồng độ cồn ${alcoholMgL?.toLocaleString('vi-VN')} mg/L khi nhận xe ${vehicle.plateNumber}`,
-          body: 'Không giao xe. App lái xe đã khóa bắt đầu chuyến đến khi đo lại đạt 0 mg/L. Bố trí lái xe khác cho các chuyến của lái xe này.',
-          link: `/field?tab=checks&check=${check.id}`,
+          type: 'DRIVER_UNFIT',
+          title: `🚫 ${driver.fullName} không đủ điều kiện lái chuyến ${trip.booking.code}`,
+          body: [...reasons, 'App đã khóa bắt đầu chuyến – bố trí lái xe khác hoặc chờ kiểm tra lại.'].join(' · '),
+          link,
         },
         { exclude: userId },
       );
@@ -396,9 +416,9 @@ export class FieldService {
         [Role.ADMIN, Role.DIEU_HANH],
         {
           type: 'VEHICLE_DEFECT',
-          title: `🔧 ${vehicle.plateNumber}: ${defects.length} hạng mục lỗi khi ${dto.kind === 'NHAN' ? 'nhận' : 'trả'} xe`,
+          title: `🔧 ${vehicle.plateNumber}: ${defects.length} hạng mục lỗi khi kiểm tra trước chuyến ${trip.booking.code}`,
           body: [driver.fullName, ...defects.map((d) => (d.note ? `${d.label}: ${d.note}` : d.label))].join(' · '),
-          link: `/field?tab=checks&check=${check.id}`,
+          link,
         },
         { exclude: userId },
       );
@@ -410,7 +430,7 @@ export class FieldService {
     const c = await this.prisma.vehicleCheck.findFirst({ where: { id, driverId } });
     if (!c) {
       removeFieldPhoto(file.filename);
-      throw new NotFoundException('Không tìm thấy lần nhận / trả xe');
+      throw new NotFoundException('Không tìm thấy lần kiểm tra');
     }
     if (c.photos.length >= MAX_PHOTOS) {
       removeFieldPhoto(file.filename);
@@ -421,25 +441,29 @@ export class FieldService {
 
   /** Ảnh màn hình máy đo nồng độ cồn (một ảnh, gửi lại thì thay) */
   async setAlcoholPhoto(driverId: number, id: number, file: Express.Multer.File) {
-    const c = await this.prisma.vehicleCheck.findFirst({ where: { id, driverId, kind: 'NHAN' } });
+    const c = await this.prisma.vehicleCheck.findFirst({ where: { id, driverId } });
     if (!c) {
       removeFieldPhoto(file.filename);
-      throw new NotFoundException('Không tìm thấy lần nhận xe');
+      throw new NotFoundException('Không tìm thấy lần kiểm tra');
     }
     if (c.alcoholPhoto) removeFieldPhoto(c.alcoholPhoto);
     return this.prisma.vehicleCheck.update({ where: { id }, data: { alcoholPhoto: file.filename }, include: { vehicle: { select: { id: true, plateNumber: true } } } });
   }
 
-  listChecks(q: { from?: string; to?: string; driverId?: number; vehicleId?: number; defects?: boolean; alcohol?: boolean }) {
+  listChecks(q: { from?: string; to?: string; driverId?: number; vehicleId?: number; defects?: boolean; unfit?: boolean }) {
     return this.prisma.vehicleCheck.findMany({
       where: {
         ...(q.driverId && { driverId: q.driverId }),
         ...(q.vehicleId && { vehicleId: q.vehicleId }),
         ...(q.defects && { defects: { gt: 0 } }),
-        ...(q.alcohol && { alcoholOk: false }),
+        ...(q.unfit && { driverOk: false }),
         ...((q.from || q.to) && { createdAt: { ...(q.from && { gte: new Date(q.from) }), ...(q.to && { lt: new Date(new Date(q.to).getTime() + 86400_000) }) } }),
       },
-      include: { vehicle: { select: { id: true, plateNumber: true } }, driver: { select: { id: true, fullName: true, phone: true } } },
+      include: {
+        vehicle: { select: { id: true, plateNumber: true } },
+        driver: { select: { id: true, fullName: true, phone: true } },
+        trip: { select: { id: true, pickupTime: true, booking: { select: { id: true, code: true } } } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 500,
     });

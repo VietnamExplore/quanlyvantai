@@ -43,6 +43,10 @@ export interface Trip {
   suggestStartKm?: number | null;
   startKm?: number | null;
   endKm?: number | null;
+  /** Xe công ty: phải kiểm tra xe và lái xe trước khi bắt đầu chuyến */
+  preCheckRequired?: boolean;
+  /** Lần kiểm tra trước chuyến gần nhất */
+  preCheck?: PreCheck | null;
   vehicleType: { name: string };
   service?: { name: string };
   vehicle: { plateNumber: string } | null;
@@ -127,6 +131,19 @@ export interface Incident {
   trip: { id: number; booking: { code: string } } | null;
 }
 
+export interface PreCheck {
+  id: number;
+  createdAt: string;
+  alcoholMgL: number | null;
+  alcoholOk: boolean | null;
+  /** Lái xe đủ điều kiện (không cồn, sức khỏe, giấy tờ) */
+  driverOk: boolean | null;
+  driverItems: CheckItem[];
+  defects: number;
+  odometerKm: number | null;
+  fuelLevel: number | null;
+}
+
 export interface CheckItem {
   key: string;
   label: string;
@@ -137,29 +154,32 @@ export interface CheckItem {
 export interface VehicleCheck {
   id: number;
   vehicleId: number;
-  kind: 'NHAN' | 'TRA';
+  /** TRUOC_CHUYEN: kiểm tra trước chuyến · NHAN | TRA: nhận / trả xe (bản cũ) */
+  kind: 'TRUOC_CHUYEN' | 'NHAN' | 'TRA';
+  tripId: number | null;
   odometerKm: number | null;
   fuelLevel: number | null;
   items: CheckItem[];
   defects: number;
+  driverItems: CheckItem[];
+  driverOk: boolean | null;
   photos: string[];
   note: string | null;
-  /** Nồng độ cồn khi nhận xe (mg/L khí thở); đạt khi = 0 */
+  /** Nồng độ cồn (mg/L khí thở); đạt khi = 0 */
   alcoholMgL: number | null;
   alcoholOk: boolean | null;
   alcoholPhoto: string | null;
   createdAt: string;
   vehicle: { id: number; plateNumber: string };
+  trip?: { id: number; pickupTime: string; booking: { code: string } } | null;
 }
 
 export interface VehicleCheckState {
-  vehicles: { id: number; plateNumber: string; odometerKm: number | null; vehicleType: { name: string } }[];
-  defaultVehicleId: number | null;
-  holding: VehicleCheck[];
   recent: VehicleCheck[];
+  /** Danh mục kỹ thuật xe */
   items: { key: string; label: string }[];
-  /** Công ty bắt buộc đo nồng độ cồn khi nhận xe */
-  alcoholRequired: boolean;
-  /** Lần đo gần nhất hôm nay */
-  alcoholToday: { id: number; alcoholMgL: number | null; alcoholOk: boolean | null; createdAt: string } | null;
+  /** Danh mục tình trạng lái xe */
+  driverItems: { key: string; label: string }[];
+  /** Công ty bắt buộc kiểm tra trước chuyến xe công ty */
+  required: boolean;
 }

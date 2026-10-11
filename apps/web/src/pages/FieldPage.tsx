@@ -148,13 +148,13 @@ function IncidentsTab() {
 function ChecksTab() {
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>([dayjs().subtract(30, 'day'), dayjs()]);
   const [vehicleId, setVehicleId] = useState<number | undefined>();
-  const [filter, setFilter] = useState<'all' | 'loi' | 'con'>('all');
+  const [filter, setFilter] = useState<'all' | 'loi' | 'unfit'>('all');
   const { data: vehicles = [] } = useQuery({ queryKey: ['/vehicles', {}], queryFn: () => api<{ id: number; plateNumber: string; ownership: string }[]>('/vehicles') });
   const { data = [], isLoading } = useQuery({
     queryKey: ['/field/vehicle-checks', range?.[0]?.format('YYYY-MM-DD'), range?.[1]?.format('YYYY-MM-DD'), vehicleId, filter],
     queryFn: () =>
       api<VehicleCheckRow[]>('/field/vehicle-checks', {
-        query: { from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD'), vehicleId, defects: filter === 'loi' ? 1 : undefined, alcohol: filter === 'con' ? 1 : undefined },
+        query: { from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD'), vehicleId, defects: filter === 'loi' ? 1 : undefined, unfit: filter === 'unfit' ? 1 : undefined },
       }),
   });
   return (
@@ -176,8 +176,8 @@ function ChecksTab() {
           onChange={(v) => setFilter(v as typeof filter)}
           options={[
             { value: 'all', label: 'Tất cả' },
-            { value: 'loi', label: 'Có hạng mục lỗi' },
-            { value: 'con', label: 'Có nồng độ cồn' },
+            { value: 'unfit', label: 'Lái xe không đạt' },
+            { value: 'loi', label: 'Xe có lỗi' },
           ]}
         />
       </Flex>
@@ -189,10 +189,22 @@ function ChecksTab() {
         scroll={{ x: 900 }}
         pagination={{ pageSize: 30, hideOnSinglePage: true }}
         expandable={{
-          rowExpandable: (r) => r.items.length > 0 || r.photos.length > 0 || !!r.note || !!r.alcoholPhoto,
+          rowExpandable: (r) => r.items.length > 0 || (r.driverItems?.length ?? 0) > 0 || r.photos.length > 0 || !!r.note || !!r.alcoholPhoto,
           expandedRowRender: (r) => (
             <Space direction="vertical" size={8}>
+              {(r.driverItems?.length ?? 0) > 0 && (
+                <Flex gap={6} wrap>
+                  <b>Lái xe:</b>
+                  {r.driverItems.map((i) => (
+                    <Tag key={i.key} color={i.ok ? 'green' : 'red'}>
+                      {i.ok ? '✔' : '✖'} {i.label}
+                      {i.note ? `: ${i.note}` : ''}
+                    </Tag>
+                  ))}
+                </Flex>
+              )}
               <Flex gap={6} wrap>
+                <b>Xe:</b>
                 {r.items.map((i) => (
                   <Tag key={i.key} color={i.ok ? 'green' : 'red'}>
                     {i.ok ? '✔' : '✖'} {i.label}
@@ -213,11 +225,32 @@ function ChecksTab() {
         }}
         columns={[
           { title: 'Thời điểm', dataIndex: 'createdAt', width: 140, render: fmt },
-          { title: 'Loại', dataIndex: 'kind', width: 90, render: (v) => (v === 'NHAN' ? <Tag color="blue">Nhận xe</Tag> : <Tag color="purple">Trả xe</Tag>) },
+          {
+            title: 'Chuyến',
+            width: 140,
+            render: (_, r) =>
+              r.trip ? (
+                <Link to={`/bookings/${r.trip.booking.id}`} onClick={(e) => e.stopPropagation()}>
+                  {r.trip.booking.code}
+                </Link>
+              ) : r.kind === 'NHAN' ? (
+                <Tag color="blue">Nhận xe</Tag>
+              ) : r.kind === 'TRA' ? (
+                <Tag color="purple">Trả xe</Tag>
+              ) : (
+                '—'
+              ),
+          },
           { title: 'Xe', width: 120, render: (_, r) => <b>{r.vehicle.plateNumber}</b> },
           { title: 'Lái xe', render: (_, r) => r.driver.fullName },
           { title: 'Km đồng hồ', dataIndex: 'odometerKm', width: 120, align: 'right', render: (v) => (v == null ? '' : v.toLocaleString('vi-VN')) },
           { title: 'Nhiên liệu', dataIndex: 'fuelLevel', width: 100, align: 'center', render: (v) => (v == null ? '' : FUEL_LABEL[v] ?? `${v}%`) },
+          {
+            title: 'Lái xe',
+            dataIndex: 'driverOk',
+            width: 120,
+            render: (v: boolean | null) => (v == null ? '' : v ? <Tag color="green">Đủ điều kiện</Tag> : <Tag color="red">Không đạt</Tag>),
+          },
           {
             title: 'Nồng độ cồn',
             dataIndex: 'alcoholMgL',
@@ -232,8 +265,8 @@ function ChecksTab() {
               ),
           },
           {
-            title: 'Kiểm tra',
-            width: 200,
+            title: 'Kỹ thuật xe',
+            width: 140,
             render: (_, r) =>
               r.defects ? (
                 <Tag color="red">{r.defects} hạng mục lỗi</Tag>
@@ -248,7 +281,7 @@ function ChecksTab() {
   );
 }
 
-/** Vận hành hiện trường: sự cố lái xe báo, nhận / trả xe đầu – cuối ca */
+/** Vận hành hiện trường: sự cố lái xe báo, kiểm tra xe và lái xe trước chuyến */
 export default function FieldPage() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'checks' ? 'checks' : 'incidents';
@@ -277,11 +310,11 @@ export default function FieldPage() {
             ),
             children: <IncidentsTab />,
           },
-          { key: 'checks', label: 'Nhận / trả xe', children: <ChecksTab /> },
+          { key: 'checks', label: 'Kiểm tra trước chuyến', children: <ChecksTab /> },
         ]}
       />
       <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12.5 }}>
-        Lái xe báo sự cố và nhận / trả xe trên app; sự cố mới và xe có hạng mục lỗi được báo qua chuông thông báo.
+        Lái xe báo sự cố và kiểm tra xe, lái xe (nồng độ cồn, sức khỏe, giấy tờ, kỹ thuật xe) trước mỗi chuyến xe công ty trên app; sự cố mới, lái xe không đạt và xe có lỗi được báo qua chuông thông báo.
       </Typography.Paragraph>
     </Card>
   );

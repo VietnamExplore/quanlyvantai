@@ -48,7 +48,13 @@ export interface FieldIncident {
 
 export interface VehicleCheckRow {
   id: number;
-  kind: 'NHAN' | 'TRA';
+  /** TRUOC_CHUYEN: kiểm tra xe và lái xe trước chuyến · NHAN | TRA: nhận / trả xe (bản cũ) */
+  kind: 'TRUOC_CHUYEN' | 'NHAN' | 'TRA';
+  /** Tình trạng lái xe */
+  driverItems: { key: string; label: string; ok: boolean; note: string | null }[];
+  /** Lái xe đủ điều kiện (không cồn, sức khỏe, giấy tờ) */
+  driverOk: boolean | null;
+  trip: { id: number; pickupTime: string; booking: { id: number; code: string } } | null;
   odometerKm: number | null;
   fuelLevel: number | null;
   items: { key: string; label: string; ok: boolean; note: string | null }[];

@@ -255,16 +255,16 @@ export default function SettingsPage() {
           </Col>
           <Col xs={24} md={12}>
             <Form.Item
-              name="alcoholCheckRequired"
-              label="Đo nồng độ cồn lái xe"
+              name="preTripCheckRequired"
+              label="Kiểm tra trước chuyến (xe công ty)"
               // Chưa cài = bắt buộc
               getValueProps={(v) => ({ value: v === '0' ? '0' : '1' })}
-              tooltip="Bắt buộc: khi Nhận xe trên app, lái xe phải nhập kết quả đo và chụp ảnh máy đo; chưa đo đạt (0 mg/L) trong ngày thì không bắt đầu được chuyến xe công ty. Đo có cồn: không giao xe, báo ngay cho điều hành."
+              tooltip="Bắt buộc: trước mỗi chuyến xe công ty, lái xe kiểm tra trên app – đo nồng độ cồn (chụp ảnh máy đo), sức khỏe, giấy tờ, km, nhiên liệu, kỹ thuật xe. Chưa kiểm tra trong ngày hoặc lái xe không đạt (có cồn > 0 mg/L…) thì không bắt đầu được chuyến; điều hành được báo ngay."
             >
               <Select
                 options={[
-                  { value: '1', label: 'Bắt buộc trước khi chạy xe công ty' },
-                  { value: '0', label: 'Không bắt buộc (lái xe tự ghi nếu có đo)' },
+                  { value: '1', label: 'Bắt buộc trước mỗi chuyến' },
+                  { value: '0', label: 'Không bắt buộc (lái xe tự kiểm tra nếu muốn)' },
                 ]}
               />
             </Form.Item>

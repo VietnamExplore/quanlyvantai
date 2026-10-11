@@ -34,7 +34,7 @@ const POLL_MS = 30_000;
 /** Thanh tab dưới cùng */
 const TABS: { key: Tab; icon: string; label: string; title: string }[] = [
   { key: 'trips', icon: '🚐', label: 'Chuyến', title: 'Chuyến của tôi' },
-  { key: 'vehicle', icon: '🔑', label: 'Nhận xe', title: 'Nhận / trả xe' },
+  { key: 'vehicle', icon: '🛡️', label: 'Kiểm tra', title: 'Kiểm tra trước chuyến' },
   { key: 'fuel', icon: '⛽', label: 'Xăng dầu', title: 'Xăng dầu' },
   { key: 'earnings', icon: '💰', label: 'Thu nhập', title: 'Thu nhập của tôi' },
 ];
