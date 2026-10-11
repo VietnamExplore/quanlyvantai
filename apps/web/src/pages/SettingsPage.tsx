@@ -259,7 +259,7 @@ export default function SettingsPage() {
               label="Kiểm tra trước chuyến (xe công ty)"
               // Chưa cài = bắt buộc
               getValueProps={(v) => ({ value: v === '0' ? '0' : '1' })}
-              tooltip="Bắt buộc: trước mỗi chuyến xe công ty, lái xe kiểm tra trên app – đo nồng độ cồn (chụp ảnh máy đo), sức khỏe, giấy tờ, km, nhiên liệu, kỹ thuật xe. Chưa kiểm tra trong ngày hoặc lái xe không đạt (có cồn > 0 mg/L…) thì không bắt đầu được chuyến; điều hành được báo ngay."
+              tooltip="Bắt buộc: trước mỗi chuyến xe công ty, lái xe kiểm tra trên app – đo nồng độ cồn (ảnh máy đo không bắt buộc), sức khỏe, giấy tờ, km, nhiên liệu, kỹ thuật xe. Chưa kiểm tra trong ngày hoặc lái xe không đạt (có cồn > 0 mg/L…) thì không bắt đầu được chuyến; điều hành được báo ngay."
             >
               <Select
                 options={[

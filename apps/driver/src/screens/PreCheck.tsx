@@ -80,10 +80,7 @@ export function PreCheckForm({ trip, onClose, onSaved }: { trip: Trip; onClose: 
 
   const save = async () => {
     if (!state) return;
-    if (state.required) {
-      if (alcoholVal == null) return Alert.alert('Đo nồng độ cồn', 'Thổi máy đo rồi nhập kết quả (mg/L). Không có cồn bấm "0 – Không có cồn".');
-      if (!alcoholPhoto.length) return Alert.alert('Chụp ảnh máy đo', 'Chụp màn hình máy đo nồng độ cồn để làm bằng chứng.');
-    }
+    if (state.required && alcoholVal == null) return Alert.alert('Đo nồng độ cồn', 'Thổi máy đo rồi nhập kết quả (mg/L). Không có cồn bấm "0 – Không có cồn".');
     if (alcoholVal != null && (!Number.isFinite(alcoholVal) || alcoholVal < 0 || alcoholVal > 5)) return Alert.alert('Kết quả đo không hợp lệ', 'Nhập số mg/L, ví dụ 0 hoặc 0,15');
     const odometerKm = odo.trim() ? Number(odo.replace(/\D/g, '')) : null;
     if (odometerKm == null) return Alert.alert('Nhập số km trên đồng hồ xe');
@@ -140,7 +137,7 @@ export function PreCheckForm({ trip, onClose, onSaved }: { trip: Trip; onClose: 
                   <Text style={ui.label}>Kết quả đo (mg/L khí thở)</Text>
                   <TextInput style={ui.input} keyboardType="decimal-pad" value={alcohol} onChangeText={setAlcohol} placeholder="Ví dụ 0 hoặc 0,15" />
                   {positive && <Text style={s.bad}>🚫 Có nồng độ cồn: không được lái xe. Kết quả vẫn được gửi về điều hành.</Text>}
-                  <Text style={[ui.label, { marginTop: 6 }]}>Ảnh màn hình máy đo</Text>
+                  <Text style={[ui.label, { marginTop: 6 }]}>Ảnh màn hình máy đo (không bắt buộc)</Text>
                   <PhotoStrip photos={alcoholPhoto} onChange={setAlcoholPhoto} max={1} title="Ảnh máy đo nồng độ cồn" />
                   <Text style={[s.group, { marginTop: 14 }]}>Tình trạng lái xe</Text>
                   <CheckList items={driverItems} onChange={patch(setDriverItems)} okText="Đạt" badText="Không" />

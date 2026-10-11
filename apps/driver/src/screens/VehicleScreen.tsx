@@ -62,7 +62,7 @@ export function VehicleScreen() {
         <Text style={s.text}>
           Mỗi chuyến xe công ty, trước khi bấm Bắt đầu: mở chuyến → <Text style={{ fontWeight: '800' }}>Kiểm tra trước chuyến</Text>.
         </Text>
-        <Text style={s.text}>• Lái xe: đo nồng độ cồn (chụp ảnh máy đo), sức khỏe, giấy tờ.</Text>
+        <Text style={s.text}>• Lái xe: đo nồng độ cồn (ảnh máy đo nếu có), sức khỏe, giấy tờ.</Text>
         <Text style={s.text}>• Xe: km đồng hồ, nhiên liệu, kỹ thuật, ảnh xe.</Text>
         <Text style={s.text}>Có nồng độ cồn hoặc chưa đủ sức khỏe: không được bắt đầu chuyến, điều hành được báo ngay.</Text>
         {!state.required && <Text style={[s.text, { color: colors.muted }]}>Công ty hiện không bắt buộc kiểm tra, nhưng nên làm để đảm bảo an toàn.</Text>}
