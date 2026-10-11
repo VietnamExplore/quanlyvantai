@@ -6,6 +6,7 @@ import { AuthUser } from '../auth/auth.decorators';
 import { BookingsService } from '../bookings/bookings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
+import { ShuttleService } from '../shuttle/shuttle.service';
 
 /** Cài đặt kết nối website (tiền tố "sys." – không trả về trang Thông tin công ty) */
 const K = {
@@ -31,6 +32,60 @@ export const WOO_STATUS: Record<string, string> = {
   failed: 'Thanh toán lỗi',
   'checkout-draft': 'Nháp',
 };
+
+/** Bỏ dấu, chữ thường để so khớp tên sản phẩm / trường */
+const norm = (v: string) =>
+  v
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+const CITY: [string, RegExp][] = [
+  ['DN', /da ?nang/],
+  ['HA', /hoi ?an/],
+  ['HUE', /\bhue\b/],
+];
+/** Sản phẩm bus trên website → mã tuyến xe ghép trong phần mềm */
+const BUS_ROUTES: Record<string, string> = { 'DN>HA': 'VNEBUS02', 'HA>DN': 'VNEBUS01', BANA: 'VNEBUS03', 'DN>HUE': 'VNEBUS04', 'HUE>DN': 'VNEBUS05' };
+
+/** Khóa tuyến bus theo tên sản phẩm (thứ tự xuất hiện của 2 thành phố = chiều đi); không phải bus của tuyến có trong phần mềm thì null */
+export function busKey(name: string) {
+  const n = norm(name);
+  if (!/\bbus\b/.test(n) || /limousine|sleeper|ha noi|ha long|da lat|nha trang/.test(n)) return null;
+  if (/ba ?na/.test(n)) return 'BANA';
+  const hits = CITY.map(([k, re]) => [k, n.search(re)] as const)
+    .filter(([, i]) => i >= 0)
+    .sort((a, b) => a[1] - b[1])
+    .map(([k]) => k);
+  return hits.length === 2 ? `${hits[0]}>${hits[1]}` : null;
+}
+
+/** Loại xe khách chọn ("Xe 7 chỗ", "Kia Carnival"…) → mã loại xe */
+export function vehicleCode(label: string) {
+  const n = norm(label);
+  if (/carnival/.test(n)) return 'VIP7';
+  if (/limousine/.test(n)) return /11|12/.test(n) ? 'LIMO11' : 'LIMO9';
+  const m = n.match(/(\d+)\s*(cho|seat)/);
+  return m ? `XE${m[1]}` : null;
+}
+
+/** "03-10-2026" + "10:30 AM" / "16:00" → ISO giờ Việt Nam */
+export function vnTime(date: string, time: string) {
+  const d = date.trim().match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  const t = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM|SA|CH)?$/i);
+  if (!d || !t) return null;
+  let h = Number(t[1]);
+  const ap = t[3]?.toUpperCase();
+  if ((ap === 'PM' || ap === 'CH') && h < 12) h += 12;
+  if ((ap === 'AM' || ap === 'SA') && h === 12) h = 0;
+  if (h > 23 || Number(t[2]) > 59) return null;
+  return `${d[3]}-${d[2].padStart(2, '0')}-${d[1].padStart(2, '0')}T${String(h).padStart(2, '0')}:${t[2]}:00+07:00`;
+}
+
+type TripPlan = Record<string, unknown> & { passengers: number; unitPrice: number };
 
 /** Tài khoản hệ thống đứng tên các booking lấy từ website (không đăng nhập được) */
 const BOT_USERNAME = '__website__';
@@ -92,6 +147,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly bookings: BookingsService,
     private readonly push: PushService,
+    private readonly shuttle: ShuttleService,
   ) {}
 
   onModuleInit() {
@@ -266,21 +322,149 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
     if (rec.bookingId || !IMPORT_STATUSES.includes(o.status)) return false;
 
     const bot = await this.botUser();
-    const booking = await this.bookings.create(
-      {
-        customerRef: `WEB-${o.number}`,
-        contactName: customer,
-        contactPhone: (o.billing.phone ?? '').trim(),
-        source: 'WEBSITE',
-        docLanguage: this.language(o),
-        internalNotes: this.notes(o, siteUrl),
-        trips: [],
-      } as unknown as Parameters<BookingsService['create']>[0],
-      bot,
-      BookingStatus.NHAP,
-    );
+    const plan = await this.planTrips(o);
+    const base = {
+      customerRef: `WEB-${o.number}`,
+      contactName: customer,
+      contactPhone: (o.billing.phone ?? '').trim(),
+      source: 'WEBSITE',
+      docLanguage: this.language(o),
+    };
+    const create = (trips: TripPlan[], extra: string[]) =>
+      this.bookings.create(
+        { ...base, internalNotes: [this.notes(o, siteUrl), ...extra].join('\n'), trips } as unknown as Parameters<BookingsService['create']>[0],
+        bot,
+        BookingStatus.NHAP,
+      );
+    const summary = [
+      plan.trips.length ? `Đã tự tạo ${plan.trips.length} chuyến từ đơn – kiểm tra rồi gán xe.` : null,
+      ...plan.skipped.map((x) => `Chưa tự tạo chuyến: ${x}`),
+    ].filter((x): x is string => !!x);
+    let booking: Awaited<ReturnType<BookingsService['create']>>;
+    try {
+      booking = await create(plan.trips, summary);
+    } catch (e) {
+      // Không tạo được chuyến (hết ghế, chuyến ghép đã hủy…): vẫn nhận booking, điều hành thêm chuyến tay
+      booking = await create([], [`Không tự tạo được chuyến: ${(e as Error).message}`, ...plan.skipped.map((x) => `Chưa tự tạo chuyến: ${x}`)]);
+    }
     await this.prisma.websiteOrder.update({ where: { id: rec.id }, data: { bookingId: booking.id } });
     return true;
+  }
+
+  /** Chuyến xe ghép đúng tuyến + giờ: lấy chuyến theo lịch, chưa có thì tạo thêm (website bán cả giờ lẻ) */
+  private async runFor(routeId: number, iso: string) {
+    const departAt = new Date(iso);
+    const find = () => this.prisma.shuttleRun.findFirst({ where: { routeId, departAt, status: { not: 'HUY' } }, select: { id: true } });
+    let run = await find();
+    if (!run) {
+      const ymd = iso.slice(0, 10);
+      await this.shuttle.ensureRuns(ymd, ymd).catch(() => undefined);
+      run = await find();
+    }
+    if (!run) {
+      await this.shuttle.createRun({ routeId, departAt: departAt.toISOString(), note: 'Tạo thêm theo đơn đặt trên website' }).catch(() => undefined);
+      run = await find();
+    }
+    return run?.id ?? null;
+  }
+
+  /**
+   * Lập chuyến từ các sản phẩm của đơn: bus Đà Nẵng ↔ Hội An / Huế, Đà Nẵng – Bà Nà → chuyến xe ghép đúng tuyến, ngày, giờ;
+   * xe riêng có "Loại xe" → chuyến đưa đón theo tuyến. Tour, vé, tuyến chưa có trong phần mềm → để điều hành xử lý.
+   */
+  private async planTrips(o: WooOrder) {
+    const trips: TripPlan[] = [];
+    const skipped: string[] = [];
+    const [routes, types, services] = await Promise.all([
+      this.prisma.shuttleRoute.findMany({ where: { isActive: true, code: { in: Object.values(BUS_ROUTES) } }, include: { stops: { where: { isActive: true }, orderBy: { seq: 'asc' } } } }),
+      this.prisma.vehicleType.findMany({ where: { isActive: true }, select: { id: true, code: true } }),
+      this.prisma.service.findMany({ where: { isActive: true }, select: { code: true } }),
+    ]);
+    const hasService = (c: string) => services.some((x) => x.code === c);
+    const shuttleGroups = new Map<string, TripPlan>();
+    for (const item of o.line_items) {
+      const name = item.name.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      const short = name.split(' - ')[0].trim();
+      const meta = (label: string) => {
+        const m = (item.meta_data ?? []).find((x) => norm(x.display_key ?? x.key) === label);
+        const v = m ? (m.display_value ?? m.value) : null;
+        return v == null || typeof v === 'object' ? '' : String(v).replace(/<[^>]+>/g, '').trim();
+      };
+      const iso = vnTime(meta('ngay di'), meta('gio di'));
+      const pickup = meta('noi don') || meta('khu vuc don');
+      const dropoff = meta('noi tra');
+      const child = /tre em|child|kid/.test(norm(meta('nguoi')));
+      const total = Math.round(Number(item.total) || 0);
+      const qty = Math.max(1, Math.round(item.quantity || 1));
+      if (!iso) {
+        skipped.push(`${short} (không đọc được ngày / giờ đi)`);
+        continue;
+      }
+      const bus = busKey(name);
+      if (bus) {
+        const route = routes.find((r) => r.code === BUS_ROUTES[bus]);
+        const pick = route?.stops.find((x) => x.canPickup);
+        const drop = route && pick ? [...route.stops].reverse().find((x) => x.canDropoff && x.seq > pick.seq) : undefined;
+        if (!route || !pick || !drop || !hasService('XE_GHEP')) {
+          skipped.push(`${short} (chưa có tuyến xe ghép tương ứng)`);
+          continue;
+        }
+        const runId = await this.runFor(route.id, iso);
+        if (!runId) {
+          skipped.push(`${short} (không tạo được chuyến xe ghép ${iso.slice(11, 16)})`);
+          continue;
+        }
+        const key = `${runId}`;
+        const g = shuttleGroups.get(key);
+        if (g) {
+          g.passengers += qty;
+          g.childCount = Number(g.childCount ?? 0) + (child ? qty : 0);
+          g.unitPrice += total;
+        } else {
+          shuttleGroups.set(key, {
+            serviceType: 'XE_GHEP',
+            pickupTime: iso,
+            pickupAddress: pickup || pick.name,
+            dropoffAddress: dropoff || drop.name,
+            passengers: qty,
+            childCount: child ? qty : 0,
+            vehicleTypeId: route.vehicleTypeId,
+            unitPrice: total,
+            shuttleRunId: runId,
+            shuttlePickupStopId: pick.id,
+            shuttleDropoffStopId: drop.id,
+            notes: `Đơn website #${o.number}: ${short}${pickup ? ` · khách đón tại ${pickup}` : ''}`,
+          });
+        }
+        continue;
+      }
+      const vLabel = meta('loai xe');
+      const isCar = /private car|xe rieng|luxury car|car to|car from/.test(norm(name)) || !!vLabel;
+      if (isCar) {
+        const code = vehicleCode(vLabel);
+        const type = types.find((t) => t.code === code);
+        const service = /san bay|airport/.test(norm(name)) && hasService('DON_TIEN_SAN_BAY') ? 'DON_TIEN_SAN_BAY' : 'THEO_TUYEN';
+        if (!type || !hasService(service)) {
+          skipped.push(`${short} (loại xe "${vLabel || 'chưa chọn'}" chưa khớp danh mục loại xe)`);
+          continue;
+        }
+        trips.push({
+          serviceType: service,
+          pickupTime: iso,
+          pickupAddress: pickup || short,
+          dropoffAddress: dropoff || null,
+          passengers: 1,
+          vehicleTypeId: type.id,
+          unitPrice: total,
+          itinerary: [short, meta('khu vuc don')].filter(Boolean).join(' · '),
+          notes: `Đơn website #${o.number}${qty > 1 ? ` · ${qty} xe` : ''} · số khách chưa rõ, xác nhận với khách`,
+        });
+        continue;
+      }
+      skipped.push(`${short} (tour / vé – điều hành xử lý)`);
+    }
+    trips.unshift(...shuttleGroups.values());
+    return { trips, skipped };
   }
 
   /** Ngôn ngữ giấy tờ: theo ngôn ngữ trang khách đặt (TranslatePress / WPML), không có thì theo quốc gia */
@@ -312,7 +496,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       o.customer_note?.trim() ? `Khách ghi chú: ${o.customer_note.trim()}` : null,
       [o.billing.email && `Email: ${o.billing.email}`, o.billing.country && `Quốc gia: ${o.billing.country}`, [o.billing.address_1, o.billing.city].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || null,
       admin ? `Xem đơn trên website: ${admin}` : null,
-      'Việc cần làm: thêm chuyến (ngày giờ đón, điểm đón / trả, loại xe), ghi nhận thanh toán, rồi xác nhận booking.',
+      'Việc cần làm: kiểm tra chuyến (thêm chuyến còn thiếu), ghi nhận thanh toán, xác nhận booking rồi gán xe.',
     ]
       .filter(Boolean)
       .join('\n');
