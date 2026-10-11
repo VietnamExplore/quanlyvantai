@@ -12,8 +12,21 @@ export const startOfVnDay = (ymd: string) => new Date(`${ymd}T00:00:00+07:00`);
 export const endOfVnDay = (ymd: string) => new Date(`${ymd}T23:59:59.999+07:00`);
 export const isYmd = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
-/** Tỷ lệ đóng bảo hiểm mặc định (BHXH + BHYT + BHTN): lái xe 8 + 1,5 + 1 = 10,5%; công ty 17,5 + 3 + 1 = 21,5% */
-export const INSURANCE_DEFAULT = { employee: 10.5, employer: 21.5 };
+/** Các loại bảo hiểm bắt buộc */
+export const INSURANCE_KINDS = ['bhxh', 'bhyt', 'bhtn'] as const;
+export type InsuranceKind = (typeof INSURANCE_KINDS)[number];
+export type InsuranceParts = Record<InsuranceKind, number>;
+/**
+ * Tỷ lệ đóng mặc định (%) trên mức lương đóng bảo hiểm – cài đặt insuranceRate_<lai_xe|cong_ty>_<bhxh|bhyt|bhtn>:
+ * lái xe BHXH 8, BHYT 1,5, BHTN 1 (= 10,5%); công ty BHXH 17,5 (gồm TNLĐ-BNN 0,5), BHYT 3, BHTN 1 (= 21,5%).
+ */
+export const INSURANCE_DEFAULT: { employee: InsuranceParts; employer: InsuranceParts } = {
+  employee: { bhxh: 8, bhyt: 1.5, bhtn: 1 },
+  employer: { bhxh: 17.5, bhyt: 3, bhtn: 1 },
+};
+export const INSURANCE_SETTING_KEYS = INSURANCE_KINDS.flatMap((k) => [`insuranceRate_lai_xe_${k}`, `insuranceRate_cong_ty_${k}`]);
+const zeroParts = (): InsuranceParts => ({ bhxh: 0, bhyt: 0, bhtn: 0 });
+const partsSum = (p: InsuranceParts) => p.bhxh + p.bhyt + p.bhtn;
 
 const subtotal = (trips: { amount: Prisma.Decimal; status: TripStatus }[]) =>
   trips.filter((t) => t.status !== TripStatus.HUY).reduce((s, t) => s + Number(t.amount), 0);
@@ -21,7 +34,7 @@ const subtotal = (trips: { amount: Prisma.Decimal; status: TripStatus }[]) =>
 /**
  * Lương lái xe công ty trong khoảng ngày = lương cứng + % doanh số; thực nhận = lương − bảo hiểm lái xe đóng + hoàn ứng − tạm ứng.
  * - Bảo hiểm (BHXH, BHYT, BHTN) tính trên mức lương đóng bảo hiểm của tháng (DriverSalary.insuranceSalary):
- *   lái xe đóng insuranceEmployeePercent (mặc định 10,5%) – trừ vào lương; công ty đóng insuranceEmployerPercent (mặc định 21,5%) – chi phí công ty.
+ *   tính riêng từng loại BHXH / BHYT / BHTN: lái xe đóng (mặc định 8 / 1,5 / 1%) – trừ vào lương; công ty đóng (17,5 / 3 / 1%) – chi phí công ty.
  *   Kỳ không trọn tháng thì tính theo số ngày như lương cứng.
  * - Lương cứng tính theo tháng; kỳ không trọn tháng thì tính theo số ngày (lương × số ngày / số ngày của tháng).
  * - Doanh số = doanh thu (đã phân bổ giảm giá, chưa VAT) các chuyến lái xe đã HOÀN THÀNH
@@ -101,14 +114,18 @@ export class PayrollService {
         select: { id: true, code: true, amount: true, date: true, driverId: true, advanceRequest: { select: { id: true, reason: true } } },
         orderBy: { date: 'asc' },
       }),
-      this.prisma.setting.findMany({ where: { key: { in: ['insuranceEmployeePercent', 'insuranceEmployerPercent'] } } }),
+      this.prisma.setting.findMany({ where: { key: { in: INSURANCE_SETTING_KEYS } } }),
     ]);
     const pctSetting = (key: string, def: number) => {
       const v = Number(insRows.find((r) => r.key === key)?.value);
       return insRows.some((r) => r.key === key && r.value.trim() !== '') && Number.isFinite(v) && v >= 0 && v <= 100 ? v : def;
     };
-    const insEmpPct = pctSetting('insuranceEmployeePercent', INSURANCE_DEFAULT.employee);
-    const insCoPct = pctSetting('insuranceEmployerPercent', INSURANCE_DEFAULT.employer);
+    const rates = {
+      employee: Object.fromEntries(INSURANCE_KINDS.map((k) => [k, pctSetting(`insuranceRate_lai_xe_${k}`, INSURANCE_DEFAULT.employee[k])])) as InsuranceParts,
+      employer: Object.fromEntries(INSURANCE_KINDS.map((k) => [k, pctSetting(`insuranceRate_cong_ty_${k}`, INSURANCE_DEFAULT.employer[k])])) as InsuranceParts,
+    };
+    const insEmpPct = partsSum(rates.employee);
+    const insCoPct = partsSum(rates.employer);
 
     // Các tháng (có thể chỉ một phần tháng) nằm trong kỳ
     const months: { month: string; from: string; to: string; days: number; daysInMonth: number }[] = [];
@@ -167,8 +184,11 @@ export class PayrollService {
         const total = baseAmount + commission;
         // Bảo hiểm theo mức lương đóng bảo hiểm của tháng (kỳ không trọn tháng tính theo ngày)
         const insuranceSalary = rate ? Number(rate.insuranceSalary) : 0;
-        const insuranceEmployee = Math.round((insuranceSalary * insEmpPct * m.days) / 100 / m.daysInMonth);
-        const insuranceEmployer = Math.round((insuranceSalary * insCoPct * m.days) / 100 / m.daysInMonth);
+        const part = (pct: number) => Math.round((insuranceSalary * pct * m.days) / 100 / m.daysInMonth);
+        const employeeParts = Object.fromEntries(INSURANCE_KINDS.map((k) => [k, part(rates.employee[k])])) as InsuranceParts;
+        const employerParts = Object.fromEntries(INSURANCE_KINDS.map((k) => [k, part(rates.employer[k])])) as InsuranceParts;
+        const insuranceEmployee = partsSum(employeeParts);
+        const insuranceEmployer = partsSum(employerParts);
         return {
           ...m,
           hasRate: !!rate,
@@ -182,6 +202,8 @@ export class PayrollService {
           insuranceSalary,
           insuranceEmployee,
           insuranceEmployer,
+          employeeParts,
+          employerParts,
           reimbursement,
           advanceTaken,
           netPay: total - insuranceEmployee + reimbursement - advanceTaken,
@@ -209,6 +231,9 @@ export class PayrollService {
         insuranceEmployerPercent: insCoPct,
         insuranceEmployee: sum('insuranceEmployee'),
         insuranceEmployer: sum('insuranceEmployer'),
+        // Từng loại BHXH / BHYT / BHTN lái xe đóng và công ty đóng trong kỳ
+        employeeParts: INSURANCE_KINDS.reduce((acc, k) => ({ ...acc, [k]: detail.reduce((s, x) => s + x.employeeParts[k], 0) }), zeroParts()),
+        employerParts: INSURANCE_KINDS.reduce((acc, k) => ({ ...acc, [k]: detail.reduce((s, x) => s + x.employerParts[k], 0) }), zeroParts()),
         reimbursement: sum('reimbursement'),
         advanceTaken: sum('advanceTaken'),
         netPay: sum('netPay'),
@@ -268,6 +293,8 @@ export class PayrollService {
     return {
       from,
       to,
+      // Tỷ lệ (%) từng loại bảo hiểm lái xe / công ty đóng
+      insuranceRates: rates,
       drivers: driverId ? rows : rows.filter((r) => r.status !== 'NGHI_VIEC' || r.trips > 0 || r.reimbursement > 0 || r.advanceTaken > 0 || r.pendingTrips.length > 0),
     };
   }

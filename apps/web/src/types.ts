@@ -544,8 +544,7 @@ export type Settings = Partial<
     | 'gpsStopMinutes'
     | 'gpsLostMinutes'
     | 'preTripCheckRequired'
-    | 'insuranceEmployeePercent'
-    | 'insuranceEmployerPercent'
+    | `insuranceRate_${'lai_xe' | 'cong_ty'}_${'bhxh' | 'bhyt' | 'bhtn'}`
     | 'vietmapKey'
     | 'googleMapsKey'
     | `${'companyName' | 'companyAddress' | 'bankInfo' | 'quoteFooter'}_${ForeignLang}`

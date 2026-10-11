@@ -85,6 +85,8 @@ interface PayMonth {
   insuranceSalary: number;
   insuranceEmployee: number;
   insuranceEmployer: number;
+  employeeParts: InsuranceParts;
+  employerParts: InsuranceParts;
   reimbursement: number;
   advanceTaken: number;
   netPay: number;
@@ -123,6 +125,9 @@ interface DriverPay {
   insuranceEmployee: number;
   /** Bảo hiểm công ty đóng (chi phí công ty, không trừ lương) */
   insuranceEmployer: number;
+  /** Từng loại BHXH / BHYT / BHTN lái xe đóng và công ty đóng */
+  employeeParts: InsuranceParts;
+  employerParts: InsuranceParts;
   reimbursement: number;
   /** Tạm ứng đã chi trong kỳ (trừ lương) */
   advanceTaken: number;
@@ -134,9 +139,21 @@ interface DriverPay {
   advances: DriverAdvance[];
 }
 
+/** Số tiền / tỷ lệ theo từng loại bảo hiểm bắt buộc */
+type InsuranceParts = { bhxh: number; bhyt: number; bhtn: number };
+const INSURANCE_LABEL: [keyof InsuranceParts, string][] = [
+  ['bhxh', 'BHXH'],
+  ['bhyt', 'BHYT'],
+  ['bhtn', 'BHTN'],
+];
+const pctText = (v: number) => `${String(v).replace('.', ',')}%`;
+const partsText = (p: InsuranceParts, rates: InsuranceParts) => INSURANCE_LABEL.map(([k, l]) => `${l} ${pctText(rates[k])}: ${formatVnd(p[k])} đ`).join(' · ');
+
 interface DriverPayReport {
   from: string;
   to: string;
+  /** Tỷ lệ (%) từng loại bảo hiểm lái xe / công ty đóng */
+  insuranceRates: { employee: InsuranceParts; employer: InsuranceParts };
   drivers: DriverPay[];
 }
 
@@ -1236,15 +1253,21 @@ function DriverPayTable({ pay, loading, trips, rangeText, from, to }: { pay?: Dr
           { title: 'Tiền % doanh số', dataIndex: 'commission', align: 'right', render: money, sorter: (a, b) => a.commission - b.commission },
           { title: 'Tổng lương', dataIndex: 'total', align: 'right', render: (v) => <b>{money(v)}</b>, sorter: (a, b) => a.total - b.total },
           {
-            title: 'Trừ BHXH',
+            title: 'Trừ bảo hiểm',
             dataIndex: 'insuranceEmployee',
             align: 'right',
             render: (v, r) => (
               <Tooltip
                 title={
-                  r.insuranceSalary
-                    ? `Lương đóng bảo hiểm ${formatVnd(r.insuranceSalary)} đ/tháng · lái xe đóng ${r.insuranceEmployeePercent}% (BHXH 8%, BHYT 1,5%, BHTN 1%) · công ty đóng ${r.insuranceEmployerPercent}%: ${formatVnd(r.insuranceEmployer)} đ`
-                    : 'Không đóng bảo hiểm'
+                  r.insuranceSalary && pay ? (
+                    <>
+                      <div>Lương đóng bảo hiểm {formatVnd(r.insuranceSalary)} đ/tháng</div>
+                      <div>Lái xe đóng – {partsText(r.employeeParts, pay.insuranceRates.employee)}</div>
+                      <div>Công ty đóng – {partsText(r.employerParts, pay.insuranceRates.employer)}</div>
+                    </>
+                  ) : (
+                    'Không đóng bảo hiểm'
+                  )
                 }
               >
                 {v ? <Typography.Text type="danger">−{money(v)}</Typography.Text> : money(0)}
@@ -1366,7 +1389,7 @@ function DriverPayDetail({ pay, trips, multiMonth }: { pay: DriverPay; trips: Re
             { title: 'Lương cứng', dataIndex: 'baseAmount', align: 'right', render: money },
             { title: 'Tiền % DS', dataIndex: 'commission', align: 'right', render: money },
             { title: 'Lương', dataIndex: 'total', align: 'right', render: (v) => <b>{money(v)}</b> },
-            { title: 'Trừ BHXH', dataIndex: 'insuranceEmployee', align: 'right', render: (v) => (v ? `−${money(v)}` : money(0)) },
+            { title: 'Trừ bảo hiểm', dataIndex: 'insuranceEmployee', align: 'right', render: (v) => (v ? `−${money(v)}` : money(0)) },
             { title: 'Hoàn ứng', dataIndex: 'reimbursement', align: 'right', render: money },
             { title: 'Tạm ứng', dataIndex: 'advanceTaken', align: 'right', render: (v) => (v ? `−${money(v)}` : money(0)) },
             { title: 'Thực nhận', dataIndex: 'netPay', align: 'right', render: (v) => <b>{money(v)}</b> },
@@ -1447,8 +1470,27 @@ function payrollSheets(pay: DriverPayReport, trips: ReportTrip[], rangeText: str
     {
       name: 'Bảng lương lái xe',
       title: `BẢNG LƯƠNG LÁI XE · ${rangeText}`,
-      headers: ['Lái xe', 'SĐT', 'Lương cứng / tháng', '% doanh số', 'Chuyến hoàn thành', 'Doanh thu tính lương', 'Lương cứng kỳ này', 'Tiền % doanh số', 'Tổng lương', 'Lương đóng BH / tháng', 'Trừ BHXH, BHYT, BHTN (lái xe đóng)', 'Hoàn ứng', 'Trừ tạm ứng', 'Thực nhận', 'BH công ty đóng (chi phí công ty)', 'Ghi chú'],
-      sumColumns: [4, 5, 6, 7, 8, 10, 11, 12, 13, 14],
+      headers: [
+        'Lái xe',
+        'SĐT',
+        'Lương cứng / tháng',
+        '% doanh số',
+        'Chuyến hoàn thành',
+        'Doanh thu tính lương',
+        'Lương cứng kỳ này',
+        'Tiền % doanh số',
+        'Tổng lương',
+        'Lương đóng BH / tháng',
+        ...INSURANCE_LABEL.map(([k, l]) => `${l} lái xe đóng (${pctText(pay.insuranceRates.employee[k])})`),
+        'Tổng BH lái xe đóng (trừ lương)',
+        'Hoàn ứng',
+        'Trừ tạm ứng',
+        'Thực nhận',
+        ...INSURANCE_LABEL.map(([k, l]) => `${l} công ty đóng (${pctText(pay.insuranceRates.employer[k])})`),
+        'Tổng BH công ty đóng (chi phí công ty)',
+        'Ghi chú',
+      ],
+      sumColumns: [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
       numberColumns: [2, 9],
       totalLabel: 'Tổng cộng',
       rows: pay.drivers.map((d) => [
@@ -1462,10 +1504,16 @@ function payrollSheets(pay: DriverPayReport, trips: ReportTrip[], rangeText: str
         d.commission,
         d.total,
         d.insuranceSalary,
+        d.employeeParts.bhxh,
+        d.employeeParts.bhyt,
+        d.employeeParts.bhtn,
         d.insuranceEmployee,
         d.reimbursement,
         d.advanceTaken,
         d.netPay,
+        d.employerParts.bhxh,
+        d.employerParts.bhyt,
+        d.employerParts.bhtn,
         d.insuranceEmployer,
         [
           d.missingRate ? 'Chưa cài lương đủ các tháng' : '',
