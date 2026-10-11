@@ -43,25 +43,72 @@ const norm = (v: string) =>
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-const CITY: [string, RegExp][] = [
-  ['DN', /da ?nang/],
-  ['HA', /hoi ?an/],
-  ['HUE', /\bhue\b/],
+/** Địa danh thường gặp: khóa so khớp + tên hiển thị (tên khác ngoài danh sách vẫn so khớp theo chữ) */
+const PLACES: [string, RegExp, string][] = [
+  ['danang', /da ?nang/, 'Đà Nẵng'],
+  ['hoian', /hoi ?an/, 'Hội An'],
+  ['hue', /\bhue\b/, 'Huế'],
+  ['bana', /ba ?na/, 'Bà Nà'],
+  ['dalat', /da ?lat/, 'Đà Lạt'],
+  ['nhatrang', /nha ?trang/, 'Nha Trang'],
+  ['hanoi', /ha ?noi/, 'Hà Nội'],
+  ['halong', /ha ?long/, 'Hạ Long'],
+  ['hochiminh', /ho ?chi ?minh|sai ?gon|\bhcm\b/, 'Hồ Chí Minh'],
+  ['phongnha', /phong ?nha/, 'Phong Nha'],
+  ['dongha', /dong ?ha/, 'Đông Hà'],
+  ['quangbinh', /quang ?binh|dong ?hoi/, 'Quảng Bình'],
+  ['ninhbinh', /ninh ?binh/, 'Ninh Bình'],
+  ['sapa', /sa ?pa/, 'Sa Pa'],
+  ['quynhon', /quy ?nhon/, 'Quy Nhơn'],
+  ['muine', /mui ?ne/, 'Mũi Né'],
+  ['chulai', /chu ?lai/, 'Chu Lai'],
+  ['tamky', /tam ?ky/, 'Tam Kỳ'],
 ];
-/** Sản phẩm bus trên website → mã tuyến xe ghép trong phần mềm */
-const BUS_ROUTES: Record<string, string> = { 'DN>HA': 'VNEBUS02', 'HA>DN': 'VNEBUS01', BANA: 'VNEBUS03', 'DN>HUE': 'VNEBUS04', 'HUE>DN': 'VNEBUS05' };
+/** Loại xe / hạng xe trong tên (để chọn đúng tuyến khi cùng chặng có nhiều loại) */
+const BUS_HINTS = ['limousine', 'sleeper', 'vip'];
+/** Chữ không phải địa danh trong tên sản phẩm / tên tuyến */
+const NOISE =
+  /\b(xe ?bus|bus|xe|limousine|sleeper|giuong nam|vip|car|luxury|shuttle|xe ghep|one ?way|round ?trip|1 ?chieu|khu hoi|hills?|tickets?|ve|tour|nguoi lon|tre em|adult|child|\d+ ?(s|seats?|cho))\b/g;
 
-/** Khóa tuyến bus theo tên sản phẩm (thứ tự xuất hiện của 2 thành phố = chiều đi); không phải bus của tuyến có trong phần mềm thì null */
-export function busKey(name: string) {
-  const n = norm(name);
-  if (!/\bbus\b/.test(n) || /limousine|sleeper|ha noi|ha long|da lat|nha trang/.test(n)) return null;
-  if (/ba ?na/.test(n)) return 'BANA';
-  const hits = CITY.map(([k, re]) => [k, n.search(re)] as const)
-    .filter(([, i]) => i >= 0)
-    .sort((a, b) => a[1] - b[1])
-    .map(([k]) => k);
-  return hits.length === 2 ? `${hits[0]}>${hits[1]}` : null;
+export interface Place {
+  key: string;
+  label: string;
 }
+const titleCase = (v: string) => v.replace(/\b\w/g, (c) => c.toUpperCase());
+function placeOf(seg: string): Place | null {
+  const s = seg.replace(NOISE, ' ').replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+  const known = PLACES.find(([, re]) => re.test(s));
+  return known ? { key: known[0], label: known[2] } : { key: s.replace(/\s/g, ''), label: titleCase(s) };
+}
+
+/** Điểm đi – điểm đến trong tên sản phẩm / tên tuyến ("Bus Da Nang To Hoi An", "BUS HUẾ - HỘI AN", "Xe Bus Đà Nẵng Hội An") */
+export function routeEnds(name: string): { from: Place; to: Place; hints: string[] } | null {
+  const n = norm(name.replace(/\([^)]*\)/g, ' ')).replace(/<[^>]+>/g, ' ');
+  const hints = BUS_HINTS.filter((h) => norm(name).includes(h));
+  const segs = n
+    .split(/\s(?:to|den|di|->|→|–|—|-|~)\s|\s*[–—→]\s*/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  if (segs.length >= 2) {
+    const from = placeOf(segs[0]);
+    const to = placeOf(segs[1]);
+    if (from && to && from.key !== to.key) return { from, to, hints };
+  }
+  // Không có chữ "to / đến / -": lấy 2 địa danh đầu tiên theo thứ tự xuất hiện
+  const hits = PLACES.map(([key, re, label]) => ({ key, label, at: n.search(re) }))
+    .filter((x) => x.at >= 0)
+    .sort((a, b) => a.at - b.at);
+  return hits.length >= 2 ? { from: hits[0], to: hits[1], hints } : null;
+}
+
+/** Sản phẩm xe ghép / bus (không phải xe riêng, tour, vé) */
+export function isBusProduct(name: string) {
+  const n = norm(name);
+  return /\bbus\b|xe ghep|shuttle/.test(n) && !/private|xe rieng|tour\b|tickets?|\bve\b/.test(n);
+}
+
+const sameKey = (a: string, b: string) => a === b || a.includes(b) || b.includes(a);
 
 /** Loại xe khách chọn ("Xe 7 chỗ", "Kia Carnival"…) → mã loại xe */
 export function vehicleCode(label: string) {
@@ -369,14 +416,62 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Lập chuyến từ các sản phẩm của đơn: bus Đà Nẵng ↔ Hội An / Huế, Đà Nẵng – Bà Nà → chuyến xe ghép đúng tuyến, ngày, giờ;
-   * xe riêng có "Loại xe" → chuyến đưa đón theo tuyến. Tour, vé, tuyến chưa có trong phần mềm → để điều hành xử lý.
+   * Tuyến xe ghép chưa có trong phần mềm: tự tạo theo điểm đi – điểm đến của sản phẩm (2 khu vực "Trung tâm …",
+   * giá = giá khách trả / người, chưa có giờ chạy cố định – chuyến tạo theo từng đơn) và báo Admin / Điều hành kiểm tra lại.
+   */
+  private async createRouteFor(
+    ends: NonNullable<ReturnType<typeof routeEnds>>,
+    product: string,
+    price: number,
+    orderNumber: string,
+    types: { id: number; code: string }[],
+  ) {
+    try {
+      const codes = await this.prisma.shuttleRoute.findMany({ where: { code: { startsWith: 'VNEBUS' } }, select: { code: true } });
+      const next = Math.max(0, ...codes.map((c) => Number(c.code.match(/^VNEBUS(\d+)$/)?.[1] ?? 0))) + 1;
+      const type = types.find((t) => t.code === (ends.hints.includes('limousine') ? 'LIMO11' : 'XE16')) ?? types[0];
+      const vt = await this.prisma.vehicleType.findUniqueOrThrow({ where: { id: type.id }, select: { maxPassengers: true } });
+      const hint = ends.hints.map((h) => (h === 'vip' ? 'VIP' : titleCase(h))).join(' ');
+      const name = `BUS ${ends.from.label.toUpperCase()} - ${ends.to.label.toUpperCase()}${hint ? ` (${hint})` : ''}`;
+      const duration = 120;
+      const created = await this.shuttle.createRoute({
+        code: `VNEBUS${String(next).padStart(2, '0')}`,
+        name,
+        vehicleTypeId: type.id,
+        capacity: vt.maxPassengers,
+        durationMinutes: duration,
+        adultPrice: price,
+        childPrice: price,
+        notes: `Tự tạo từ đơn website #${orderNumber} (${product}). Kiểm tra lại: giá, loại xe, số ghế, điểm đón / trả, thời gian chạy, giờ chạy cố định.`,
+        isActive: true,
+        stops: [
+          { name: `Trung tâm ${ends.from.label}`, kind: 'KHU_VUC', offsetMinutes: 0, canPickup: true, canDropoff: false },
+          { name: `Trung tâm ${ends.to.label}`, kind: 'KHU_VUC', offsetMinutes: duration, canPickup: false, canDropoff: true },
+        ],
+        schedules: [],
+      } as unknown as Parameters<ShuttleService['createRoute']>[0]);
+      await this.push.notifyRoles([Role.ADMIN, Role.DIEU_HANH], {
+        type: 'SHUTTLE_ROUTE_NEW',
+        title: `🚌 Tự tạo tuyến xe ghép ${name}`,
+        body: `Từ đơn website #${orderNumber} (${product}) · giá ${price.toLocaleString('vi-VN')} đ/khách – kiểm tra giá, loại xe, điểm đón / trả, giờ chạy`,
+        link: '/shuttle-routes',
+      });
+      return this.prisma.shuttleRoute.findUnique({ where: { id: (created as { id: number }).id }, include: { stops: { where: { isActive: true }, orderBy: { seq: 'asc' } } } });
+    } catch (e) {
+      this.logger.warn(`Không tự tạo được tuyến xe ghép: ${(e as Error).message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Lập chuyến từ các sản phẩm của đơn: bus / xe ghép → chuyến xe ghép đúng tuyến (dò theo điểm đi – điểm đến, chưa có tuyến
+   * thì tự tạo), ngày, giờ; xe riêng có "Loại xe" → chuyến đưa đón theo tuyến. Tour, vé → để điều hành xử lý.
    */
   private async planTrips(o: WooOrder) {
     const trips: TripPlan[] = [];
     const skipped: string[] = [];
     const [routes, types, services] = await Promise.all([
-      this.prisma.shuttleRoute.findMany({ where: { isActive: true, code: { in: Object.values(BUS_ROUTES) } }, include: { stops: { where: { isActive: true }, orderBy: { seq: 'asc' } } } }),
+      this.prisma.shuttleRoute.findMany({ where: { isActive: true }, include: { stops: { where: { isActive: true }, orderBy: { seq: 'asc' } } }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),
       this.prisma.vehicleType.findMany({ where: { isActive: true }, select: { id: true, code: true } }),
       this.prisma.service.findMany({ where: { isActive: true }, select: { code: true } }),
     ]);
@@ -400,13 +495,26 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
         skipped.push(`${short} (không đọc được ngày / giờ đi)`);
         continue;
       }
-      const bus = busKey(name);
-      if (bus) {
-        const route = routes.find((r) => r.code === BUS_ROUTES[bus]);
+      const ends = isBusProduct(name) ? routeEnds(name) : null;
+      if (ends && hasService('XE_GHEP')) {
+        // Tuyến cùng điểm đi – điểm đến (cùng loại xe nếu tên có Limousine / VIP / Sleeper); chưa có thì tự tạo tuyến
+        const matches = routes
+          .map((r) => ({ r, e: routeEnds(r.name) }))
+          .filter(({ e }) => e && sameKey(e.from.key, ends.from.key) && sameKey(e.to.key, ends.to.key))
+          .map(({ r, e }) => ({ r, score: ends.hints.filter((h) => e!.hints.includes(h)).length - e!.hints.filter((h) => !ends.hints.includes(h)).length * 0.1 }))
+          .sort((a, b) => b.score - a.score);
+        let route = matches[0]?.r;
+        if (!route) {
+          const made = await this.createRouteFor(ends, short, Math.round(total / qty), o.number, types);
+          if (made) {
+            routes.push(made);
+            route = made;
+          }
+        }
         const pick = route?.stops.find((x) => x.canPickup);
         const drop = route && pick ? [...route.stops].reverse().find((x) => x.canDropoff && x.seq > pick.seq) : undefined;
-        if (!route || !pick || !drop || !hasService('XE_GHEP')) {
-          skipped.push(`${short} (chưa có tuyến xe ghép tương ứng)`);
+        if (!route || !pick || !drop) {
+          skipped.push(`${short} (không tìm / tạo được tuyến xe ghép ${ends.from.label} – ${ends.to.label})`);
           continue;
         }
         const runId = await this.runFor(route.id, iso);
