@@ -378,30 +378,21 @@ export class DriverAppController {
     if (!trip.collectAmount) throw new BadRequestException('Chuyến này văn phòng không nhờ thu tiền');
     if (trip.collectedAt) throw new BadRequestException('Chuyến này đã xác nhận thu tiền rồi');
     if (trip.status === TripStatus.DA_GAN || trip.status === TripStatus.HUY) throw new BadRequestException('Hãy nhận chuyến trước khi xác nhận thu tiền');
+    // Chưa ghi phiếu thu: khoản vào bảng nhờ thu, điều hành + kế toán xác nhận nhận tiền mới ghi thu
     await this.prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.create({
-        data: {
-          bookingId: trip.bookingId,
-          amount: dto.amount,
-          method: dto.method,
-          paidAt: new Date(`${vnDate(new Date())}T00:00:00Z`),
-          note: `Lái xe ${trip.driver?.fullName ?? ''} thu hộ – chuyến ${trip.seq}`,
-          createdById: user.id,
-        },
-      });
       await tx.bookingTrip.update({
         where: { id },
-        data: { collectedAt: new Date(), collectedAmount: dto.amount, collectMethod: dto.method, collectPaymentId: payment.id },
+        data: { collectedAt: new Date(), collectedAmount: dto.amount, collectMethod: dto.method },
       });
       await tx.tripEvent.create({ data: { tripId: id, status: trip.status, note: `Lái xe đã thu tiền khách: ${dto.amount.toLocaleString('vi-VN')} đ`, userId: user.id } });
     });
     await this.push.notifyRoles(
-      [Role.ADMIN, Role.KE_TOAN],
+      [Role.ADMIN, Role.DIEU_HANH, Role.KE_TOAN],
       {
         type: 'COLLECTED',
-        title: `Lái xe đã thu tiền · ${trip.booking.code}`,
+        title: `Lái xe đã thu tiền – chờ nộp về · ${trip.booking.code}`,
         body: `${trip.driver?.fullName ?? user.fullName} thu ${dto.amount.toLocaleString('vi-VN')}đ (${dto.method === PaymentMethod.CHUYEN_KHOAN ? 'chuyển khoản' : 'tiền mặt'})${dto.amount !== Number(trip.collectAmount) ? ` · văn phòng nhờ thu ${Number(trip.collectAmount).toLocaleString('vi-VN')}đ` : ''}`,
-        link: `/bookings/${trip.booking.id}`,
+        link: '/finance/ledger?tab=collect',
         tripId: id,
       },
       { extra: [trip.booking.salesUserId, trip.booking.createdById], exclude: user.id },
@@ -422,7 +413,8 @@ export class DriverAppController {
     const res = await this.payroll.compute(`${month}-01`, `${month}-${String(last).padStart(2, '0')}`, driverId);
     const row = res.drivers[0];
     const holding = await this.prisma.bookingTrip.findMany({
-      where: { driverId, collectedAt: { not: null }, collectSettledAt: null },
+      // Lái xe còn cầm: đã thu, điều hành chưa nhận lại (điều hành nhận rồi thì chờ kế toán vào quỹ, không còn ở lái xe)
+      where: { driverId, collectedAt: { not: null }, collectSettledAt: null, collectOpsAt: null },
       select: { id: true, collectedAmount: true, collectedAt: true, collectMethod: true, pickupTime: true, booking: { select: { code: true } } },
       orderBy: { collectedAt: 'asc' },
     });

@@ -285,6 +285,11 @@ export interface BookingTrip extends Ref {
   collectedAmount?: string | null;
   collectMethod?: 'TIEN_MAT' | 'CHUYEN_KHOAN' | null;
   collectSettledAt?: string | null;
+  /** Điều hành / kế toán xác nhận đã nhận tiền thu hộ */
+  collectOpsAt?: string | null;
+  collectAcctAt?: string | null;
+  collectOpsBy?: { id: number; fullName: string } | null;
+  collectAcctBy?: { id: number; fullName: string } | null;
   /** Nhà xe đối tác phải xuất hóa đơn cho công ty */
   partnerInvoice?: boolean;
   partnerInvoiceNote?: string | null;

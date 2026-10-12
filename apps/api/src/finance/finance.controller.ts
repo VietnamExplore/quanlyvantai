@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query, Res } from '@nestjs/common';
+import { HttpCode, BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Role } from '@prisma/client';
 import { AuthUser, CurrentUser, OFFICE_ROLES, Roles } from '../auth/auth.decorators';
@@ -15,6 +15,7 @@ import {
   UpdateCostCategoryDto,
   UpdateVoucherDto,
 } from './finance.dto';
+import { CollectionsService, CollectStep } from './collections.service';
 import { FinanceService } from './finance.service';
 import { OdometerService } from './odometer.service';
 import { removeReceipt, sendReceipt } from './receipts';
@@ -30,6 +31,7 @@ export class FinanceController {
     private readonly odometer: OdometerService,
     private readonly push: PushService,
     private readonly fuelPrice: FuelPriceService,
+    private readonly collections: CollectionsService,
   ) {}
 
   // ───── Loại chi phí ─────
@@ -161,27 +163,20 @@ export class FinanceController {
     sendReceipt(res, await this.prisma.cashVoucher.findUnique({ where: { id }, select: { receiptFile: true, receiptType: true } }));
   }
 
-  /** Văn phòng đã nhận lại tiền lái xe thu hộ khách (settled = false để hủy xác nhận) */
-  @Post('trips/:id/collect-settle')
+  /** Bảng nhờ lái xe thu: state = open (đang theo dõi) | done (đã nộp đủ) */
+  @Get('finance/collections')
   @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
-  async settleCollect(@Param('id', ParseIntPipe) id: number, @Body() body: { settled?: boolean }) {
-    const trip = await this.prisma.bookingTrip.findUniqueOrThrow({ where: { id }, include: { booking: { select: { code: true } } } });
-    if (!trip.collectedAt) throw new BadRequestException('Lái xe chưa xác nhận thu tiền');
-    const updated = await this.prisma.bookingTrip.update({
-      where: { id },
-      data: { collectSettledAt: body.settled === false ? null : new Date() },
-      select: { id: true, collectSettledAt: true },
-    });
-    if (body.settled !== false && !trip.collectSettledAt) {
-      await this.push.notifyDriver(
-        trip.driverId,
-        'Văn phòng đã nhận tiền thu hộ',
-        `${Number(trip.collectedAmount).toLocaleString('vi-VN')}đ · ${trip.booking.code}`,
-        { tripId: id },
-        'COLLECT_SETTLED',
-      );
-    }
-    return updated;
+  listCollections(@Query() q: { state?: string; from?: string; to?: string; driverId?: string }) {
+    return this.collections.list({ state: q.state === 'done' ? 'done' : 'open', from: q.from, to: q.to, driverId: q.driverId && /^\d+$/.test(q.driverId) ? Number(q.driverId) : undefined });
+  }
+
+  /** Xác nhận nhận tiền thu hộ: step = ops (điều hành nhận từ lái xe) | acct (kế toán nhận vào quỹ); undo = hủy xác nhận */
+  @Post('trips/:id/collect-confirm')
+  @HttpCode(200)
+  @Roles(Role.ADMIN, Role.KE_TOAN, Role.DIEU_HANH)
+  confirmCollect(@Param('id', ParseIntPipe) id: number, @Body() body: { step?: string; undo?: boolean }, @CurrentUser() user: AuthUser) {
+    if (body.step !== 'ops' && body.step !== 'acct') throw new BadRequestException('Bước xác nhận không hợp lệ');
+    return this.collections.confirm(id, body.step as CollectStep, !!body.undo, user);
   }
 
   /** Văn phòng sửa km bắt đầu / kết thúc, định mức xăng của chuyến (null = xóa) */

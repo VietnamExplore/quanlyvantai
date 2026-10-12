@@ -49,6 +49,8 @@ model User {
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   handledIncidents FieldIncident[]     @relation("IncidentHandler")
+  collectOpsTrips  BookingTrip[]       @relation("CollectOps")
+  collectAcctTrips BookingTrip[]       @relation("CollectAcct")
 }
 
 // ───────────── Xe ─────────────
@@ -554,7 +556,15 @@ model BookingTrip {
   collectMethod    PaymentMethod?
   collectPaymentId Int?           @unique // Phiếu thu tự tạo khi lái xe xác nhận
   collectPayment   Payment?       @relation("TripCollect", fields: [collectPaymentId], references: [id], onDelete: SetNull)
-  collectSettledAt DateTime? // Văn phòng đã nhận lại tiền từ lái xe
+  collectSettledAt DateTime? // Văn phòng đã nhận đủ tiền (điều hành + kế toán xác nhận) – lúc ghi phiếu thu
+  /// Điều hành xác nhận đã nhận tiền thu hộ từ lái xe
+  collectOpsAt     DateTime?
+  collectOpsById   Int?
+  collectOpsBy     User?          @relation("CollectOps", fields: [collectOpsById], references: [id], onDelete: SetNull)
+  /// Kế toán xác nhận đã nhận tiền vào quỹ / tài khoản
+  collectAcctAt    DateTime?
+  collectAcctById  Int?
+  collectAcctBy    User?          @relation("CollectAcct", fields: [collectAcctById], references: [id], onDelete: SetNull)
   /// Đồng hồ km của xe: km bắt đầu = km kết thúc chuyến trước của xe
   startKm          Int?
   endKm            Int?

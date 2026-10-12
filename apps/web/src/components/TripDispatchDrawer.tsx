@@ -38,6 +38,28 @@ import { useCopyText } from '../clipboard';
 import { buildDispatchText, NEXT_ACTION, TRIP_FLOW } from '../dispatch-utils';
 import { TRIP_STATUS } from '../labels';
 import type { DispatchOptions, DispatchTrip, Partner } from '../types';
+
+/** Dữ liệu chuyến → dòng nhờ thu (dùng chung ô xác nhận điều hành / kế toán với bảng nhờ thu) */
+const collectRow = (t: DispatchTrip): CollectionRow => ({
+  id: t.id,
+  seq: t.seq,
+  pickupTime: t.pickupTime,
+  pickupAddress: t.pickupAddress,
+  collectAmount: Number(t.collectAmount ?? 0),
+  collectNote: t.collectNote ?? null,
+  collectedAt: t.collectedAt ?? null,
+  collectedAmount: t.collectedAmount == null ? null : Number(t.collectedAmount),
+  collectMethod: t.collectMethod ?? null,
+  collectSettledAt: t.collectSettledAt ?? null,
+  collectOpsAt: t.collectOpsAt ?? null,
+  collectAcctAt: t.collectAcctAt ?? null,
+  collectOpsBy: t.collectOpsBy ?? null,
+  collectAcctBy: t.collectAcctBy ?? null,
+  driver: t.driver ? { id: t.driver.id, fullName: t.driver.fullName, phone: t.driver.phone } : null,
+  booking: { id: t.booking.id, code: t.booking.code, contactName: t.booking.contactName, customer: t.booking.customer ? { name: t.booking.customer.name } : null },
+  stage: t.collectSettledAt ? 'DA_NOP' : !t.collectedAt ? 'CHUA_THU' : t.collectOpsAt || t.collectMethod === 'CHUYEN_KHOAN' ? 'CHO_KE_TOAN' : 'LAI_XE_GIU',
+});
+import { StepCell, type CollectionRow } from './CollectionsPanel';
 import { EnumTag, Money, MoneyInput } from './common';
 import { TripCostsSection } from './finance';
 import { QuickSelect } from './QuickCreate';
@@ -57,18 +79,6 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
   const queryClient = useQueryClient();
   const copy = useCopyText();
 
-  /** Văn phòng đã nhận lại tiền lái xe thu hộ khách */
-  async function settleCollect(settled: boolean) {
-    if (!trip) return;
-    try {
-      await api(`/trips/${trip.id}/collect-settle`, { method: 'POST', body: { settled } });
-      message.success(settled ? 'Đã ghi nhận văn phòng nhận tiền' : 'Đã hủy xác nhận');
-      queryClient.invalidateQueries({ queryKey: ['/dispatch'] });
-      queryClient.invalidateQueries({ queryKey: ['/bookings'] });
-    } catch (e) {
-      message.error((e as Error).message);
-    }
-  }
   const [companyForm] = Form.useForm();
   const [partnerForm] = Form.useForm();
   const [changing, setChanging] = useState(false);
@@ -479,15 +489,20 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                       <Tag color="gold">
                         Lái xe đã thu {Number(trip.collectedAmount).toLocaleString('vi-VN')} đ ({trip.collectMethod === 'CHUYEN_KHOAN' ? 'chuyển khoản' : 'tiền mặt'}) lúc {dayjs(trip.collectedAt).format('HH:mm DD/MM')}
                       </Tag>
-                      {trip.collectSettledAt ? (
-                        <Tag color="green">Văn phòng đã nhận tiền {dayjs(trip.collectSettledAt).format('DD/MM')}</Tag>
-                      ) : (
-                        <Popconfirm title="Xác nhận văn phòng đã nhận lại tiền từ lái xe?" okText="Đã nhận" cancelText="Không" onConfirm={() => settleCollect(true)}>
-                          <Button size="small" type="primary" ghost>
-                            Đã nhận tiền từ lái xe
-                          </Button>
-                        </Popconfirm>
-                      )}
+                      {trip.collectSettledAt && <Tag color="green">Đã nộp về công ty {dayjs(trip.collectSettledAt).format('DD/MM')}</Tag>}
+                    </Space>
+                  )}
+                  {!!trip.collectedAt && (
+                    // Điều hành nhận tiền từ lái xe + kế toán nhận vào quỹ → mới ghi phiếu thu
+                    <Space wrap size={16} align="start">
+                      <span>
+                        <Typography.Text type="secondary">Điều hành: </Typography.Text>
+                        <StepCell row={collectRow(trip)} step="ops" />
+                      </span>
+                      <span>
+                        <Typography.Text type="secondary">Kế toán: </Typography.Text>
+                        <StepCell row={collectRow(trip)} step="acct" />
+                      </span>
                     </Space>
                   )}
                 </Space>

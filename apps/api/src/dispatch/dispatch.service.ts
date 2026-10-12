@@ -161,6 +161,8 @@ export class DispatchService {
       include: {
         ...dispatchTripInclude,
         events: { orderBy: { createdAt: 'desc' }, include: { user: { select: { fullName: true } } } },
+        collectOpsBy: { select: { id: true, fullName: true } },
+        collectAcctBy: { select: { id: true, fullName: true } },
       },
     });
   }

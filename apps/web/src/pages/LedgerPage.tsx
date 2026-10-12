@@ -1,12 +1,13 @@
 import { DeleteOutlined, DownloadOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Button, Card, Col, DatePicker, Flex, Popconfirm, Row, Segmented, Select, Statistic, Table, Tag, Typography } from 'antd';
+import { App, Badge, Button, Card, Col, DatePicker, Flex, Popconfirm, Row, Segmented, Select, Statistic, Table, Tabs, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, apiBlob } from '../api';
 import { useAuth } from '../auth';
 import { VoucherModal, type Voucher } from '../components/VoucherModal';
+import { CollectionsPanel } from '../components/CollectionsPanel';
 import { DATE_FORMAT, EnumTag, formatVnd, paged } from '../components/common';
 import { downloadExcel } from '../excel';
 import { PAYMENT_METHOD } from '../labels';
@@ -61,7 +62,41 @@ interface Ledger {
   entries: Entry[];
 }
 
+/** Sổ thu chi + bảng nhờ lái xe thu (?tab=collect) */
 export default function LedgerPage() {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') === 'collect' ? 'collect' : 'book';
+  const { data: open } = useQuery({ queryKey: ['/finance', 'collections', { state: 'open' }], queryFn: () => api<{ rows: unknown[] }>('/finance/collections', { query: { state: 'open' } }) });
+  return (
+    <Tabs
+      activeKey={tab}
+      onChange={(k) =>
+        setParams(
+          (p) => {
+            if (k === 'collect') p.set('tab', 'collect');
+            else p.delete('tab');
+            return p;
+          },
+          { replace: true },
+        )
+      }
+      items={[
+        { key: 'book', label: 'Sổ thu chi', children: <LedgerBook /> },
+        {
+          key: 'collect',
+          label: (
+            <Badge count={open?.rows.length ?? 0} size="small" offset={[8, -2]}>
+              Nhờ lái xe thu
+            </Badge>
+          ),
+          children: <CollectionsPanel />,
+        },
+      ]}
+    />
+  );
+}
+
+function LedgerBook() {
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [type, setType] = useState<'ALL' | 'THU' | 'CHI'>('ALL');
   const from = range[0].format('YYYY-MM-DD');
