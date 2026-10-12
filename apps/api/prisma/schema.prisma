@@ -154,12 +154,6 @@ model Driver {
   updatedAt         DateTime         @updatedAt
   incidents         FieldIncident[]
   vehicleChecks     VehicleCheck[]
-  /// Vị trí gần nhất (GPS app lái xe)
-  lastLat           Float?
-  lastLng           Float?
-  lastSpeed         Float?
-  lastGpsAt         DateTime?
-  lastGpsTripId     Int?
 }
 
 /// Mức lương lái xe công ty theo thời gian: lương cứng / tháng + % doanh thu chuyến đã chạy.
@@ -712,46 +706,6 @@ model VehicleCheck {
   @@index([vehicleId, createdAt])
   @@index([tripId, createdAt])
   @@index([driverId, createdAt])
-}
-
-/// Điểm GPS do app lái xe gửi khi chuyến đang chạy (giữ 90 ngày)
-model GpsPoint {
-  id         BigInt   @id @default(autoincrement())
-  driverId   Int
-  vehicleId  Int?
-  tripId     Int?
-  lat        Float
-  lng        Float
-  /// km/h
-  speed      Float?
-  heading    Float?
-  accuracy   Float?
-  recordedAt DateTime
-  createdAt  DateTime @default(now())
-
-  @@index([driverId, recordedAt])
-  @@index([vehicleId, recordedAt])
-  @@index([tripId, recordedAt])
-}
-
-/// Cảnh báo giám sát hành trình: QUA_TOC_DO | DUNG_LAU | MAT_TIN_HIEU
-model GpsAlert {
-  id        Int       @id @default(autoincrement())
-  type      String
-  driverId  Int
-  vehicleId Int?
-  tripId    Int?
-  lat       Float?
-  lng       Float?
-  /// Tốc độ (km/h) hoặc số phút dừng / mất tín hiệu
-  value     Float?
-  note      String?
-  at        DateTime  @default(now())
-  seenAt    DateTime?
-  seenBy    String?
-
-  @@index([at])
-  @@index([tripId])
 }
 
 model TripEvent {

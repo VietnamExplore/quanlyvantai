@@ -234,24 +234,9 @@ export default function SettingsPage() {
           </Col>
         </Row>
 
-        <Divider titlePlacement="start">Vận hành &amp; giám sát hành trình</Divider>
+        <Divider titlePlacement="start">Vận hành</Divider>
         <Row gutter={16}>
-          <Col xs={12} md={6}>
-            <Form.Item name="gpsSpeedLimit" label="Giới hạn tốc độ" tooltip="Giám sát GPS: cảnh báo khi xe chạy quá tốc độ này (km/h). Mặc định 80.">
-              <Input inputMode="numeric" placeholder="80" suffix="km/h" />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="gpsStopMinutes" label="Dừng lâu khi chở khách" tooltip="Cảnh báo khi xe đứng yên quá số phút này lúc đang chở khách. Mặc định 20.">
-              <Input inputMode="numeric" placeholder="20" suffix="phút" />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="gpsLostMinutes" label="Mất tín hiệu GPS" tooltip="Cảnh báo khi chuyến đang chạy mà quá số phút này không nhận được vị trí. Mặc định 10.">
-              <Input inputMode="numeric" placeholder="10" suffix="phút" />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
+          <Col xs={24} md={8}>
             <Form.Item
               name="preTripCheckRequired"
               label="Kiểm tra trước chuyến"
@@ -304,33 +289,6 @@ export default function SettingsPage() {
             ))}
           </Row>
         ))}
-
-        <Divider titlePlacement="start">Bản đồ giám sát GPS</Divider>
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="vietmapKey"
-              label="Khóa VietMap (khuyên dùng)"
-              tooltip="Bản đồ của doanh nghiệp Việt Nam, thể hiện đúng chủ quyền (Hoàng Sa, Trường Sa). Đăng ký tại maps.vietmap.vn → Console → tạo API key; nên giới hạn khóa theo tên miền / IP của công ty. Có khóa VietMap thì dùng VietMap."
-            >
-              <Input placeholder="Khóa API VietMap" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="googleMapsKey"
-              label="Khóa Google Maps"
-              tooltip="Dùng khi chưa có khóa VietMap. Tạo ở console.cloud.google.com → APIs & Services → bật Maps JavaScript API → Credentials → Create API key; nên giới hạn theo địa chỉ web của công ty. Google tính phí theo lượt tải bản đồ, có hạn mức miễn phí hằng tháng."
-            >
-              <Input placeholder="AIza…" />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginTop: -8 }}>
-              Chưa có khóa: dùng Google Maps nhúng miễn phí (tiếng Việt, vùng Việt Nam), mỗi lần xem một xe / một tuyến.
-            </Typography.Paragraph>
-          </Col>
-        </Row>
 
         <Divider titlePlacement="start">Giá nhiên liệu</Divider>
         <FuelPriceCard />

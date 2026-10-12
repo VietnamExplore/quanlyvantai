@@ -14,7 +14,6 @@ import { SignScreen } from './SignScreen';
 import { SignoffCard } from './SignoffCard';
 import { AddPassengersCard } from './AddPassengersCard';
 import { DocsCard } from './DocsCard';
-import { startTracking, TRACK_STATUSES } from '../gps';
 import { IncidentSheet, TripIncidents } from './IncidentSheet';
 import { TripCosts } from './TripCosts';
 import { PreCheckCard, PreCheckForm, preCheckPassed } from './PreCheck';
@@ -92,8 +91,6 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
     try {
       const updated = await api<Trip>(`/driver/trips/${trip.id}/status`, { method: 'POST', body: { status: next.status, ...body } });
       setTrip(updated);
-      // Bắt đầu đi đón / đã đón khách: bật gửi vị trí (hoàn thành thì danh sách chuyến tự tắt)
-      if (TRACK_STATUSES.includes(updated.status)) void startTracking();
       setKmMode(null);
     } catch (e) {
       Alert.alert('Không cập nhật được', (e as Error).message);

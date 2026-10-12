@@ -32,7 +32,6 @@ import RoutePricesPage from './pages/RoutePricesPage';
 import ServicesPage from './pages/ServicesPage';
 import ShuttlePage from './pages/ShuttlePage';
 import FieldPage from './pages/FieldPage';
-import GpsPage from './pages/GpsPage';
 import ShuttleRoutesPage from './pages/ShuttleRoutesPage';
 import CustomerSourcesPage from './pages/CustomerSourcesPage';
 import CustomerTypesPage from './pages/CustomerTypesPage';
@@ -119,7 +118,6 @@ export default function App() {
         <Route path="dispatch" element={<DispatchPage />} />
         <Route path="shuttle" element={<ShuttlePage />} />
         <Route path="field" element={<FieldPage />} />
-        <Route path="gps" element={<GpsPage />} />
         <Route path="shuttle-routes" element={<ShuttleRoutesPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="route-prices" element={<RoutePricesPage />} />

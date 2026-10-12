@@ -1,4 +1,4 @@
-import { AimOutlined, CarOutlined, CopyOutlined, FileProtectOutlined, RollbackOutlined, ShopOutlined, SwapOutlined } from '@ant-design/icons';
+import { CarOutlined, CopyOutlined, FileProtectOutlined, RollbackOutlined, ShopOutlined, SwapOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SignoffBlock, TripIncidentList } from './FieldParts';
 import { SendOrderModal, type SendTarget } from './SendOrderModal';
@@ -421,9 +421,6 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
               <Space wrap size={6} style={{ fontWeight: 'normal' }}>
                 <Button size="small" icon={<CopyOutlined />} onClick={copyOrder}>
                   Sao chép lệnh điều xe
-                </Button>
-                <Button size="small" icon={<AimOutlined />} href={`/gps?view=track&trip=${trip.id}`}>
-                  Lộ trình GPS
                 </Button>
                 {/* Lệnh vận chuyển theo mẫu TT 36/2024 (kèm QR hợp đồng điện tử nếu booking đã lập hợp đồng) */}
                 <Button size="small" icon={<FileProtectOutlined />} href={`/transport-orders/trip/${trip.id}`} target="_blank">

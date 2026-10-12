@@ -545,13 +545,8 @@ export type Settings = Partial<
     | 'contractTerms'
     | 'contractTerms_en'
     | 'zaloDriverGroup'
-    | 'gpsSpeedLimit'
-    | 'gpsStopMinutes'
-    | 'gpsLostMinutes'
     | 'preTripCheckRequired'
     | `insuranceRate_${'lai_xe' | 'cong_ty'}_${'bhxh' | 'bhyt' | 'bhtn'}`
-    | 'vietmapKey'
-    | 'googleMapsKey'
     | `${'companyName' | 'companyAddress' | 'bankInfo' | 'quoteFooter'}_${ForeignLang}`
     // Dịch tự động: dịch vụ đang dùng; khóa API chỉ báo đã cài + 4 ký tự cuối
     | 'translateProvider'

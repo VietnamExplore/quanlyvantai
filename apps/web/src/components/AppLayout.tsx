@@ -1,5 +1,4 @@
 import {
-  AimOutlined,
   AlertOutlined,
   AppstoreOutlined,
   BarChartOutlined,
@@ -59,7 +58,6 @@ const NAV_GROUPS: { label?: string; roles?: Role[]; items: NavItem[] }[] = [
       { key: '/bookings', label: 'Booking', icon: <FileTextOutlined /> },
       { key: '/dispatch', label: 'Điều xe', icon: <ScheduleOutlined /> },
       { key: '/shuttle', label: 'Xe ghép', icon: <NodeIndexOutlined /> },
-      { key: '/gps', label: 'Giám sát GPS', icon: <AimOutlined /> },
       { key: '/field', label: 'Hiện trường', icon: <AlertOutlined /> },
       { key: '/reports', label: 'Báo cáo', icon: <BarChartOutlined /> },
     ],
@@ -230,13 +228,7 @@ export function AppLayout() {
     queryFn: () => api<{ count: number }>('/field/incidents/open-count'),
     refetchInterval: 60_000,
   });
-  // Cảnh báo GPS chưa xem
-  const { data: gpsUnseen } = useQuery({
-    queryKey: ['/gps/alerts/unseen-count'],
-    queryFn: () => api<{ count: number }>('/gps/alerts/unseen-count'),
-    refetchInterval: 60_000,
-  });
-  const counts: Record<string, number | undefined> = { '/finance/advances': advancePending?.count, '/field': incidentOpen?.count, '/gps': gpsUnseen?.count };
+  const counts: Record<string, number | undefined> = { '/finance/advances': advancePending?.count, '/field': incidentOpen?.count };
   const badge = (key: string, label: string) =>
     counts[key] ? (
       <Flex justify="space-between" align="center" gap={8}>

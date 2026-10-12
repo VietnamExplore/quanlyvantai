@@ -47,10 +47,6 @@ export const SETTING_KEYS = [
   'invoiceEmail',
   // Link mời vào nhóm Zalo lái xe (mở nhanh để dán lệnh điều xe)
   'zaloDriverGroup',
-  // Giám sát GPS: giới hạn tốc độ (km/h), số phút dừng lâu khi chở khách, số phút mất tín hiệu
-  'gpsSpeedLimit',
-  'gpsStopMinutes',
-  'gpsLostMinutes',
   // Bắt buộc kiểm tra xe và lái xe (gồm nồng độ cồn) trước khi bắt đầu chuyến xe công ty: '1' (mặc định) | '0'
   'preTripCheckRequired',
   // Tỷ lệ (%) đóng bảo hiểm trên mức lương đóng bảo hiểm – lái xe: BHXH 8, BHYT 1,5, BHTN 1; công ty: BHXH 17,5, BHYT 3, BHTN 1
@@ -60,10 +56,6 @@ export const SETTING_KEYS = [
   'insuranceRate_cong_ty_bhxh',
   'insuranceRate_cong_ty_bhyt',
   'insuranceRate_cong_ty_bhtn',
-  // Khóa VietMap (bản đồ Việt Nam, đúng chủ quyền) – ưu tiên hơn Google Maps
-  'vietmapKey',
-  // Khóa Google Maps JavaScript API (khóa dùng trên trình duyệt, giới hạn theo tên miền)
-  'googleMapsKey',
   // Hợp đồng vận chuyển (NĐ 158/2024): người đại diện ký, giấy phép kinh doanh vận tải, số điện thoại tiếp nhận phản ánh, điều khoản
   'companyRepresentative',
   'companyRepresentativeTitle',
