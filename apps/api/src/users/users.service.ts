@@ -26,8 +26,9 @@ export class UsersService {
     return this.prisma.user.findMany({
       where: {
         deletedAt: null,
-        // Tài khoản hệ thống (vd. "Website công ty" đứng tên booking lấy từ website) không hiện
-        NOT: { username: { startsWith: '__' } },
+        // Tài khoản hệ thống "Website công ty" (đứng tên booking lấy từ website) không hiện.
+        // So khớp đúng tên: trong LIKE của SQL, "_" là ký tự đại diện nên startsWith('__') sẽ ẩn mọi người dùng
+        username: { not: '__website__' },
         ...(role && { roles: { has: role } }),
         ...(q && {
           OR: [
