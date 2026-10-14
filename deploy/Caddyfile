@@ -1,6 +1,9 @@
-# DOMAIN lấy từ file .env, ví dụ: xe.congtycuaban.vn → Caddy tự xin và gia hạn chứng chỉ HTTPS miễn phí.
-# Chạy thử không có tên miền: DOMAIN=:80 (chỉ http).
-{$DOMAIN} {
+# Hai tên miền (lấy từ deploy/.env), Caddy tự xin và gia hạn chứng chỉ HTTPS miễn phí:
+#   OFFICE_DOMAIN  – phần mềm điều hành của công ty (vd dieuxe.vietnamexplore.vn)
+#   PARTNER_DOMAIN – cổng nhà xe đối tác nhận chuyến (vd nhaxe.vietnamexplore.vn), mở thẳng /partner
+# Chạy thử không có tên miền: OFFICE_DOMAIN=:80, PARTNER_DOMAIN=:8081 (chỉ http).
+
+(app) {
 	encode zstd gzip
 
 	# Cho phép tải lên file bảng đón khách tới 100 MB
@@ -28,6 +31,18 @@
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
+}
+
+{$OFFICE_DOMAIN} {
+	import app
+}
+
+{$PARTNER_DOMAIN} {
+	# Tên miền nhà xe chỉ dùng cổng nhà xe (và các trang công khai: hợp đồng / lệnh vận chuyển điện tử)
+	@office not path /partner /partner/* /api/* /assets/* /e/* /favicon* /*.png /*.svg /*.ico /*.webmanifest
+	redir @office /partner 302
+	import app
 }

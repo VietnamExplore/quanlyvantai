@@ -1,0 +1,11 @@
+[Unit]
+Description=Cập nhật phần mềm quản lý vận tải từ GitHub
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/transfer/deploy/update.sh
+StandardOutput=append:/var/log/transfer-update.log
+StandardError=append:/var/log/transfer-update.log
+TimeoutStartSec=1800
