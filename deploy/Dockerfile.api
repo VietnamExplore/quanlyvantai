@@ -13,7 +13,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
-RUN npm ci -w api --no-audit --no-fund
+# VPS không có IPv6: ưu tiên IPv4, mạng chập chờn thì tự thử lại
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
+RUN npm ci -w api --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
 COPY apps/api apps/api
 WORKDIR /app/apps/api
