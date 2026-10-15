@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Hướng dẫn sử dụng – Phần mềm Quản lý vận tải (nhân viên)</title>
+<style>
+  @page { size: A4; margin: 15mm 15mm 15mm 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1 { font-size: 24pt; margin: 0 0 6px; color: #0f3d7a; }
+  h2 { font-size: 15pt; color: #0f3d7a; border-bottom: 2px solid #1668dc; padding-bottom: 4px; margin: 20px 0 10px; break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 12px 0 5px; color: #111827; break-after: avoid; }
+  p { margin: 5px 0; }
+  ul, ol { margin: 5px 0; padding-left: 22px; }
+  li { margin: 2px 0; }
+  .cover { height: 255mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; break-after: page; }
+  .cover img { width: 150px; margin-bottom: 24px; }
+  .cover .sub { font-size: 13pt; color: #475569; margin-bottom: 28px; }
+  .cover .box { border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px 26px; font-size: 11pt; background: #f8fafc; line-height: 1.8; }
+  .cover .box b { color: #1668dc; font-size: 13pt; }
+  .cover .foot { margin-top: 50px; color: #64748b; font-size: 9.5pt; }
+  .btn { display: inline-block; padding: 0 8px; border-radius: 6px; font-weight: 600; font-size: 9.5pt; border: 1px solid #1668dc; color: #fff; background: #1668dc; white-space: nowrap; }
+  .btn.o { background: #fff; color: #1f2937; border-color: #cbd5e1; }
+  .menu { display: inline-block; padding: 0 6px; border-radius: 5px; background: #eef3fa; color: #0f3d7a; font-weight: 600; font-size: 9.5pt; white-space: nowrap; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 9pt; border: 1px solid; white-space: nowrap; }
+  .t-gray { color: #475569; background: #f8fafc; border-color: #cbd5e1; }
+  .t-gold { color: #a16207; background: #fefce8; border-color: #fde047; }
+  .t-blue { color: #1d4ed8; background: #eff6ff; border-color: #93c5fd; }
+  .t-orange { color: #c2410c; background: #fff7ed; border-color: #fdba74; }
+  .t-cyan { color: #0e7490; background: #ecfeff; border-color: #67e8f9; }
+  .t-purple { color: #7e22ce; background: #faf5ff; border-color: #d8b4fe; }
+  .t-green { color: #15803d; background: #f0fdf4; border-color: #86efac; }
+  .t-red { color: #b91c1c; background: #fef2f2; border-color: #fca5a5; }
+  .note { border-left: 4px solid #f59e0b; background: #fffbeb; padding: 7px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
+  .tip { border-left: 4px solid #10b981; background: #ecfdf5; padding: 7px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
+  .warn { border-left: 4px solid #dc2626; background: #fef2f2; padding: 7px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9.5pt; }
+  tr { break-inside: avoid; }
+  th, td { border: 1px solid #d1d5db; padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: #eef3fa; }
+  td.c, th.c { text-align: center; }
+  .flow { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 8px 0; font-size: 9.5pt; break-inside: avoid; }
+  .flow .ar { color: #64748b; }
+  .toc { columns: 2; column-gap: 30px; }
+  .toc li { margin: 2px 0; }
+  .page-break { break-before: page; }
+  .small { font-size: 9pt; color: #475569; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 30px; margin: 5px 0; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; background: #1668dc; color: #fff; font-size: 9pt; font-weight: 700; text-align: center; line-height: 20px; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <img src="logo.jpg" alt="Logo" />
+  <h1>HƯỚNG DẪN SỬ DỤNG<br />PHẦN MỀM QUẢN LÝ VẬN TẢI</h1>
+  <div class="sub">Dành cho nhân viên văn phòng: Kinh doanh · Điều hành xe · Kế toán · Quản trị</div>
+  <div class="box">
+    Phần mềm văn phòng: <b>https://dieuxe.vietnamexplore.vn</b><br />
+    Cổng nhà xe đối tác: https://nhaxe.vietnamexplore.vn<br />
+    App lái xe (Android): đăng nhập với máy chủ <b>https://dieuxe.vietnamexplore.vn</b>
+  </div>
+  <div class="foot">
+    CÔNG TY TNHH DU LỊCH VIETNAM EXPLORE<br />
+    09 Bình Thái 2, phường Cẩm Lệ, thành phố Đà Nẵng<br />
+    Phiên bản tháng 10/2026 · Tài liệu nội bộ
+  </div>
+</section>
+
+<h2>Mục lục</h2>
+<ol class="toc">
+  <li>Tổng quan và phân quyền</li>
+  <li>Đăng nhập và giao diện chung</li>
+  <li>Trang Tổng quan</li>
+  <li>Booking: tạo đơn, báo giá, xác nhận</li>
+  <li>Giấy tờ của booking</li>
+  <li>Booking tự động từ website</li>
+  <li>Điều xe</li>
+  <li>Xe ghép</li>
+  <li>Hiện trường: sự cố, kiểm tra trước chuyến</li>
+  <li>Thu tiền khách và công nợ khách hàng</li>
+  <li>Công nợ nhà xe</li>
+  <li>Sổ thu chi và tiền nhờ lái xe thu</li>
+  <li>Tạm ứng lái xe</li>
+  <li>Phí đường ePass</li>
+  <li>Báo cáo và bảng lương lái xe</li>
+  <li>Bảng giá</li>
+  <li>Danh mục</li>
+  <li>Hệ thống (Admin)</li>
+  <li>App lái xe</li>
+  <li>Quy định chung và câu hỏi thường gặp</li>
+</ol>
+
+<h2>1. Tổng quan và phân quyền</h2>
+<p>Phần mềm quản lý toàn bộ quy trình vận tải của công ty: <b>nhận đơn → báo giá → xác nhận → điều xe → lái xe / nhà xe chạy chuyến → thu tiền, trả nhà xe → báo cáo, tính lương</b>.</p>
+<div class="flow">
+  <span class="menu">Booking</span><span class="ar">→</span><span class="menu">Điều xe</span><span class="ar">→</span><span class="menu">App lái xe / Cổng nhà xe</span><span class="ar">→</span><span class="menu">Tài chính</span><span class="ar">→</span><span class="menu">Báo cáo</span>
+</div>
+<p>Mỗi người dùng có một hoặc nhiều vai trò. Menu chỉ hiện những mục người dùng có quyền.</p>
+<table>
+  <tr><th>Chức năng</th><th class="c">Admin</th><th class="c">Điều hành xe</th><th class="c">Kinh doanh</th><th class="c">Kế toán</th></tr>
+  <tr><td>Tạo / sửa booking, báo giá</td><td class="c">✅</td><td class="c">✅</td><td class="c">✅</td><td class="c">👁</td></tr>
+  <tr><td>Điều xe, xe ghép, cập nhật trạng thái chuyến</td><td class="c">✅</td><td class="c">✅</td><td class="c">👁</td><td class="c">👁</td></tr>
+  <tr><td>Danh mục xe, lái xe, nhà xe</td><td class="c">✅</td><td class="c">✅</td><td class="c">👁</td><td class="c">👁</td></tr>
+  <tr><td>Bảng giá bán, phụ thu, ngày lễ</td><td class="c">✅</td><td class="c">👁</td><td class="c">👁</td><td class="c">✅</td></tr>
+  <tr><td>Thu tiền khách</td><td class="c">✅</td><td class="c"></td><td class="c">✅</td><td class="c">✅</td></tr>
+  <tr><td>Công nợ nhà xe, sổ thu chi, phí ePass</td><td class="c">✅</td><td class="c">✅</td><td class="c"></td><td class="c">✅</td></tr>
+  <tr><td>Tạm ứng lái xe, lương lái xe</td><td class="c">✅</td><td class="c"></td><td class="c"></td><td class="c">✅</td></tr>
+  <tr><td>Báo cáo</td><td class="c">✅</td><td class="c">👁</td><td class="c">👁 khách của mình</td><td class="c">✅</td></tr>
+  <tr><td>Người dùng, thông tin công ty, sao lưu, nhật ký</td><td class="c">✅</td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+</table>
+<p class="small">✅ được thao tác · 👁 chỉ xem. Lái xe dùng <b>app lái xe</b>; nhà xe đối tác dùng <b>cổng nhà xe</b> (có tài liệu hướng dẫn riêng).</p>
+
+<h2>2. Đăng nhập và giao diện chung</h2>
+<h3>2.1. Đăng nhập</h3>
+<ul>
+  <li>Mở <b>https://dieuxe.vietnamexplore.vn</b> bằng Chrome / Edge / Safari (máy tính hoặc điện thoại).</li>
+  <li>Nhập tên đăng nhập và mật khẩu do Admin cấp → <span class="btn">Đăng nhập</span>.</li>
+  <li><b>Đổi mật khẩu</b> ngay lần đầu: bấm vào tên mình ở góc trên bên phải → <b>Đổi mật khẩu</b>.</li>
+</ul>
+<h3>2.2. Bố cục màn hình</h3>
+<ul>
+  <li><b>Menu bên trái</b> (trên điện thoại: nút ☰): Tổng quan, Booking, Điều xe, Xe ghép, Hiện trường, Báo cáo; nhóm <b>Tài chính</b>, <b>Bảng giá</b>, <b>Danh mục</b>, <b>Hệ thống</b>.</li>
+  <li>Nút <span class="btn">+ Tạo nhanh</span> trên thanh đầu trang: <b>Booking mới</b>, <b>Lệnh điều xe</b>, <b>Phiếu thu chi</b> (tùy quyền).</li>
+  <li>🔔 <b>Thông báo</b>: booking website mới, nhà xe nhận / từ chối chuyến, phát sinh chờ duyệt, lái xe không đạt kiểm tra trước chuyến, sự cố hiện trường… Bấm thông báo để mở thẳng nội dung liên quan.</li>
+  <li>Các bảng có ô tìm kiếm, bộ lọc ngày / trạng thái, sắp xếp; nhiều trang có nút <span class="btn o">Xuất Excel</span>.</li>
+</ul>
+<div class="warn"><b>Bảo mật:</b> không dùng chung tài khoản; không cho người ngoài xem thông tin khách (hộ chiếu, SĐT, danh sách đoàn). Dùng máy chung thì <b>Đăng xuất</b> sau khi làm xong.</div>
+
+<h2>3. Trang Tổng quan</h2>
+<ul>
+  <li><b>Việc cần làm:</b> báo giá chờ khách xác nhận, chuyến chờ điều xe, chuyến 7 ngày tới.</li>
+  <li><b>Chỉ số kinh doanh</b> theo kỳ chọn: doanh thu, chi phí, lợi nhuận, biên lợi nhuận (so với kỳ trước); biểu đồ theo ngày / tháng, theo dịch vụ, loại xe, nhân viên kinh doanh, khách hàng lớn.</li>
+  <li><b>Tiền:</b> booking nháp, khách còn nợ, phải trả nhà xe.</li>
+  <li><b>Giấy tờ hết hạn hoặc sắp hết hạn (30 ngày tới):</b> đăng kiểm, bảo hiểm, phù hiệu xe; bằng lái, khám sức khỏe lái xe – cần gia hạn kịp thời.</li>
+</ul>
+<p class="small">Cảnh báo "chuyến chưa nhập chi phí dự kiến" nghĩa là lợi nhuận đang hiển thị cao hơn thực tế – nhập chi phí cho các chuyến đó.</p>
+
+<h2 class="page-break">4. Booking: tạo đơn, báo giá, xác nhận</h2>
+<p><b>Một booking</b> là một đơn của khách, gồm <b>một hoặc nhiều chuyến</b> (ví dụ đoàn 3 ngày: đón sân bay, city tour, tiễn sân bay). <b>Mỗi chuyến là một xe</b>; đoàn cần 2 xe thì tạo 2 chuyến (dùng nút <b>Nhân bản</b>).</p>
+<h3>4.1. Trạng thái booking</h3>
+<div class="flow">
+  <span class="tag t-gray">Nháp</span><span class="ar">→</span><span class="tag t-gold">Đã báo giá</span><span class="ar">→</span><span class="tag t-blue">Đã xác nhận</span><span class="ar">→</span><span class="tag t-green">Hoàn thành</span>
+  <span class="ar">· bất kỳ lúc nào →</span><span class="tag t-red">Đã hủy</span> <span class="small">(ghi lý do)</span>
+</div>
+<ul>
+  <li><b>Đã xác nhận:</b> các chuyến chuyển sang Điều hành xếp xe.</li>
+  <li>Khi <b>mọi chuyến hoàn thành</b>, booking tự chuyển <b>Hoàn thành</b>.</li>
+  <li>Booking đã hoàn thành chỉ sửa khi thật cần (nút <b>Sửa booking</b>): thay đổi giá / chuyến sẽ cập nhật lại doanh thu, công nợ, lương lái xe.</li>
+</ul>
+<h3>4.2. Tạo booking mới</h3>
+<ol class="steps">
+  <li><span class="menu">Booking</span> → <span class="btn">Booking mới</span> (hoặc <b>Tạo nhanh → Booking mới</b>).</li>
+  <li><b>Khách hàng / đại lý</b> (chọn từ danh mục hoặc để trống với khách lẻ), <b>Người liên hệ</b>, <b>SĐT liên hệ</b>, <b>Nguồn khách</b>, <b>NV kinh doanh</b>, <b>Mã booking của khách</b> (nếu đại lý có mã riêng), <b>Ngôn ngữ giấy tờ</b> (báo giá, bảng đón, hợp đồng song ngữ).</li>
+  <li>Bấm <span class="btn">Thêm chuyến</span>, nhập từng chuyến (mục 4.3).</li>
+  <li>Nhập <b>Giảm giá</b>, <b>Đặt cọc</b> (số tiền yêu cầu cọc in trên báo giá), <b>Hóa đơn</b> nếu khách lấy hóa đơn (tên đơn vị, mã số thuế, địa chỉ, email nhận hóa đơn, thuế suất).</li>
+  <li>Ghi chú: <b>Ghi chú cho khách</b> (in trên báo giá) và <b>Ghi chú nội bộ</b> (khách không thấy).</li>
+  <li>Bấm <b>Lưu</b>. Mã booking tự sinh.</li>
+</ol>
+<h3>4.3. Thông tin một chuyến</h3>
+<table>
+  <tr><th style="width:30%">Trường</th><th>Ghi chú</th></tr>
+  <tr><td>Dịch vụ, kiểu thuê</td><td>Đón / tiễn sân bay, theo tuyến, city tour, thuê theo ngày, tour nhiều ngày, xe ghép… (danh mục Dịch vụ).</td></tr>
+  <tr><td>Giờ đón, kết thúc dự kiến, số ngày</td><td>Kết thúc dự kiến dùng để kiểm tra trùng lịch xe / lái xe.</td></tr>
+  <tr><td>Điểm đón, điểm trả</td><td>Chọn nhanh từ danh mục Địa điểm hoặc gõ địa chỉ cụ thể.</td></tr>
+  <tr><td>Lịch trình di chuyển</td><td>Các điểm ghé trong ngày (city tour, thuê ngày).</td></tr>
+  <tr><td>Số khách, loại xe</td><td>Hệ thống chặn xe không đủ chỗ khi điều xe.</td></tr>
+  <tr><td>Chuyến bay đón / tiễn</td><td>Số hiệu chuyến bay – lái xe, nhà xe tra được giờ hạ / cất cánh.</td></tr>
+  <tr><td>Giá chuyến (chưa thuế)</td><td><b>Tự tính gợi ý</b> theo bảng giá + phụ thu (ban đêm, lễ Tết…); nhân viên được sửa giá, thêm / bớt phụ thu, vượt giờ, vượt km.</td></tr>
+  <tr><td>Chi phí dự kiến</td><td>Chi phí ước tính khi chạy xe công ty – để thấy <b>lợi nhuận dự kiến</b> ngay khi báo giá.</td></tr>
+  <tr><td>Số tiền lái xe thu</td><td>Khi khách trả tiền mặt cho lái xe (nhờ thu) – xem mục 12.2.</td></tr>
+  <tr><td>Ghi chú chuyến</td><td>Hiện cho lái xe / nhà xe.</td></tr>
+</table>
+<h3>4.4. Báo giá và xác nhận</h3>
+<ul>
+  <li><span class="btn o">Báo giá</span>: trang báo giá có thông tin công ty, bảng chuyến, tổng tiền – <b>In / lưu PDF</b> gửi khách.</li>
+  <li><span class="btn o">Sao chép gửi Zalo</span>: tạo sẵn nội dung báo giá dạng chữ (chọn được ngôn ngữ) để dán vào Zalo / email.</li>
+  <li>Khách đồng ý → chuyển trạng thái <b>Đã xác nhận</b>. Khách không đi → <b>Hủy booking</b> (ghi lý do).</li>
+  <li>Màn hình booking luôn hiện <b>Tổng tiền · Đã thu · Còn phải thu</b> và <b>Lợi nhuận dự kiến</b>.</li>
+</ul>
+<div class="tip"><b>Mẹo:</b> Danh sách Booking có bộ lọc theo ngày đi, trạng thái, khách, nguồn khách và sắp xếp (ngày đi gần nhất, còn phải thu nhiều nhất…). Bấm vào tên cột để sắp xếp nhanh.</div>
+
+<h2>5. Giấy tờ của booking</h2>
+<table>
+  <tr><th style="width:28%">Giấy tờ</th><th>Cách dùng</th></tr>
+  <tr><td><b>Danh sách hành khách</b></td><td>Nhập họ tên, giới tính, quốc tịch, số giấy tờ từng khách (lái xe cũng bổ sung được trên app). In theo mẫu Phụ lục V.</td></tr>
+  <tr><td><b>Bảng đón</b></td><td>Tên đón khách (và dòng phụ); có thể tải lên file bảng đón khách gửi. Lái xe / nhà xe mở bảng đón toàn màn hình trên điện thoại hoặc in A4.</td></tr>
+  <tr><td><b>Hợp đồng vận chuyển</b></td><td>Bên thuê, ngày ký, cự ly, phương thức thanh toán, điều khoản. Số hợp đồng tự cấp; bản in có QR dẫn tới <b>hợp đồng điện tử</b> – khách xác nhận online, lái xe xuất trình khi kiểm tra. Hợp đồng lưu ít nhất 3 năm, không xóa cùng booking.</td></tr>
+  <tr><td><b>Lệnh vận chuyển</b></td><td>Mở ở Điều xe → chi tiết chuyến (hoặc chuyến xe ghép) → <b>Lệnh vận chuyển</b>, theo mẫu Phụ lục IV.</td></tr>
+</table>
+<p class="small">Lượt khách xe ghép không đưa vào hợp đồng thuê xe (xe hợp đồng không được bán vé / gom khách lẻ).</p>
+
+<h2>6. Booking tự động từ website</h2>
+<ul>
+  <li>Đơn đặt <b>dịch vụ vận chuyển</b> trên website công ty tự về phần mềm khoảng <b>2 phút một lần</b> (đơn tour, khách sạn, vé… không lấy).</li>
+  <li>Phần mềm tự tạo booking + chuyến, tự điền <b>danh sách hành khách</b> từ thông tin khách để lại, <b>quốc tịch</b> theo mã nước của số điện thoại; xe ghép thì gắn vào chuyến xe ghép, chưa có tuyến thì tự tạo tuyến và báo điều hành.</li>
+  <li>Đơn website <b>Hoàn thành</b> (đã thanh toán) → booking tự <b>Đã xác nhận</b> và ghi nhận <b>đã thu đủ</b>.</li>
+  <li>Đơn bị hủy / hoàn tiền trên website → phần mềm <b>ghi chú vào booking và báo điều hành</b>; nhân viên kiểm tra rồi hủy booking nếu cần (không tự hủy).</li>
+  <li>Booking website đã chạy xong hơn 24 giờ tự chuyển <b>Hoàn thành</b>.</li>
+</ul>
+<div class="note">Nhân viên vẫn cần <b>kiểm tra lại</b> booking website: giờ đón, điểm đón, số khách, chuyến bay, ghi chú của khách – rồi điều xe.</div>
+
+<h2 class="page-break">7. Điều xe</h2>
+<p><span class="menu">Điều xe</span> dành cho Điều hành xe: xếp xe cho mọi chuyến của booking <b>đã xác nhận</b>.</p>
+<h3>7.1. Màn hình Điều xe</h3>
+<ul>
+  <li>Chọn ngày. Bên trái: cột <b>Chờ điều xe</b>. Bên phải: <b>lịch xe công ty</b> theo giờ và các chuyến giao nhà xe.</li>
+  <li>Tab <b>Danh sách chuyến</b> xem dạng bảng, lọc theo ngày, trạng thái.</li>
+  <li>Bấm vào chuyến để mở <b>khung điều xe</b>. <b>Tạo nhanh → Lệnh điều xe</b> để tạo chuyến lẻ trực tiếp.</li>
+</ul>
+<h3>7.2. Gán xe</h3>
+<table>
+  <tr><th style="width:22%">Cách</th><th>Thao tác</th></tr>
+  <tr><td><b>Xe công ty</b></td><td>Chọn xe (hệ thống gợi ý xe đủ chỗ, nhãn <i>Rảnh</i> / <i>Trùng lịch</i>) → lái xe mặc định tự điền, đổi được → <span class="btn">Gán xe công ty</span>. Lái xe nhận thông báo trên app.</td></tr>
+  <tr><td><b>Xe đối tác</b></td><td>Chọn nhà xe (chỉ hiện nhà xe có loại xe phù hợp), nhập <b>giá thuê</b> (chưa thuế), yêu cầu xuất hóa đơn + thuế suất nếu cần, ghi chú điều xe → <span class="btn">Giao nhà xe đối tác</span>. Nhà xe nhận chuyến trên cổng nhà xe và tự nhập biển số, tài xế. Xem ngay <b>lãi thực tế</b>.</td></tr>
+</table>
+<p><b>Kiểm tra tự động khi lưu:</b> chặn xe không đủ chỗ; cảnh báo xe / lái xe trùng lịch, xe đang bảo dưỡng, hạng bằng lái không phù hợp, lái xe nghỉ, giấy tờ xe / bằng lái hết hạn trước ngày chạy.</p>
+<h3>7.3. Trạng thái chuyến</h3>
+<div class="flow">
+  <span class="tag t-orange">Chờ điều xe</span><span class="ar">→</span><span class="tag t-blue">Đã gán xe</span><span class="ar">→</span><span class="tag t-cyan">Tài xế đã nhận</span><span class="ar">→</span><span class="tag t-blue">Đang đến đón</span><span class="ar">→</span><span class="tag t-purple">Đã đón khách</span><span class="ar">→</span><span class="tag t-green">Hoàn thành</span>
+</div>
+<ul>
+  <li>Lái xe công ty / nhà xe tự cập nhật trên app / cổng nhà xe. Điều hành cập nhật thay được bằng nút <b>Cập nhật: …</b> trong khung điều xe.</li>
+  <li><b>Hủy điều xe</b> → chuyến quay lại <b>Chờ điều xe</b>; lái xe / nhà xe cũ được báo.</li>
+  <li><span class="btn o">Sao chép lệnh điều xe</span>: nội dung chuyến (giờ, điểm đón / trả, khách, chuyến bay, ghi chú) để gửi Zalo.</li>
+</ul>
+<h3>7.4. Duyệt phát sinh và điều chỉnh giá nhà xe</h3>
+<ul>
+  <li>Nhà xe khai báo <b>phát sinh</b> khi hoàn thành chuyến (thêm giờ, thêm điểm…) → thông báo <b>Phát sinh nhà xe chờ duyệt</b>.</li>
+  <li>Mở chuyến → <b>Duyệt phát sinh</b>: duyệt (có thể sửa số tiền được duyệt) hoặc không duyệt, ghi chú lý do. Chỉ phát sinh đã duyệt mới tính vào công nợ nhà xe.</li>
+  <li><b>Điều chỉnh giá nhà xe</b> khi cần sửa giá thuê đã giao (ghi lý do – nhà xe thấy trên cổng).</li>
+</ul>
+
+<h2>8. Xe ghép</h2>
+<p>Bán <b>từng chỗ</b> trên các tuyến bus cố định; nhiều booking ghép vào một chuyến xe.</p>
+<ul>
+  <li><span class="menu">Danh mục → Tuyến xe ghép</span>: tuyến, giá vé người lớn / trẻ em (giá đại lý), điểm dừng / khu vực đón (phụ phí), lịch chạy cố định theo ngày trong tuần.</li>
+  <li><span class="menu">Xe ghép</span>: chọn ngày → các chuyến theo tuyến với thanh <b>ghế đã bán / còn trống</b>. Mở chuyến để:
+    <ul>
+      <li><b>Điều xe cả chuyến</b> (xe công ty hoặc nhà xe + giá thuê cả chuyến) – mọi lượt khách tự nhận cùng xe; chi phí chia theo số khách.</li>
+      <li>Xem / <b>Chép danh sách</b> khách theo điểm đón, xuất <b>Excel</b>, <b>Lệnh vận chuyển</b>.</li>
+      <li><b>Đóng bán / Mở bán lại</b>, <b>Hủy chuyến</b>, <b>Bắt đầu chạy</b>, <b>Tạo chuyến thêm</b> (tăng chuyến).</li>
+    </ul>
+  </li>
+  <li>Bán vé: trong booking → <b>Thêm chuyến</b>, dịch vụ <b>Xe ghép</b> → chọn tuyến, ngày, giờ chạy (hiện ghế còn), điểm đón / trả, người lớn / trẻ em → giá tự tính. Không đặt vượt số ghế.</li>
+</ul>
+
+<h2 class="page-break">9. Hiện trường</h2>
+<h3>9.1. Sự cố</h3>
+<p>Lái xe báo sự cố trên app (hỏng xe, tai nạn, khách vắng, trễ…) kèm ảnh → văn phòng nhận thông báo. Vào <span class="menu">Hiện trường</span> xem chi tiết, cập nhật xử lý và đóng sự cố.</p>
+<h3>9.2. Kiểm tra trước chuyến</h3>
+<ul>
+  <li>Trước mỗi chuyến xe công ty, lái xe làm <b>kiểm tra trước chuyến</b> trên app: <b>tình trạng lái xe</b> (sức khỏe, <b>nồng độ cồn</b> – ảnh máy đo không bắt buộc) và <b>tình trạng xe</b> (đèn, phanh, lốp, giấy tờ…), số km.</li>
+  <li>Lái xe <b>không đạt</b> (có cồn, không đủ sức khỏe) hoặc xe <b>có hỏng hóc</b> → văn phòng nhận thông báo ngay để đổi lái xe / xe.</li>
+  <li>Tab <b>Kiểm tra trước chuyến</b>: lọc theo ngày, xe, lái xe, chỉ xem lượt không đạt; <span class="btn o">Xuất Excel</span> gồm sheet tổng hợp và sheet chi tiết từng hạng mục.</li>
+</ul>
+
+<h2>10. Thu tiền khách và công nợ khách hàng</h2>
+<h3>10.1. Ghi nhận thu tiền</h3>
+<ul>
+  <li>Trong booking, phần <b>Thanh toán</b> → <span class="btn">Thu tiền</span>: số tiền, hình thức (tiền mặt / chuyển khoản / thẻ / khác), ngày thu, số chứng từ, ghi chú. <b>Hoàn tiền</b> nhập số âm.</li>
+  <li>Booking hiện nhãn <i>Chưa thu / Thu một phần / Đã thu đủ</i>.</li>
+</ul>
+<h3>10.2. Công nợ khách hàng</h3>
+<ul>
+  <li><span class="menu">Tài chính → Công nợ khách hàng</span>: gom theo khách / đại lý (khách lẻ theo tên + SĐT). Phải thu = booking đã xác nhận / hoàn thành − đã thu.</li>
+  <li><b>Hạn thanh toán</b> = ngày kết thúc chuyến cuối + số ngày công nợ của khách (khai ở danh mục Khách hàng). Cảnh báo <b>quá hạn</b> và <b>vượt hạn mức</b>.</li>
+  <li>Thu tiền trực tiếp từ dòng công nợ; xuất Excel theo bộ lọc.</li>
+</ul>
+
+<h2>11. Công nợ nhà xe</h2>
+<ul>
+  <li><span class="menu">Tài chính → Công nợ nhà xe</span>: mỗi nhà xe có tiền chuyến (giá thuê + phát sinh đã duyệt, cộng thuế nếu có hóa đơn), đã thanh toán, còn phải trả.</li>
+  <li>Tab <b>Chuyến</b> để đối soát từng chuyến; tab <b>Đã thanh toán</b> xem các lần trả.</li>
+  <li><b>Thanh toán</b> cho nhà xe: số tiền, ngày, hình thức, số chứng từ. Nhà xe xem được công nợ và các lần thanh toán trên cổng nhà xe.</li>
+</ul>
+
+<h2 class="page-break">12. Sổ thu chi và tiền nhờ lái xe thu</h2>
+<h3>12.1. Sổ thu chi</h3>
+<ul>
+  <li><span class="menu">Tài chính → Sổ thu chi</span>: mọi khoản <b>thu</b> (tiền khách) và <b>chi</b> (trả nhà xe, chi phí chuyến, phiếu chi khác) theo khoảng ngày; tổng thu, tổng chi, chênh lệch; xuất Excel.</li>
+  <li><span class="btn">Tạo phiếu thu chi</span> cho khoản thu / chi ngoài booking (đính kèm ảnh chứng từ).</li>
+</ul>
+<h3>12.2. Tiền nhờ lái xe thu (tab Nhờ thu)</h3>
+<p>Khách trả tiền mặt cho lái xe được theo dõi <b>riêng</b>, <b>chưa</b> ghi vào sổ thu cho tới khi tiền về công ty:</p>
+<div class="flow">
+  <span class="tag t-gray">Chưa thu</span><span class="ar">→ lái xe bấm "đã thu" trên app →</span><span class="tag t-orange">Lái xe giữ</span><span class="ar">→ Điều hành xác nhận đã nhận →</span><span class="tag t-purple">Chờ kế toán</span><span class="ar">→ Kế toán xác nhận →</span><span class="tag t-green">Đã nộp</span>
+</div>
+<ul>
+  <li>Chỉ khi <b>cả Điều hành và Kế toán</b> xác nhận, phần mềm mới <b>tạo phiếu thu</b> cho booking và bỏ khoản đó khỏi danh sách lái xe đang giữ.</li>
+  <li>Khoản khách chuyển khoản chỉ cần Kế toán xác nhận. Bấm nhầm thì bỏ xác nhận được.</li>
+</ul>
+
+<h2>13. Tạm ứng lái xe</h2>
+<ul>
+  <li>Lái xe gửi đề nghị tạm ứng trên app (số tiền, lý do).</li>
+  <li><span class="menu">Tài chính → Tạm ứng lái xe</span>: Kế toán / Admin <span class="btn">Duyệt &amp; chi</span> hoặc <b>Từ chối</b>. Khoản đã ứng được trừ vào bảng lương lái xe.</li>
+</ul>
+
+<h2>14. Phí đường ePass</h2>
+<ol class="steps">
+  <li>Mỗi tuần, tải hóa đơn điện tử ePass (file <b>PDF hoặc XML</b>, có biển số xe) từ trang ePass.</li>
+  <li><span class="menu">Tài chính → Phí đường ePass</span> → chọn một hoặc nhiều file → <span class="btn">Nhập</span>.</li>
+  <li>Phần mềm đọc từng lượt qua trạm và <b>gắn vào chuyến gần nhất của xe đó trong cùng ngày</b> thành chi phí chuyến: <b>Cầu đường</b> hoặc <b>Phí sân bay</b>. Lượt trùng không nhập hai lần.</li>
+  <li>Lượt chưa khớp chuyến: bấm <b>Khớp lại chuyến</b> (sau khi đã điều xe bổ sung) hoặc gắn tay; <b>Bỏ gắn</b> nếu gắn sai.</li>
+</ol>
+
+<h2>15. Báo cáo và bảng lương lái xe</h2>
+<ul>
+  <li><span class="menu">Báo cáo</span>: chọn kỳ (tháng này, tháng trước, quý, năm, tùy chọn). Tính theo <b>ngày đón</b>, chỉ chuyến của booking đã xác nhận / hoàn thành; doanh thu chưa gồm VAT.</li>
+  <li>Các tab: <b>Chi tiết chuyến</b> (doanh thu, chi phí, lợi nhuận từng chuyến), <b>Hiệu suất xe</b>, <b>Hiệu suất lái xe</b>, <b>Nhà xe đối tác</b>, <b>Khách hàng / NV kinh doanh</b>, <b>Dịch vụ &amp; loại xe</b>.</li>
+  <li><span class="btn o">Xuất Excel</span>: mỗi tab một sheet, có dòng tổng cộng.</li>
+</ul>
+<h3>Bảng lương lái xe (Admin, Kế toán)</h3>
+<ul>
+  <li>Cài mức lương ở <span class="menu">Danh mục → Lái xe</span>: lương cứng, % doanh số, <b>lương đóng bảo hiểm</b> (mặc định 5.000.000 đ), tháng bắt đầu áp dụng. Tăng lương thì thêm mức mới – các tháng trước giữ mức cũ.</li>
+  <li><b>Báo cáo → Hiệu suất lái xe → Bảng lương lái xe</b>: lương cứng theo ngày trong kỳ + % doanh thu chuyến đã hoàn thành; trừ <b>BHXH, BHYT, BHTN</b> phần người lao động; cộng hoàn ứng (chi phí lái xe tự chi trên app); trừ tạm ứng → <b>Thực nhận</b>.</li>
+  <li>Tỷ lệ bảo hiểm (người lao động / công ty) chỉnh ở Thông tin công ty. Excel bảng lương có cột riêng từng loại bảo hiểm.</li>
+</ul>
+
+<h2 class="page-break">16. Bảng giá</h2>
+<table>
+  <tr><th style="width:25%">Menu</th><th>Nội dung</th></tr>
+  <tr><td><b>Giá theo tuyến</b></td><td>Mỗi tuyến (ví dụ Sân bay Đà Nẵng → Hội An) có giá bán cho từng loại xe, kèm giá mua đối tác tham khảo.</td></tr>
+  <tr><td><b>Giá thuê theo ngày</b></td><td>Theo loại xe: giá ngày / nửa ngày (gói giờ, km), vượt km, vượt giờ, lưu đêm tài xế.</td></tr>
+  <tr><td><b>Phụ thu &amp; ngày lễ</b></td><td>Phụ thu tự động ban đêm (22h–5h), lễ Tết (theo danh sách ngày lễ), hoặc chọn tay khi báo giá.</td></tr>
+</table>
+<p>Giá trong bảng chỉ là <b>gợi ý</b> khi thêm chuyến; nhân viên sửa được trên từng booking.</p>
+
+<h2>17. Danh mục</h2>
+<table>
+  <tr><th style="width:25%">Danh mục</th><th>Lưu ý khi nhập</th></tr>
+  <tr><td>Xe</td><td>Biển số, loại xe, sở hữu (công ty / đối tác), lái xe mặc định, trạng thái; <b>hạn đăng kiểm, bảo hiểm, phù hiệu</b> (để cảnh báo).</td></tr>
+  <tr><td>Lái xe</td><td>Họ tên, SĐT, CCCD, hạng bằng, <b>hạn bằng lái, khám sức khỏe</b>, trạng thái (đang làm / nghỉ phép / nghỉ việc), tài khoản app, mức lương.</td></tr>
+  <tr><td>Nhà xe đối tác</td><td>Thông tin liên hệ, ngân hàng, loại xe cung cấp; tạo <b>tài khoản cổng nhà xe</b> ở Hệ thống → Người dùng (vai trò Nhà xe đối tác).</td></tr>
+  <tr><td>Khách hàng</td><td>Khách / đại lý, loại khách, số ngày công nợ, hạn mức công nợ, thông tin hóa đơn.</td></tr>
+  <tr><td>Địa điểm</td><td>Sân bay, khách sạn, điểm tham quan, bến xe… để chọn nhanh.</td></tr>
+  <tr><td>Loại xe, Dịch vụ, Tuyến xe ghép, Loại chi phí, Loại khách hàng, Nguồn khách</td><td>Danh mục dùng chung cho booking, báo cáo.</td></tr>
+</table>
+<div class="note">Không xóa danh mục đã dùng trong booking; đổi trạng thái <b>ngừng hoạt động / nghỉ việc</b> thay vì xóa để giữ lịch sử.</div>
+
+<h2>18. Hệ thống (chỉ Admin)</h2>
+<ul>
+  <li><b>Người dùng:</b> tạo tài khoản, gán vai trò (một người nhiều vai trò được), khóa tài khoản nghỉ việc, đặt lại mật khẩu. Tài khoản lái xe gắn với hồ sơ lái xe; tài khoản nhà xe gắn với nhà xe.</li>
+  <li><b>Thông tin công ty:</b> tên, địa chỉ, MST, logo, ngân hàng, ghi chú báo giá; thông tin hợp đồng vận chuyển (người đại diện, giấy phép kinh doanh vận tải, điều khoản); tỷ lệ bảo hiểm; yêu cầu kiểm tra trước chuyến.</li>
+  <li><b>Nhật ký thao tác:</b> ai đã làm gì, lúc nào (tạo / sửa / xóa booking, điều xe, thu chi…).</li>
+  <li><b>Sao lưu &amp; dọn dẹp:</b> lịch sao lưu tự động hằng ngày (dữ liệu + file), tải bản sao lưu; <b>kết nối website</b> (nhận đơn tự động, xem các đơn đã nhận).</li>
+</ul>
+
+<h2 class="page-break">19. App lái xe</h2>
+<ul>
+  <li>Cài app Android bản mới nhất (văn phòng gửi file APK). Màn hình đăng nhập → địa chỉ máy chủ <b>https://dieuxe.vietnamexplore.vn</b> → tài khoản lái xe.</li>
+  <li>Lái xe: nhận chuyến, xem lộ trình, khách, chuyến bay, bảng đón, hợp đồng; <b>kiểm tra trước chuyến</b> (bắt buộc với xe công ty); cập nhật trạng thái; nhập chi phí (xăng, cầu đường… kèm ảnh); bấm <b>đã thu tiền</b> với chuyến nhờ thu; báo sự cố; đề nghị tạm ứng; ký xác nhận hoàn thành.</li>
+  <li>App <b>không theo dõi vị trí</b> lái xe (xe đã có thiết bị định vị theo quy định).</li>
+</ul>
+
+<h2>20. Quy định chung và câu hỏi thường gặp</h2>
+<h3>Quy định</h3>
+<ul>
+  <li>Mọi đơn phải có booking trong phần mềm trước khi chạy; mọi chuyến phải được điều xe trên phần mềm.</li>
+  <li>Thu tiền nào ghi ngay phiếu thu đó; tiền lái xe thu hộ phải qua đủ 2 bước xác nhận.</li>
+  <li>Nhập chi phí thực tế của chuyến kịp thời để báo cáo lợi nhuận đúng.</li>
+  <li>Bảo mật dữ liệu khách hàng; không xuất / gửi danh sách khách ra ngoài khi không cần thiết.</li>
+</ul>
+<h3>Câu hỏi thường gặp</h3>
+<table>
+  <tr><th style="width:38%">Câu hỏi</th><th>Trả lời</th></tr>
+  <tr><td>Không thấy menu / nút cần dùng?</td><td>Tài khoản chưa có quyền – báo Admin cấp vai trò phù hợp.</td></tr>
+  <tr><td>Chuyến không hiện ở cột Chờ điều xe?</td><td>Booking chưa <b>Đã xác nhận</b>, hoặc là lượt xe ghép (điều ở trang Xe ghép).</td></tr>
+  <tr><td>Lái xe báo không bắt đầu được chuyến?</td><td>Chưa làm / không đạt kiểm tra trước chuyến trong ngày – xem tab Kiểm tra trước chuyến.</td></tr>
+  <tr><td>Nhà xe từ chối chuyến?</td><td>Nhận thông báo kèm lý do; chuyến về <b>Chờ điều xe</b> – điều lại.</td></tr>
+  <tr><td>Booking website thiếu thông tin?</td><td>Liên hệ khách để bổ sung vào booking. Admin xem được đơn gốc ở Hệ thống → Sao lưu &amp; dọn dẹp, mục kết nối website.</td></tr>
+  <tr><td>Lợi nhuận báo cáo cao bất thường?</td><td>Chuyến chưa nhập chi phí – nhập chi phí dự kiến / thực tế.</td></tr>
+  <tr><td>Quên mật khẩu?</td><td>Báo Admin đặt lại.</td></tr>
+</table>
+
+<div class="tip" style="margin-top:16px">
+  <b>Hỗ trợ:</b> liên hệ Admin phần mềm của công ty. Tài liệu hướng dẫn riêng cho <b>nhà xe đối tác</b>: "Hướng dẫn sử dụng – Cổng nhà xe đối tác".
+</div>
+
+</body>
+</html>
