@@ -1,7 +1,7 @@
 import { KeyOutlined, LogoutOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Avatar, Button, Card, Dropdown, Empty, Flex, Form, Input, Layout, Modal, Segmented, Spin, Statistic, Table, Tag, Typography } from 'antd';
-import dayjs from 'dayjs';
+import { App, Avatar, Button, Card, DatePicker, Dropdown, Empty, Flex, Form, Input, Layout, Modal, Segmented, Select, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
@@ -19,6 +19,10 @@ import { BRAND } from '../theme';
 import type { PaymentMethod, TripStatus } from '../types';
 
 interface Summary {
+  from: string | null;
+  to: string | null;
+  /** Còn nợ đầu kỳ (trước ngày bắt đầu lọc) */
+  opening: number;
   tripCount: number;
   totalNet: number;
   totalVat: number;
@@ -30,6 +34,18 @@ interface Summary {
 }
 
 type Tab = 'new' | 'active' | 'history' | 'money';
+
+/** Kỳ xem công nợ */
+type Period = 'all' | 'month' | 'lastMonth' | 'quarter' | 'year' | 'custom';
+const quarterStart = () => dayjs().startOf('month').subtract(dayjs().month() % 3, 'month');
+const PERIODS: { value: Period; label: string; range?: () => [Dayjs, Dayjs] }[] = [
+  { value: 'all', label: 'Tất cả thời gian' },
+  { value: 'month', label: 'Tháng này', range: () => [dayjs().startOf('month'), dayjs().endOf('month')] },
+  { value: 'lastMonth', label: 'Tháng trước', range: () => [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+  { value: 'quarter', label: 'Quý này', range: () => [quarterStart(), quarterStart().add(2, 'month').endOf('month')] },
+  { value: 'year', label: 'Năm nay', range: () => [dayjs().startOf('year'), dayjs().endOf('year')] },
+  { value: 'custom', label: 'Chọn khoảng ngày…' },
+];
 
 const STATUS_TAG: Partial<Record<TripStatus, { label: string; color: string }>> = {
   DA_GAN: { label: 'Chờ nhận', color: 'orange' },
@@ -74,7 +90,17 @@ export default function PartnerPortalPage() {
     queryFn: () => api<PartnerTrip>(`/partner/trips/${openId}`),
     enabled: !!openId,
   });
-  const { data: summary } = useQuery({ queryKey: ['/partner/summary'], queryFn: () => api<Summary>('/partner/summary'), enabled: tab === 'money' });
+  const [period, setPeriod] = useState<Period>('all');
+  const [custom, setCustom] = useState<[Dayjs, Dayjs] | null>(null);
+  const range = period === 'custom' ? custom : (PERIODS.find((p) => p.value === period)?.range?.() ?? null);
+  const from = range?.[0].format('YYYY-MM-DD');
+  const to = range?.[1].format('YYYY-MM-DD');
+  const { data: summary, isFetching: summaryLoading } = useQuery({
+    queryKey: ['/partner/summary', from, to],
+    queryFn: () => api<Summary>('/partner/summary', { query: { from, to } }),
+    enabled: tab === 'money' && (period !== 'custom' || !!custom),
+    placeholderData: (prev) => prev,
+  });
 
   // Mở từ thông báo (?trip=ID): chuyển sang tab của chuyến và mở chi tiết
   const focusTrip = Number(params.get('trip')) || null;
@@ -183,15 +209,15 @@ export default function PartnerPortalPage() {
 
   return (
     <Layout style={{ minHeight: '100vh', background: BRAND.bg }}>
-      <Layout.Header className="app-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '0 16px' }}>
-        <Flex align="center" gap={10} style={{ minWidth: 0 }}>
-          <img src="/api/settings/logo" alt="" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8 }} onError={(e) => (e.currentTarget.style.display = 'none')} />
+      <Layout.Header className="app-header pt-header">
+        <Flex align="center" gap={10} style={{ minWidth: 0, flex: 1 }}>
+          <img src="/api/settings/logo" alt="" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8, flex: 'none' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
           <div style={{ minWidth: 0, lineHeight: 1.2 }}>
             <div style={{ fontSize: 12, color: BRAND.muted }}>Cổng nhà xe đối tác</div>
-            <div style={{ fontWeight: 700, color: BRAND.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{me?.name ?? '…'}</div>
+            <div className="pt-head-name">{me?.name ?? '…'}</div>
           </div>
         </Flex>
-        <Flex align="center" gap={8}>
+        <Flex align="center" gap={8} style={{ flex: 'none' }}>
           <NotificationBell />
           <Dropdown
             trigger={['click']}
@@ -209,18 +235,37 @@ export default function PartnerPortalPage() {
         </Flex>
       </Layout.Header>
 
-      <Layout.Content style={{ padding: 12, maxWidth: 960, width: '100%', margin: '0 auto' }}>
-        <Flex justify="space-between" align="center" gap={8} wrap style={{ marginBottom: 12 }}>
-          <Segmented value={tab} onChange={(v) => setTab(v as Tab)} options={tabs} />
-          {tab !== 'money' && (
-            <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isFetching}>
-              Tải lại
-            </Button>
-          )}
+      <Layout.Content style={{ padding: 12, maxWidth: 960, width: '100%', margin: '0 auto', minWidth: 0 }}>
+        <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+          <Segmented className="pt-tabs" block value={tab} onChange={(v) => setTab(v as Tab)} options={tabs} style={{ flex: 1, minWidth: 0 }} />
+          {tab !== 'money' && <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isFetching} title="Tải lại" aria-label="Tải lại" />}
         </Flex>
 
         {tab === 'money' ? (
-          <MoneyView summary={summary} />
+          <>
+            <Flex gap={8} wrap style={{ marginBottom: 12 }}>
+              <Select value={period} onChange={(v: Period) => setPeriod(v)} options={PERIODS.map(({ value, label }) => ({ value, label }))} style={{ flex: '1 1 150px' }} />
+              {period === 'custom' && (
+                <DatePicker.RangePicker
+                  format="DD/MM/YYYY"
+                  value={custom}
+                  onChange={(v) => setCustom(v?.[0] && v[1] ? [v[0], v[1]] : null)}
+                  placeholder={['Từ ngày', 'Đến ngày']}
+                  inputReadOnly
+                  style={{ flex: '1 1 240px' }}
+                />
+              )}
+            </Flex>
+            {period === 'custom' && !custom ? (
+              <Card>
+                <Empty description="Chọn khoảng ngày để xem công nợ" />
+              </Card>
+            ) : (
+              <Spin spinning={summaryLoading && !!summary}>
+                <MoneyView summary={summary} range={range} />
+              </Spin>
+            )}
+          </>
         ) : isFetching && !data ? (
           <Flex justify="center" style={{ padding: 48 }}>
             <Spin />
@@ -330,7 +375,7 @@ function TripRow({ trip: t, onOpen }: { trip: PartnerTrip; onOpen: () => void })
   );
 }
 
-function MoneyView({ summary }: { summary?: Summary }) {
+function MoneyView({ summary, range }: { summary?: Summary; range: [Dayjs, Dayjs] | null }) {
   if (!summary) {
     return (
       <Flex justify="center" style={{ padding: 48 }}>
@@ -340,9 +385,19 @@ function MoneyView({ summary }: { summary?: Summary }) {
   }
   return (
     <>
+      {range && (
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+          Kỳ {range[0].format('DD/MM/YYYY')} – {range[1].format('DD/MM/YYYY')}: chuyến tính theo ngày đón, thanh toán theo ngày trả.
+        </Typography.Paragraph>
+      )}
       <Flex gap={12} wrap style={{ marginBottom: 12 }}>
+        {range && (
+          <Card style={{ flex: '1 1 200px' }}>
+            <Statistic title="Còn nợ đầu kỳ" value={summary.opening} suffix="đ" groupSeparator="." />
+          </Card>
+        )}
         <Card style={{ flex: '1 1 200px' }}>
-          <Statistic title={`Tiền chuyến (${summary.tripCount} chuyến)`} value={summary.totalCost} suffix="đ" />
+          <Statistic title={`Tiền chuyến${range ? ' trong kỳ' : ''} (${summary.tripCount} chuyến)`} value={summary.totalCost} suffix="đ" groupSeparator="." />
           {summary.totalVat > 0 && (
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               Chưa thuế {formatVnd(summary.totalNet)}đ + thuế {formatVnd(summary.totalVat)}đ
@@ -350,10 +405,10 @@ function MoneyView({ summary }: { summary?: Summary }) {
           )}
         </Card>
         <Card style={{ flex: '1 1 200px' }}>
-          <Statistic title="Đã được thanh toán" value={summary.totalPaid} suffix="đ" valueStyle={{ color: '#15803d' }} />
+          <Statistic title={range ? 'Đã thanh toán trong kỳ' : 'Đã được thanh toán'} value={summary.totalPaid} suffix="đ" groupSeparator="." valueStyle={{ color: '#15803d' }} />
         </Card>
         <Card style={{ flex: '1 1 200px' }}>
-          <Statistic title="Còn lại" value={summary.balance} suffix="đ" valueStyle={{ color: summary.balance > 0 ? '#b45309' : undefined }} />
+          <Statistic title={range ? 'Còn lại cuối kỳ' : 'Còn lại'} value={summary.balance} suffix="đ" groupSeparator="." valueStyle={{ color: summary.balance > 0 ? '#b45309' : undefined }} />
         </Card>
       </Flex>
       <Card title="Các lần thanh toán" style={{ marginBottom: 12 }}>

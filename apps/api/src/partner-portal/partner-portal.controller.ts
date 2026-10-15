@@ -306,17 +306,34 @@ export class PartnerPortalController {
     return this.trip(user, id);
   }
 
-  /** Công nợ: tiền chuyến (giá thuê) – đã thanh toán = còn lại */
+  /**
+   * Công nợ: tiền chuyến (giá thuê) – đã thanh toán = còn lại.
+   * Lọc theo kỳ (from / to: YYYY-MM-DD, giờ Việt Nam): chuyến theo ngày đón, thanh toán theo ngày trả;
+   * kèm nợ đầu kỳ (trước ngày from) để còn lại cuối kỳ = đầu kỳ + tiền chuyến trong kỳ − đã trả trong kỳ.
+   */
   @Get('summary')
-  async summary(@CurrentUser() user: AuthUser) {
+  async summary(@CurrentUser() user: AuthUser, @Query('from') from?: string, @Query('to') to?: string) {
     const partnerId = this.partnerId(user);
-    const [trips, payments] = await Promise.all([
+    const day = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+    const f = day(from);
+    const t2 = day(to);
+    // Ngày đón theo giờ Việt Nam; ngày thanh toán là cột ngày (00:00 UTC)
+    const fromAt = f ? new Date(`${f}T00:00:00+07:00`) : undefined;
+    const toAt = t2 ? new Date(new Date(`${t2}T00:00:00+07:00`).getTime() + 86_400_000) : undefined;
+    const fromDay = f ? new Date(`${f}T00:00:00Z`) : undefined;
+    const toDay = t2 ? new Date(`${t2}T00:00:00Z`) : undefined;
+
+    const tripWhere: Prisma.BookingTripWhereInput = { partnerId, status: { not: TripStatus.HUY }, booking: { status: { in: BILLABLE } } };
+    const tripSelect = { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerPlate: true, partnerCost: true, partnerExtraUp: true, partnerExtraDown: true, partnerExtraNote: true, partnerExtraStatus: true, partnerExtraReviewNote: true, partnerInvoice: true, partnerVatPercent: true, status: true, booking: { select: { code: true } }, vehicleType: { select: { name: true } } } satisfies Prisma.BookingTripSelect;
+    const [trips, payments, tripsBefore, paidBefore] = await Promise.all([
       this.prisma.bookingTrip.findMany({
-        where: { partnerId, status: { not: TripStatus.HUY }, booking: { status: { in: BILLABLE } } },
-        select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, partnerPlate: true, partnerCost: true, partnerExtraUp: true, partnerExtraDown: true, partnerExtraNote: true, partnerExtraStatus: true, partnerExtraReviewNote: true, partnerInvoice: true, partnerVatPercent: true, status: true, booking: { select: { code: true } }, vehicleType: { select: { name: true } } },
+        where: { ...tripWhere, pickupTime: { gte: fromAt, lt: toAt } },
+        select: tripSelect,
         orderBy: { pickupTime: 'desc' },
       }),
-      this.prisma.partnerPayment.findMany({ where: { partnerId }, orderBy: { paidAt: 'desc' }, select: { id: true, amount: true, paidAt: true, method: true, reference: true, note: true } }),
+      this.prisma.partnerPayment.findMany({ where: { partnerId, paidAt: { gte: fromDay, lte: toDay } }, orderBy: { paidAt: 'desc' }, select: { id: true, amount: true, paidAt: true, method: true, reference: true, note: true } }),
+      fromAt ? this.prisma.bookingTrip.findMany({ where: { ...tripWhere, pickupTime: { lt: fromAt } }, select: tripSelect }) : Promise.resolve([]),
+      fromDay ? this.prisma.partnerPayment.aggregate({ where: { partnerId, paidAt: { lt: fromDay } }, _sum: { amount: true } }) : Promise.resolve(null),
     ]);
     const rows = trips.map((t) => {
       const x = partnerPayable(t);
@@ -328,6 +345,20 @@ export class PartnerPortalController {
     // Phát sinh đang chờ văn phòng duyệt (chưa tính công nợ)
     const pendingExtra = rows.filter((t) => t.partnerExtraStatus === 'CHO_DUYET').length;
     const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
-    return { tripCount: trips.length, pendingExtra, totalNet, totalVat, totalCost, totalPaid, balance: totalCost - totalPaid, trips: rows, payments };
+    const opening = tripsBefore.reduce((s, t) => s + partnerPayable(t).total, 0) - Number(paidBefore?._sum.amount ?? 0);
+    return {
+      from: f ?? null,
+      to: t2 ?? null,
+      tripCount: trips.length,
+      pendingExtra,
+      totalNet,
+      totalVat,
+      totalCost,
+      totalPaid,
+      opening,
+      balance: opening + totalCost - totalPaid,
+      trips: rows,
+      payments,
+    };
   }
 }

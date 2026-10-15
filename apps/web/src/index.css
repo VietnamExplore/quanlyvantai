@@ -482,6 +482,44 @@ body {
 }
 
 /* ───── Cổng nhà xe: danh sách + chi tiết chuyến (giống app lái xe) ───── */
+.pt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px !important;
+  height: auto !important;
+  min-height: 64px;
+  line-height: 1.2 !important;
+}
+/* Tên nhà xe dài: xuống tối đa 2 dòng, không cắt chữ */
+.pt-head-name {
+  font-weight: 700;
+  color: #1f2937;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Thẻ Chờ nhận / Đang chạy / Đã xong / Công nợ: chia đều, chữ xuống dòng trên điện thoại hẹp */
+.pt-tabs .ant-segmented-item-label {
+  white-space: normal;
+  line-height: 1.25;
+  min-height: 32px;
+  padding: 5px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: visible;
+  text-overflow: clip;
+}
+@media (max-width: 400px) {
+  .pt-tabs .ant-segmented-item-label {
+    font-size: 13px;
+  }
+}
 .pt-day {
   padding: 10px 2px 8px;
   font-size: 16px;
