@@ -43,8 +43,20 @@ if [ -n "$REMOTE" ]; then
   cd "$ROOT/deploy"
 fi
 
-# Build và chạy lại (API tự áp dụng thay đổi CSDL khi khởi động)
-docker compose up -d --build --remove-orphans
+# Build (mạng tải thư viện đôi khi chập chờn: thử lại tối đa 3 lần), rồi chạy lại.
+# Build lỗi thì bản đang chạy vẫn giữ nguyên.
+for attempt in 1 2 3; do
+  if docker compose build > /tmp/transfer-build.log 2>&1; then break; fi
+  if [ "$attempt" = 3 ]; then
+    log "LỖI: build không được sau 3 lần – bản cũ vẫn đang chạy. Chi tiết: /tmp/transfer-build.log"
+    tail -20 /tmp/transfer-build.log
+    exit 1
+  fi
+  log "Build lỗi lần $attempt, thử lại sau 30 giây"
+  sleep 30
+done
+# API tự áp dụng thay đổi CSDL khi khởi động
+docker compose up -d --remove-orphans
 docker image prune -f >/dev/null
 
 # Kiểm tra API đã chạy (tối đa 3 phút)
