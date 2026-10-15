@@ -55,6 +55,14 @@ class OdometerDto {
   @IsInt({ message: 'Số km không hợp lệ' }) @Min(0) endKm: number;
 }
 
+/** Xe ghép: km đồng hồ lúc bắt đầu / kết thúc cả chuyến (xe công ty) */
+class RunStartDto {
+  @IsOptional() @IsInt({ message: 'Số km không hợp lệ' }) @Min(0) startKm?: number;
+}
+class RunFinishDto {
+  @IsOptional() @IsInt({ message: 'Số km không hợp lệ' }) @Min(0) endKm?: number;
+}
+
 class RejectDto {
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng nhập lý do' })
@@ -105,6 +113,10 @@ class PushTokenDto {
 const driverTripSelect = {
   id: true,
   shuttleRunId: true,
+  // Xe ghép: chuyến ghép, điểm đón / trả của nhóm khách
+  shuttleRun: { select: { id: true, departAt: true, route: { select: { name: true } } } },
+  shuttlePickupStop: { select: { name: true, seq: true } },
+  shuttleDropoffStop: { select: { name: true, seq: true } },
   // Ký nhận điện tử của khách
   signoffName: true,
   signoffAt: true,
@@ -221,7 +233,8 @@ export class DriverAppController {
     const vehicle = trip.vehicleId ? await this.prisma.vehicle.findUnique({ where: { id: trip.vehicleId }, select: { ownership: true } }) : null;
     // Xe công ty: phải kiểm tra xe và lái xe trước chuyến (đạt) mới được bắt đầu chuyến
     const pre = vehicle?.ownership === 'CONG_TY' && dto.status === TripStatus.DANG_DEN_DON ? await assertPreCheck(this.prisma, id) : null;
-    if (vehicle?.ownership === 'CONG_TY') {
+    // Lượt khách xe ghép: km ghi một lần cho cả chuyến ghép (màn hình chuyến xe ghép), không ghi theo từng nhóm khách
+    if (vehicle?.ownership === 'CONG_TY' && !trip.shuttleRunId) {
       if (dto.status === TripStatus.DANG_DEN_DON && trip.startKm === null) {
         // Km bắt đầu: lái xe nhập > km lúc kiểm tra trước chuyến > km kết thúc chuyến trước của xe
         const startKm = dto.startKm ?? pre?.odometerKm ?? (await this.odometer.previousEndKm(trip));
@@ -281,6 +294,113 @@ export class DriverAppController {
       tripId: id,
     });
     return { message: 'Đã từ chối chuyến, văn phòng sẽ điều xe khác' };
+  }
+
+  // ───── Chuyến xe ghép: một màn hình cho cả chuyến (thứ tự đón, đánh dấu từng nhóm lên xe) ─────
+
+  /** Các lượt khách (nhóm) của lái xe trong chuyến ghép, không gồm lượt đã hủy / booking hủy */
+  private async runTrips(user: AuthUser, runId: number) {
+    const trips = await this.prisma.bookingTrip.findMany({
+      where: { shuttleRunId: runId, driverId: this.driverId(user), status: { not: TripStatus.HUY }, booking: { status: { in: [BookingStatus.XAC_NHAN, BookingStatus.HOAN_THANH] } } },
+      select: driverTripSelect,
+      orderBy: { id: 'asc' },
+    });
+    if (!trips.length) throw new NotFoundException('Không tìm thấy chuyến xe ghép, có thể chuyến đã được giao cho xe khác');
+    return trips;
+  }
+
+  @Get('runs/:id')
+  async run(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    const trips = await this.runTrips(user, id);
+    const run = await this.prisma.shuttleRun.findUniqueOrThrow({
+      where: { id },
+      select: {
+        id: true,
+        departAt: true,
+        capacity: true,
+        dispatchNote: true,
+        vehicle: { select: { plateNumber: true, ownership: true } },
+        route: { select: { name: true, code: true, durationMinutes: true, stops: { where: { isActive: true }, orderBy: { seq: 'asc' }, select: { id: true, seq: true, name: true, address: true, offsetMinutes: true, kind: true } } } },
+      },
+    });
+    // Km đồng hồ (xe công ty) ghi trên lượt khách đầu tiên của chuyến ghép
+    const lead = trips[0];
+    const companyCar = run.vehicle?.ownership === 'CONG_TY';
+    // Thứ tự đón: theo điểm đón trên tuyến, rồi giờ đón
+    const groups = [...trips].sort((a, b) => (a.shuttlePickupStop?.seq ?? 999) - (b.shuttlePickupStop?.seq ?? 999) || +a.pickupTime - +b.pickupTime);
+    return {
+      ...run,
+      orderPath: orderPath('run', id),
+      trackKm: companyCar,
+      startKm: lead.startKm,
+      endKm: lead.endKm,
+      suggestStartKm: companyCar && lead.startKm === null ? await this.odometer.previousEndKm({ id: lead.id, vehicleId: lead.vehicleId, pickupTime: lead.pickupTime }) : null,
+      preCheckRequired: companyCar && (await preCheckRequired(this.prisma)),
+      preCheck: companyCar ? await lastPreCheck(this.prisma, lead.id) : null,
+      // Trạng thái cả chuyến: chưa chạy / đang chạy / xong
+      state: groups.every((t) => t.status === TripStatus.HOAN_THANH) ? 'HOAN_THANH' : groups.some((t) => t.status === TripStatus.DANG_DEN_DON || t.status === TripStatus.DA_DON_KHACH || t.status === TripStatus.HOAN_THANH) ? 'DANG_CHAY' : 'CHUA_CHAY',
+      passengers: groups.reduce((n, t) => n + t.passengers, 0),
+      groups,
+    };
+  }
+
+  /** Bắt đầu chạy cả chuyến ghép: mọi nhóm chuyển "Đang đến đón" (xe công ty: kiểm tra trước chuyến + km bắt đầu) */
+  @Post('runs/:id/start')
+  @HttpCode(200)
+  async runStart(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: RunStartDto) {
+    const trips = await this.runTrips(user, id);
+    const lead = trips[0];
+    const todo = trips.filter((t) => t.status === TripStatus.DA_GAN || t.status === TripStatus.TAI_XE_NHAN);
+    if (!todo.length) throw new BadRequestException('Chuyến xe ghép đã bắt đầu chạy');
+    if (lead.vehicle?.ownership === 'CONG_TY') {
+      const pre = await assertPreCheck(this.prisma, lead.id);
+      if (lead.startKm === null) {
+        const startKm = dto.startKm ?? pre?.odometerKm ?? (await this.odometer.previousEndKm({ id: lead.id, vehicleId: lead.vehicleId, pickupTime: lead.pickupTime }));
+        if (startKm == null) throw new BadRequestException('Nhập số km trên đồng hồ xe lúc bắt đầu chuyến');
+        await this.odometer.record(lead.id, { startKm });
+      }
+    }
+    await this.prisma.$transaction([
+      this.prisma.bookingTrip.updateMany({ where: { id: { in: todo.map((t) => t.id) } }, data: { status: TripStatus.DANG_DEN_DON } }),
+      this.prisma.tripEvent.createMany({ data: todo.map((t) => ({ tripId: t.id, status: TripStatus.DANG_DEN_DON, note: 'Lái xe bắt đầu chạy chuyến xe ghép (app)', userId: user.id })) }),
+    ]);
+    return this.run(user, id);
+  }
+
+  /** Hoàn thành cả chuyến ghép: mọi nhóm chưa xong chuyển "Hoàn thành" (xe công ty: km kết thúc) */
+  @Post('runs/:id/finish')
+  @HttpCode(200)
+  async runFinish(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: RunFinishDto) {
+    const trips = await this.runTrips(user, id);
+    const lead = trips[0];
+    const todo = trips.filter((t) => t.status === TripStatus.DANG_DEN_DON || t.status === TripStatus.DA_DON_KHACH);
+    if (trips.some((t) => t.status === TripStatus.DA_GAN || t.status === TripStatus.TAI_XE_NHAN)) throw new BadRequestException('Bấm "Bắt đầu chạy" trước khi hoàn thành chuyến');
+    if (!todo.length) throw new BadRequestException('Chuyến xe ghép đã hoàn thành');
+    if (lead.vehicle?.ownership === 'CONG_TY') {
+      if (dto.endKm === undefined) throw new BadRequestException('Nhập số km trên đồng hồ xe lúc kết thúc chuyến');
+      await this.odometer.record(lead.id, { endKm: dto.endKm });
+    }
+    const notPicked = new Set(todo.filter((t) => t.status === TripStatus.DANG_DEN_DON).map((t) => t.id));
+    const bookingIds = await this.prisma.bookingTrip.findMany({ where: { id: { in: todo.map((t) => t.id) } }, select: { bookingId: true } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.bookingTrip.updateMany({ where: { id: { in: todo.map((t) => t.id) } }, data: { status: TripStatus.HOAN_THANH } });
+      await tx.tripEvent.createMany({
+        data: todo.map((t) => ({ tripId: t.id, status: TripStatus.HOAN_THANH, note: notPicked.has(t.id) ? 'Hoàn thành chuyến xe ghép – lái xe chưa bấm đã đón nhóm này' : 'Hoàn thành chuyến xe ghép (app)', userId: user.id })),
+      });
+      for (const bookingId of new Set(bookingIds.map((b) => b.bookingId))) {
+        const open = await tx.bookingTrip.count({ where: { bookingId, status: { notIn: [TripStatus.HOAN_THANH, TripStatus.HUY] } } });
+        if (open === 0) await tx.booking.updateMany({ where: { id: bookingId, status: BookingStatus.XAC_NHAN }, data: { status: BookingStatus.HOAN_THANH } });
+      }
+    });
+    if (notPicked.size) {
+      await this.push.notifyRoles([Role.ADMIN, Role.DIEU_HANH], {
+        type: 'SHUTTLE_NOT_PICKED',
+        title: `Xe ghép: ${notPicked.size} nhóm khách chưa được đánh dấu đã đón`,
+        body: `${user.fullName} hoàn thành chuyến ${lead.shuttleRun?.route.name ?? ''} · ${todo.filter((t) => notPicked.has(t.id)).map((t) => t.booking.code).join(', ')}`,
+        link: `/shuttle?run=${id}`,
+      });
+    }
+    return this.run(user, id);
   }
 
   /** Bảng đón khách gửi của booking có chuyến này, dạng ảnh (PDF tự chuyển trang đầu thành ảnh) */

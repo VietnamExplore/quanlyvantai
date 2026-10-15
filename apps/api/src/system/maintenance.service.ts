@@ -162,7 +162,8 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
       await run('pg_dump', ['-Fc', '-f', `${dbFile}.tmp`, '--dbname', url], { timeout: 15 * 60_000, maxBuffer: 10 * 1024 * 1024 });
       renameSync(`${dbFile}.tmp`, dbFile);
       if (existsSync(this.uploadDir)) {
-        await run('tar', ['czf', `${upFile}.tmp`, '-C', dirname(this.uploadDir), basename(this.uploadDir)], { timeout: 30 * 60_000, maxBuffer: 10 * 1024 * 1024 });
+        // Bỏ qua file cài app lái xe (APK lớn, tải lại được từ bản build)
+        await run('tar', ['czf', `${upFile}.tmp`, `--exclude=${basename(this.uploadDir)}/app`, '-C', dirname(this.uploadDir), basename(this.uploadDir)], { timeout: 30 * 60_000, maxBuffer: 10 * 1024 * 1024 });
         renameSync(`${upFile}.tmp`, upFile);
       }
       const removed = this.prune((await this.config()).backupKeep);

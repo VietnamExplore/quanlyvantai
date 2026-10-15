@@ -34,6 +34,7 @@ import { SystemModule } from './system/system.module';
 import { ShuttleModule } from './shuttle/shuttle.module';
 import { WebsiteModule } from './website/website.module';
 import { TollsModule } from './tolls/tolls.module';
+import { AppReleaseModule } from './app-release/app-release.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { TollsModule } from './tolls/tolls.module';
     ShuttleModule,
     WebsiteModule,
     TollsModule,
+    AppReleaseModule,
     DriversModule,
     PartnersModule,
     CustomersModule,

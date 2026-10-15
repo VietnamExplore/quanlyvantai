@@ -13,6 +13,10 @@ export interface Trip {
   id: number;
   /** Chuyến xe ghép */
   shuttleRunId?: number | null;
+  shuttleRun?: { id: number; departAt: string; route: { name: string } } | null;
+  /** Xe ghép: điểm đón / trả của nhóm khách trên tuyến */
+  shuttlePickupStop?: { name: string; seq: number } | null;
+  shuttleDropoffStop?: { name: string; seq: number } | null;
   /** Đường dẫn lệnh vận chuyển điện tử (mở bằng trình duyệt, không cần đăng nhập) */
   orderPath?: string;
   /** Khách đã ký nhận hoàn thành chuyến */
@@ -182,4 +186,25 @@ export interface VehicleCheckState {
   driverItems: { key: string; label: string }[];
   /** Công ty bắt buộc kiểm tra trước chuyến xe công ty */
   required: boolean;
+}
+
+/** Chuyến xe ghép của lái xe: các nhóm khách theo thứ tự đón */
+export interface ShuttleRunDetail {
+  id: number;
+  departAt: string;
+  capacity: number;
+  dispatchNote: string | null;
+  vehicle: { plateNumber: string; ownership: string } | null;
+  route: { name: string; code: string; durationMinutes: number; stops: { id: number; seq: number; name: string; address: string | null; offsetMinutes: number; kind: string }[] };
+  orderPath: string;
+  trackKm: boolean;
+  startKm: number | null;
+  endKm: number | null;
+  suggestStartKm: number | null;
+  preCheckRequired: boolean;
+  preCheck: PreCheck | null;
+  /** CHUA_CHAY | DANG_CHAY | HOAN_THANH */
+  state: 'CHUA_CHAY' | 'DANG_CHAY' | 'HOAN_THANH';
+  passengers: number;
+  groups: Trip[];
 }

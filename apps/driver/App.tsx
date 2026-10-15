@@ -1,9 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import Constants from 'expo-constants';
+import { ActivityIndicator, AppState, BackHandler, Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { api, ApiError, loadSession, setToken, setUnauthorizedHandler } from './src/api';
+import { api, ApiError, getServer, loadSession, setToken, setUnauthorizedHandler } from './src/api';
 import { clearKnown, onNotificationOpen, setupNotifications, takeNew, type AppNotification } from './src/notify';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { EarningsScreen } from './src/screens/EarningsScreen';
@@ -13,6 +14,7 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { TripDetailScreen } from './src/screens/TripDetailScreen';
 import { TripsScreen } from './src/screens/TripsScreen';
+import { RunScreen } from './src/screens/RunScreen';
 import { contentFrame, CONTENT_MAX_WIDTH } from './src/platform';
 import { BRAND, colors } from './src/theme';
 
@@ -26,7 +28,10 @@ const initials = (name: string) => {
 import type { AuthUser } from './src/types';
 
 type Tab = 'trips' | 'vehicle' | 'fuel' | 'earnings';
-type Screen = { name: Tab } | { name: 'trip'; id: number; from: Tab } | { name: 'profile' } | { name: 'notifications' };
+type Screen = { name: Tab } | { name: 'trip'; id: number; from: Tab; runId?: number } | { name: 'run'; id: number } | { name: 'profile' } | { name: 'notifications' };
+
+/** Mã phiên bản app đang cài (Android versionCode) – so với bản mới nhất văn phòng phát hành */
+const CURRENT_CODE = Number(Constants.expoConfig?.android?.versionCode ?? 0);
 
 /** Kiểm tra thông báo mới mỗi 30 giây khi app đang mở */
 const POLL_MS = 30_000;
@@ -48,6 +53,8 @@ export default function App() {
   // Băng nhắc trượt xuống khi có thông báo mới (tự ẩn sau vài giây)
   const [toast, setToast] = useState<{ n: AppNotification; more: number } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Có bản app mới trên máy chủ (Android): nhắc lái xe cập nhật
+  const [update, setUpdate] = useState<{ version: string } | null>(null);
 
   const pollNotifications = useCallback(async () => {
     try {
@@ -84,6 +91,18 @@ export default function App() {
     else setScreen({ name: 'notifications' });
   }
 
+  // Kiểm tra bản app mới khi mở app / quay lại app
+  useEffect(() => {
+    if (!user || Platform.OS !== 'android') return;
+    const check = () =>
+      api<{ available: boolean; version?: string; versionCode?: number }>('/app/driver')
+        .then((r) => setUpdate(r.available && r.versionCode && r.versionCode > CURRENT_CODE ? { version: r.version! } : null))
+        .catch(() => undefined);
+    check();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && check());
+    return () => sub.remove();
+  }, [user]);
+
   // Khôi phục phiên đăng nhập đã lưu
   useEffect(() => {
     setUnauthorizedHandler(() => setUser(null));
@@ -116,7 +135,7 @@ export default function App() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (screen.name !== 'trips') {
-        setScreen({ name: screen.name === 'trip' ? screen.from : 'trips' });
+        setScreen(screen.name === 'trip' && screen.runId ? { name: 'run', id: screen.runId } : { name: screen.name === 'trip' ? screen.from : 'trips' });
         return true;
       }
       return false;
@@ -144,9 +163,9 @@ export default function App() {
     );
   }
 
-  const title = screen.name === 'trip' ? 'Chi tiết chuyến' : screen.name === 'profile' ? 'Tài khoản' : screen.name === 'notifications' ? 'Thông báo' : 'Chuyến xe';
+  const title = screen.name === 'run' ? 'Chuyến xe ghép' : screen.name === 'trip' ? 'Chi tiết chuyến' : screen.name === 'profile' ? 'Tài khoản' : screen.name === 'notifications' ? 'Thông báo' : 'Chuyến xe';
   const tab = isTab(screen.name) ? screen.name : null;
-  const back = () => setScreen({ name: screen.name === 'trip' ? screen.from : 'trips' });
+  const back = () => setScreen(screen.name === 'trip' && screen.runId ? { name: 'run', id: screen.runId } : { name: screen.name === 'trip' ? screen.from : 'trips' });
   const openTrip = (id: number, from: Tab) => setScreen({ name: 'trip', id, from });
 
   return (
@@ -197,11 +216,18 @@ export default function App() {
           </LinearGradient>
           <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['bottom']}>
             <View style={contentFrame}>
-              {screen.name === 'trips' && <TripsScreen onOpen={(id) => openTrip(id, 'trips')} />}
+              {update && tab && (
+                <Pressable onPress={() => Linking.openURL(`${getServer()}/tai-app`)} style={({ pressed }) => [s.update, pressed && { opacity: 0.85 }]}>
+                  <Text style={s.updateTitle}>📲 Có bản app mới {update.version}</Text>
+                  <Text style={s.updateBody}>Bấm để tải và cài đặt (cài đè, không mất dữ liệu)</Text>
+                </Pressable>
+              )}
+              {screen.name === 'trips' && <TripsScreen onOpen={(id) => openTrip(id, 'trips')} onOpenRun={(id) => setScreen({ name: 'run', id })} />}
+              {screen.name === 'run' && <RunScreen key={screen.id} runId={screen.id} onOpenTrip={(id) => setScreen({ name: 'trip', id, from: 'trips', runId: screen.id })} />}
               {screen.name === 'vehicle' && <VehicleScreen />}
               {screen.name === 'fuel' && <FuelScreen />}
               {screen.name === 'earnings' && <EarningsScreen onOpenTrip={(id) => openTrip(id, 'earnings')} />}
-              {screen.name === 'trip' && <TripDetailScreen key={screen.id} tripId={screen.id} onBack={back} />}
+              {screen.name === 'trip' && <TripDetailScreen key={screen.id} tripId={screen.id} onBack={back} onOpenRun={(id) => setScreen({ name: 'run', id })} />}
               {screen.name === 'profile' && <ProfileScreen user={user} onLogout={logout} />}
               {screen.name === 'notifications' && (
                 <NotificationsScreen onOpenTrip={(id) => setScreen({ name: 'trip', id, from: 'trips' })} onChanged={pollNotifications} />
@@ -252,6 +278,9 @@ const s = StyleSheet.create({
   bell: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   bellBadge: { position: 'absolute', top: 2, right: 0, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.accent, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#fff' },
   bellBadgeText: { color: '#fff', fontSize: 10.5, fontWeight: '800' },
+  update: { backgroundColor: '#ecfdf5', borderWidth: 1.5, borderColor: '#34d399', borderRadius: 14, padding: 12, marginHorizontal: 12, marginTop: 10 },
+  updateTitle: { fontSize: 15, fontWeight: '800', color: '#047857' },
+  updateBody: { fontSize: 12.5, color: colors.text2, marginTop: 2 },
   toast: { position: 'absolute', top: 8, left: 10, right: 10, backgroundColor: '#0f1b2d', borderRadius: 16, padding: 14, elevation: 12, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   toastTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
   toastBody: { color: 'rgba(255,255,255,0.85)', fontSize: 13.5, marginTop: 2 },

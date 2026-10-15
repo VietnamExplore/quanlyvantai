@@ -31,6 +31,53 @@ function timing(trip: Trip, now: number) {
 
 const ACCENT = { late: colors.danger, soon: '#f59e0b', running: '#16a34a' } as const;
 
+/** Một dòng danh sách: chuyến thường, hoặc cả chuyến xe ghép (gộp các nhóm khách) */
+type Item = { kind: 'trip'; trip: Trip } | { kind: 'run'; runId: number; trips: Trip[] };
+
+/** Thẻ chuyến xe ghép: giờ xuất bến, tuyến, số nhóm / khách, tiến độ đón */
+function RunCard({ trips, onPress, now }: { trips: Trip[]; onPress: () => void; now: number }) {
+  const first = trips[0];
+  const run = first.shuttleRun!;
+  const pax = trips.reduce((n, t) => n + t.passengers, 0);
+  const picked = trips.filter((t) => t.status === 'DA_DON_KHACH' || t.status === 'HOAN_THANH').reduce((n, t) => n + t.passengers, 0);
+  const isNew = trips.some((t) => t.status === 'DA_GAN');
+  const status: Trip['status'] = trips.every((t) => t.status === 'HOAN_THANH')
+    ? 'HOAN_THANH'
+    : trips.some((t) => t.status === 'DANG_DEN_DON' || t.status === 'DA_DON_KHACH')
+      ? 'DANG_DEN_DON'
+      : isNew
+        ? 'DA_GAN'
+        : 'TAI_XE_NHAN';
+  const t = timing({ ...first, status, pickupTime: run.departAt }, now);
+  const bar = t ? ACCENT[t.kind] : isNew ? colors.primary : 'transparent';
+  const stops = [...new Set(trips.map((x) => x.shuttlePickupStop?.name ?? x.pickupAddress))];
+  return (
+    <Card onPress={onPress} style={s.card}>
+      <View style={[s.bar, { backgroundColor: bar }]} />
+      {t && (
+        <View style={[s.timing, { backgroundColor: `${ACCENT[t.kind]}14` }]}>
+          <Text style={[s.timingText, { color: ACCENT[t.kind] }]}>{t.text}</Text>
+        </View>
+      )}
+      <View style={s.cardTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.time}>{fmtHour(run.departAt)}</Text>
+          <Text style={s.service}>🚌 Xe ghép · {run.route.name}</Text>
+        </View>
+        <StatusBadge status={status} />
+      </View>
+      <Text style={s.place} numberOfLines={2}>
+        📍 Đón tại: {stops.join(' → ')}
+      </Text>
+      <View style={[s.chips, { marginTop: 10 }]}>
+        <Chip text={`👥 ${trips.length} nhóm · ${pax} khách`} />
+        {first.vehicle && <Chip text={`🚐 ${first.vehicle.plateNumber}`} />}
+        {status === 'DANG_DEN_DON' && <Chip tone="blue" text={`✅ Đã đón ${picked}/${pax}`} />}
+      </View>
+    </Card>
+  );
+}
+
 function TripCard({ trip, onPress, now }: { trip: Trip; onPress: () => void; now: number }) {
   const isNew = trip.status === 'DA_GAN';
   const t = timing(trip, now);
@@ -87,7 +134,7 @@ function TripCard({ trip, onPress, now }: { trip: Trip; onPress: () => void; now
   );
 }
 
-export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
+export function TripsScreen({ onOpen, onOpenRun }: { onOpen: (id: number) => void; onOpenRun: (runId: number) => void }) {
   const [tab, setTab] = useState<'active' | 'history'>('active');
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,8 +182,18 @@ export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
   const toCollect = trips.filter((t) => !!t.collectAmount && !t.collectedAt && t.status !== "HUY");
 
   // Nhóm chuyến theo ngày đón: Hôm nay / Ngày mai / các ngày sau
-  const sections: { key: string; title: string; data: Trip[] }[] = [];
+  // Lượt khách xe ghép gộp thành một chuyến xe ghép
+  const items: Item[] = [];
   for (const t of trips) {
+    const runId = t.shuttleRun?.id;
+    const found = runId ? items.find((x) => x.kind === 'run' && x.runId === runId) : undefined;
+    if (found && found.kind === 'run') found.trips.push(t);
+    else if (runId) items.push({ kind: 'run', runId, trips: [t] });
+    else items.push({ kind: 'trip', trip: t });
+  }
+  const sections: { key: string; title: string; data: Item[] }[] = [];
+  for (const it of items) {
+    const t = { pickupTime: it.kind === 'trip' ? it.trip.pickupTime : it.trips[0].shuttleRun!.departAt };
     const key = dayKey(t.pickupTime);
     let sec = sections.find((x) => x.key === key);
     if (!sec) {
@@ -144,7 +201,7 @@ export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
       sec = { key, title: label.includes('/') ? label : `${label} · ${fmtDate(t.pickupTime).slice(0, 5)}`, data: [] };
       sections.push(sec);
     }
-    sec.data.push(t);
+    sec.data.push(it);
   }
 
   return (
@@ -175,7 +232,7 @@ export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
 
       <SectionList
         sections={sections}
-        keyExtractor={(t) => String(t.id)}
+        keyExtractor={(it) => (it.kind === 'trip' ? String(it.trip.id) : `run-${it.runId}`)}
         stickySectionHeadersEnabled
         renderSectionHeader={({ section }) => (
           <View style={s.dayHead}>
@@ -185,7 +242,7 @@ export function TripsScreen({ onOpen }: { onOpen: (id: number) => void }) {
             </View>
           </View>
         )}
-        renderItem={({ item }) => <TripCard trip={item} now={now} onPress={() => onOpen(item.id)} />}
+        renderItem={({ item }) => (item.kind === 'trip' ? <TripCard trip={item.trip} now={now} onPress={() => onOpen(item.trip.id)} /> : <RunCard trips={item.trips} now={now} onPress={() => onOpenRun(item.runId)} />)}
         contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => load()} colors={[colors.primary]} />}
         ListEmptyComponent={

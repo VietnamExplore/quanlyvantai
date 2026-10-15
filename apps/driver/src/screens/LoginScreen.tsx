@@ -8,6 +8,9 @@ import type { AuthUser } from '../types';
 
 const LOGO = require('../../assets/logo.png');
 
+/** Địa chỉ phần mềm của công ty */
+const DEFAULT_SERVER = 'dieuxe.vietnamexplore.vn';
+
 /** Ô nhập có biểu tượng bên trái, viền sáng khi đang nhập */
 function Field({
   icon,
@@ -31,13 +34,14 @@ function Field({
 }
 
 export function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: AuthUser) => void }) {
-  const [server, setServerInput] = useState(getServer() ?? '');
+  // Máy chủ mặc định của công ty (vẫn sửa được nếu văn phòng đổi địa chỉ)
+  const [server, setServerInput] = useState(getServer() ?? DEFAULT_SERVER);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showServer, setShowServer] = useState(!getServer());
+  const [showServer, setShowServer] = useState(false);
 
   async function submit() {
     setError(null);

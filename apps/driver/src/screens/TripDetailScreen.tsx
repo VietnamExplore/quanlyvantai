@@ -49,7 +49,7 @@ const openFlight = (flight: string) => Linking.openURL(`https://www.google.com/s
 const openMap = (address: string) =>
   Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&hl=vi&gl=vn`);
 
-export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: () => void }) {
+export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number; onBack: () => void; onOpenRun?: (runId: number) => void }) {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -83,7 +83,8 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
     load();
   }, [load]);
 
-  const next = trip ? NEXT_STEP[trip.status] : undefined;
+  // Nhóm khách xe ghép: nhận / bắt đầu / đón / hoàn thành ở màn hình chuyến xe ghép
+  const next = trip && !trip.shuttleRunId ? NEXT_STEP[trip.status] : undefined;
 
   async function changeStatus(body: Record<string, unknown>) {
     if (!trip || !next) return;
@@ -205,7 +206,18 @@ export function TripDetailScreen({ tripId, onBack }: { tripId: number; onBack: (
           {trip.dropoffAddress && <QuickAction icon="🏁" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
         </Card>
 
-        <PreCheckCard trip={trip} onOpen={() => setCheckOpen(true)} />
+        {trip.shuttleRun ? (
+          <Card style={s.runBox}>
+            <Text style={s.runTitle}>🚌 Nhóm khách của chuyến xe ghép</Text>
+            <Text style={s.runText}>
+              {trip.shuttleRun.route.name} · xuất bến {fmtHour(trip.shuttleRun.departAt)} {fmtDate(trip.shuttleRun.departAt).slice(0, 5)}
+              {trip.shuttlePickupStop ? ` · đón tại ${trip.shuttlePickupStop.name}` : ''}
+            </Text>
+            {onOpenRun && <Button title="Mở chuyến xe ghép" icon="🚌" variant="soft" size="sm" onPress={() => onOpenRun(trip.shuttleRun!.id)} style={{ alignSelf: 'flex-start', marginTop: 8 }} />}
+          </Card>
+        ) : (
+          <PreCheckCard trip={trip} onOpen={() => setCheckOpen(true)} />
+        )}
 
         {/* Tuyến đường: đón → lịch trình → trả */}
         <Card>
@@ -405,6 +417,9 @@ const s = StyleSheet.create({
   bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 18, backgroundColor: 'rgba(255,255,255,0.97)', borderTopLeftRadius: 22, borderTopRightRadius: 22, elevation: 16, shadowColor: '#0b2a5c', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: -4 } },
   modalBg: { flex: 1, backgroundColor: 'rgba(8,24,56,0.45)', justifyContent: 'center', padding: 24 },
   modal: { backgroundColor: '#fff', borderRadius: 22, padding: 20 },
+  runBox: { backgroundColor: '#eef4ff', borderWidth: 1, borderColor: '#c7d8fb' },
+  runTitle: { fontWeight: '800', color: colors.primary, fontSize: 15 },
+  runText: { fontSize: 14, color: colors.text, marginTop: 4, lineHeight: 20 },
   pickupStrong: { fontSize: 15.5, fontWeight: '800', color: colors.primary },
   flightLink: { fontSize: 13, fontWeight: '700', color: colors.primary, textDecorationLine: 'underline' },
 });

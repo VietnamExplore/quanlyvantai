@@ -4,6 +4,7 @@ import { Button, Col, DatePicker, Form, Input, Row, Select, Tag, Typography } fr
 import { useState } from 'react';
 import { useAuth } from '../auth';
 import { CrudPage } from '../components/CrudPage';
+import { DriverAppCard } from '../components/DriverAppCard';
 import { DATE_FORMAT, EnumTag, ExpiryCell, usePartnerOptions } from '../components/common';
 import { DRIVER_STATUS, toOptions } from '../labels';
 import { DriverSalaryModal, salaryText, useCurrentSalaries } from '../components/DriverSalary';
@@ -19,6 +20,7 @@ export default function DriversPage() {
 
   return (
     <>
+    <DriverAppCard />
     <CrudPage<Driver>
       title="Lái xe"
       endpoint="/drivers"

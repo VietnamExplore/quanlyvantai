@@ -39,6 +39,7 @@ import SettingsPage from './pages/SettingsPage';
 import SignPage from './pages/SignPage';
 import SurchargesPage from './pages/SurchargesPage';
 import UsersPage from './pages/UsersPage';
+import DownloadAppPage from './pages/DownloadAppPage';
 import VehicleTypesPage from './pages/VehicleTypesPage';
 import VehiclesPage from './pages/VehiclesPage';
 
@@ -52,6 +53,8 @@ export default function App() {
   // Lệnh vận chuyển điện tử (lái xe mở từ app)
   const publicOrder = /^\/e\/lvc\/(trip|run)\/(\d+)\/([\w-]+)\/?$/.exec(pathname);
   if (publicOrder) return <TransportOrderPage publicOrder={{ kind: publicOrder[1], id: publicOrder[2], sig: publicOrder[3] }} />;
+  // Trang tải app lái xe (lái xe quét mã QR, không cần đăng nhập)
+  if (/^\/tai-app\/?$/.test(pathname)) return <DownloadAppPage />;
 
   if (loading) {
     return (

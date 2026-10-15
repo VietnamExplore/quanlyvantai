@@ -52,9 +52,14 @@ export const PRE_CHECK_SELECT = {
   fuelLevel: true,
 } satisfies Prisma.VehicleCheckSelect;
 
-/** Lần kiểm tra trước chuyến gần nhất của chuyến */
-export function lastPreCheck(prisma: PrismaService, tripId: number) {
-  return prisma.vehicleCheck.findFirst({ where: { tripId, kind: 'TRUOC_CHUYEN' }, select: PRE_CHECK_SELECT, orderBy: { createdAt: 'desc' } });
+/**
+ * Lần kiểm tra trước chuyến gần nhất của chuyến.
+ * Lượt khách xe ghép: một lần kiểm tra cho cả chuyến ghép (tính mọi lượt khách của chuyến ghép).
+ */
+export async function lastPreCheck(prisma: PrismaService, tripId: number) {
+  const trip = await prisma.bookingTrip.findUnique({ where: { id: tripId }, select: { shuttleRunId: true } });
+  const ids = trip?.shuttleRunId ? (await prisma.bookingTrip.findMany({ where: { shuttleRunId: trip.shuttleRunId }, select: { id: true } })).map((t) => t.id) : [tripId];
+  return prisma.vehicleCheck.findFirst({ where: { tripId: { in: ids }, kind: 'TRUOC_CHUYEN' }, select: PRE_CHECK_SELECT, orderBy: { createdAt: 'desc' } });
 }
 
 /**
