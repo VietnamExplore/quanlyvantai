@@ -1,8 +1,8 @@
 import { KeyOutlined, LogoutOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { App, Avatar, Button, Card, DatePicker, Dropdown, Empty, Flex, Form, Input, Layout, Modal, Segmented, Select, Spin, Statistic, Table, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
@@ -34,6 +34,46 @@ interface Summary {
 }
 
 type Tab = 'new' | 'active' | 'history' | 'money';
+
+/** Số chuyến mỗi lần tải */
+const PAGE_SIZE = 30;
+interface TripPage {
+  items: PartnerTrip[];
+  total: number;
+  offset: number;
+  limit: number;
+  counts: { new: number; active: number };
+}
+
+/** Gọi onMore khi khung cuối danh sách cuộn vào màn hình (tải thêm) */
+function LoadMore({ hasMore, loading, count, onMore, doneText }: { hasMore: boolean; loading: boolean; count: number; onMore: () => void; doneText?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const cb = useRef(onMore);
+  cb.current = onMore;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver((entries) => entries[0].isIntersecting && cb.current(), { rootMargin: '300px' });
+    io.observe(el);
+    return () => io.disconnect();
+    // Gắn lại sau mỗi lần thêm dòng: khung cuối vẫn trong màn hình thì tải tiếp
+  }, [hasMore, loading, count]);
+  return (
+    <div ref={ref} style={{ padding: '14px 0 6px', textAlign: 'center', color: BRAND.muted, fontSize: 13 }}>
+      {hasMore ? (
+        loading ? (
+          <Spin size="small" />
+        ) : (
+          <Button type="link" onClick={onMore}>
+            Tải thêm
+          </Button>
+        )
+      ) : (
+        doneText
+      )}
+    </div>
+  );
+}
 
 /** Kỳ xem công nợ */
 type Period = 'all' | 'month' | 'lastMonth' | 'quarter' | 'year' | 'custom';
@@ -79,12 +119,23 @@ export default function PartnerPortalPage() {
   const [vehicleForm] = Form.useForm<{ partnerPlate?: string; partnerDriverName?: string; partnerDriverPhone?: string }>();
 
   const { data: me } = useQuery({ queryKey: ['/partner/me'], queryFn: () => api<{ name: string }>('/partner/me') });
-  const { data, isFetching, refetch } = useQuery({
+  // Danh sách chuyến: mỗi lần tải 30 chuyến, cuộn tới cuối danh sách thì tải tiếp
+  const tripsQuery = useInfiniteQuery({
     queryKey: ['/partner/trips', tab],
-    queryFn: () => api<{ items: PartnerTrip[]; counts: { new: number; active: number } }>('/partner/trips', { query: { scope: tab } }),
+    queryFn: ({ pageParam }) => api<TripPage>('/partner/trips', { query: { scope: tab, offset: pageParam, limit: PAGE_SIZE } }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => (last.offset + last.items.length < last.total ? last.offset + last.items.length : undefined),
     enabled: tab !== 'money',
     refetchInterval: 60_000,
   });
+  const { isFetching, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = tripsQuery;
+  const pages = tripsQuery.data?.pages;
+  const data = pages && {
+    // Bỏ trùng (chuyến vừa đổi trạng thái giữa hai lần tải có thể nằm ở cả hai trang)
+    items: pages.flatMap((p) => p.items).filter((t, i, all) => all.findIndex((x) => x.id === t.id) === i),
+    counts: pages[0].counts,
+    total: pages[pages.length - 1].total,
+  };
   const { data: opened } = useQuery({
     queryKey: ['/partner/trips', 'detail', openId],
     queryFn: () => api<PartnerTrip>(`/partner/trips/${openId}`),
@@ -275,17 +326,26 @@ export default function PartnerPortalPage() {
             <Empty description={tab === 'new' ? 'Không có chuyến nào chờ nhận' : tab === 'active' ? 'Không có chuyến đang chạy' : 'Chưa có chuyến hoàn thành trong 60 ngày'} />
           </Card>
         ) : (
-          groups.map((g) => (
-            <div key={g.key}>
-              <Flex justify="space-between" align="center" className="pt-day">
-                <b>{g.title}</b>
-                <span className="pt-day-count">{g.items.length} chuyến</span>
-              </Flex>
-              {g.items.map((t) => (
-                <TripRow key={t.id} trip={t} onOpen={() => setOpenId(t.id)} />
-              ))}
-            </div>
-          ))
+          <>
+            {groups.map((g) => (
+              <div key={g.key}>
+                <Flex justify="space-between" align="center" className="pt-day">
+                  <b>{g.title}</b>
+                  <span className="pt-day-count">{g.items.length} chuyến</span>
+                </Flex>
+                {g.items.map((t) => (
+                  <TripRow key={t.id} trip={t} onOpen={() => setOpenId(t.id)} />
+                ))}
+              </div>
+            ))}
+            <LoadMore
+              hasMore={!!hasNextPage}
+              loading={isFetchingNextPage}
+              count={data.items.length}
+              onMore={() => !isFetchingNextPage && fetchNextPage()}
+              doneText={data.total > PAGE_SIZE ? `Đã hiển thị hết ${data.total} chuyến` : undefined}
+            />
+          </>
         )}
       </Layout.Content>
 
@@ -376,6 +436,9 @@ function TripRow({ trip: t, onOpen }: { trip: PartnerTrip; onOpen: () => void })
 }
 
 function MoneyView({ summary, range }: { summary?: Summary; range: [Dayjs, Dayjs] | null }) {
+  const [shown, setShown] = useState(PAGE_SIZE);
+  // Đổi kỳ: quay lại 30 dòng đầu
+  useEffect(() => setShown(PAGE_SIZE), [summary?.from, summary?.to]);
   if (!summary) {
     return (
       <Flex justify="center" style={{ padding: 48 }}>
@@ -426,12 +489,12 @@ function MoneyView({ summary, range }: { summary?: Summary; range: [Dayjs, Dayjs
           ]}
         />
       </Card>
-      <Card title="Chuyến tính tiền">
+      <Card title={`Chuyến tính tiền (${summary.trips.length})`}>
         <ResponsiveTable
           rowKey="id"
           size="small"
-          dataSource={summary.trips}
-          pagination={{ pageSize: 100, hideOnSinglePage: true }}
+          dataSource={summary.trips.slice(0, shown)}
+          pagination={false}
           columns={[
             { title: 'Ngày đón', dataIndex: 'pickupTime', render: (v) => dayjs(v).format('HH:mm DD/MM/YYYY'), sorter: (a, b) => a.pickupTime.localeCompare(b.pickupTime) },
             { title: 'Booking', render: (_, t) => t.booking.code },
@@ -475,6 +538,13 @@ function MoneyView({ summary, range }: { summary?: Summary; range: [Dayjs, Dayjs
               </Table.Summary.Cell>
             </Table.Summary.Row>
           )}
+        />
+        <LoadMore
+          hasMore={shown < summary.trips.length}
+          loading={false}
+          count={shown}
+          onMore={() => setShown((n) => n + PAGE_SIZE)}
+          doneText={summary.trips.length > PAGE_SIZE ? `Đã hiển thị hết ${summary.trips.length} chuyến` : undefined}
         />
       </Card>
     </>

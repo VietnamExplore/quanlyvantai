@@ -164,9 +164,14 @@ export class PartnerPortalController {
     return this.prisma.partner.findUniqueOrThrow({ where: { id: this.partnerId(user) }, select: { id: true, name: true, phone: true, bankName: true, bankAccount: true } });
   }
 
-  /** scope=new: chờ nhận; active: đã nhận, đang chạy; history: đã xong / hủy 60 ngày gần đây */
+  /**
+   * scope=new: chờ nhận; active: đã nhận, đang chạy; history: đã xong / hủy 60 ngày gần đây.
+   * Tải theo trang (offset, limit – mặc định 30 chuyến, tối đa 100): cuộn xuống cuối danh sách thì tải tiếp.
+   */
   @Get('trips')
-  async trips(@CurrentUser() user: AuthUser, @Query('scope') scope = 'active') {
+  async trips(@CurrentUser() user: AuthUser, @Query('scope') scope = 'active', @Query('offset') offsetRaw?: string, @Query('limit') limitRaw?: string) {
+    const offset = Math.max(0, Number(offsetRaw) || 0);
+    const limit = Math.min(100, Math.max(1, Number(limitRaw) || 30));
     const partnerId = this.partnerId(user);
     const where: Prisma.BookingTripWhereInput =
       scope === 'history'
@@ -174,12 +179,14 @@ export class PartnerPortalController {
         : scope === 'new'
           ? { partnerId, status: TripStatus.DA_GAN }
           : { partnerId, status: { in: ACTIVE.filter((s) => s !== TripStatus.DA_GAN) } };
-    const [items, counts] = await Promise.all([
-      this.prisma.bookingTrip.findMany({ where, select: tripSelect, orderBy: { pickupTime: scope === 'history' ? 'desc' : 'asc' }, take: 300 }),
+    const dir = scope === 'history' ? 'desc' : 'asc';
+    const [items, total, counts] = await Promise.all([
+      this.prisma.bookingTrip.findMany({ where, select: tripSelect, orderBy: [{ pickupTime: dir }, { id: dir }], skip: offset, take: limit }),
+      this.prisma.bookingTrip.count({ where }),
       this.prisma.bookingTrip.groupBy({ by: ['status'], where: { partnerId, status: { in: ACTIVE } }, _count: true }),
     ]);
     const n = (s: TripStatus) => counts.find((c) => c.status === s)?._count ?? 0;
-    return { items: items.map(clean), counts: { new: n(TripStatus.DA_GAN), active: ACTIVE.filter((s) => s !== TripStatus.DA_GAN).reduce((t, s) => t + n(s), 0) } };
+    return { items: items.map(clean), total, offset, limit, counts: { new: n(TripStatus.DA_GAN), active: ACTIVE.filter((s) => s !== TripStatus.DA_GAN).reduce((t, s) => t + n(s), 0) } };
   }
 
   /** Ảnh bảng đón khách gửi (PDF tự chuyển trang đầu thành ảnh) */
