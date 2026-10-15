@@ -4,51 +4,25 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mở phần mềm Quản lý vận tải</title>
+  <!-- Phần mềm chạy trên máy chủ VPS (từ 15/10/2026): mở thẳng địa chỉ chính thức -->
+  <meta http-equiv="refresh" content="0; url=https://dieuxe.vietnamexplore.vn" />
   <style>
-    :root { --bg: #f4f6fa; --card: #fff; --text: #1a1a1a; --muted: #5f6b7a; --primary: #1668dc; --warn: #b26b00; --warn-bg: #fff7e6; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #14171c; --card: #1e232b; --text: #e8eaed; --muted: #a0a8b4; --primary: #4c8df6; --warn: #f0b44c; --warn-bg: #2b2416; } }
+    :root { --bg: #f4f6fa; --card: #fff; --text: #1a1a1a; --muted: #5f6b7a; --primary: #1668dc; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #14171c; --card: #1e232b; --text: #e8eaed; --muted: #a0a8b4; --primary: #4c8df6; } }
     body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text);
            font-family: 'Segoe UI', Arial, sans-serif; padding: 16px; box-sizing: border-box; }
     .card { background: var(--card); border-radius: 12px; padding: 28px 32px; max-width: 520px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,.08); text-align: center; }
     h1 { font-size: 20px; margin: 0 0 8px; }
     p { color: var(--muted); line-height: 1.5; margin: 8px 0; }
-    .spin { width: 34px; height: 34px; border: 4px solid rgba(22,104,220,.2); border-top-color: var(--primary); border-radius: 50%; margin: 16px auto; animation: s 0.9s linear infinite; }
-    @keyframes s { to { transform: rotate(360deg); } }
-    .warn { display: none; background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 12px 14px; text-align: left; margin-top: 14px; }
-    .warn ol { margin: 6px 0 0 18px; padding: 0; color: var(--text); }
     a.btn { display: inline-block; margin-top: 16px; background: var(--primary); color: #fff; padding: 9px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Phần mềm Quản lý vận tải</h1>
-    <div class="spin"></div>
-    <p id="status">Đang mở phần mềm…</p>
-    <div class="warn" id="warn">
-      <b>Phần mềm chưa chạy.</b> Có thể máy vừa khởi động lại:
-      <ol>
-        <li>Mở <b>Docker Desktop</b> (biểu tượng cá voi) và đợi khoảng 1 phút.</li>
-        <li>Trang này sẽ <b>tự mở phần mềm</b> khi sẵn sàng – không cần bấm gì thêm.</li>
-      </ol>
-    </div>
-    <a class="btn" href="http://localhost">Mở phần mềm</a>
+    <p>Đang mở https://dieuxe.vietnamexplore.vn …</p>
+    <a class="btn" href="https://dieuxe.vietnamexplore.vn">Mở phần mềm</a>
+    <p style="font-size:13px">Cổng nhà xe đối tác: <a href="https://nhaxe.vietnamexplore.vn">nhaxe.vietnamexplore.vn</a></p>
   </div>
-  <script>
-    // Phần mềm chạy ngầm bằng Docker tại http://localhost – kiểm tra rồi chuyển vào; chưa chạy thì chờ và thử lại
-    const APP = 'http://localhost';
-    let tries = 0;
-    async function check() {
-      tries++;
-      try {
-        await fetch(APP + '/api/auth/me', { mode: 'no-cors', cache: 'no-store' });
-        location.replace(APP);
-      } catch {
-        document.getElementById('status').textContent = 'Đang chờ phần mềm khởi động… (lần thử ' + tries + ')';
-        document.getElementById('warn').style.display = 'block';
-        setTimeout(check, 5000);
-      }
-    }
-    check();
-  </script>
 </body>
 </html>
