@@ -112,7 +112,7 @@ export function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: AuthUser) => vo
             ) : (
               <Pressable onPress={() => setShowServer(true)} style={s.serverRow} hitSlop={6}>
                 <Text style={s.serverText} numberOfLines={1}>
-                  🌐 Máy chủ: {getServer()}
+                  🌐 Máy chủ: {server.replace(/^https?:\/\//, '')}
                 </Text>
                 <Text style={s.serverChange}>Đổi</Text>
               </Pressable>
