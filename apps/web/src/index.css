@@ -816,6 +816,10 @@ body {
   display: inline-block;
   white-space: nowrap;
 }
+/* Link là cả giá trị của dòng (email nhận hóa đơn…): được xuống dòng, không tràn khỏi màn hình điện thoại */
+.pt-row > a {
+  white-space: normal;
+}
 
 .pt-invoice {
   border: 1.5px solid #ddd6fe;

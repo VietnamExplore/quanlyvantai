@@ -66,6 +66,14 @@
   .toc li { margin: 2px 0; }
   .page-break { break-before: page; }
   .small { font-size: 9.5pt; color: #475569; }
+
+  figure.shot { margin: 8px auto 12px; break-inside: avoid; text-align: center; }
+  figure.shot img { width: 100%; border: 1px solid #d1d5db; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  figure.shot figcaption { font-size: 8.5pt; color: #64748b; margin-top: 3px; font-style: italic; }
+  .phones { display: flex; gap: 10px; justify-content: center; align-items: flex-start; break-inside: avoid; }
+  .phones figure.shot { flex: 1; max-width: 58mm; margin: 6px 0 10px; }
+  .note-demo { font-size: 8.5pt; color: #64748b; font-style: italic; }
+  .two figure.phone-shot { width: 62mm; flex: none; margin: 0; }
 </style>
 </head>
 <body>
@@ -86,6 +94,8 @@
   </div>
 </section>
 
+
+<p class="note-demo">Ảnh minh họa chụp từ phần mềm với dữ liệu mẫu (tên khách, lái xe, nhà xe, số điện thoại là giả).</p>
 <h2>Mục lục</h2>
 <ol class="toc">
   <li>Giới thiệu</li>
@@ -131,23 +141,9 @@
 </ul>
 <div class="warn"><b>Bảo mật:</b> không chia sẻ mật khẩu cho người ngoài. Nhân viên nghỉ việc hoặc mất điện thoại → báo ngay văn phòng để khóa tài khoản. Dùng xong trên máy tính dùng chung thì bấm <b>Đăng xuất</b>.</div>
 
-<h2 class="page-break">3. Màn hình chính</h2>
+<h2>3. Màn hình chính</h2>
 <div class="two">
-  <div class="phone">
-    <div class="ph-head"><div><small>Cổng nhà xe đối tác</small><b>Nhà xe ABC</b></div><div>🔔 <span style="background:#1668dc;color:#fff;border-radius:50%;padding:1px 6px">A</span></div></div>
-    <div class="seg"><span class="on">Chờ nhận (2)</span><span>Đang chạy (1)</span><span>Đã xong</span><span>Công nợ</span></div>
-    <div class="day">Ngày mai · 16/10 <span>2 chuyến</span></div>
-    <div class="card new">
-      <div style="display:flex;justify-content:space-between"><div><div class="time">07:30</div><div class="svc">Đưa đón sân bay · VNECAR261016-0003</div></div><div><span class="tag t-orange">Chờ nhận</span></div></div>
-      <div class="route"><div><span class="dot" style="background:#1677ff"></span>Sân bay Đà Nẵng</div><div><span class="dot" style="background:#e3262b"></span>Khách sạn … Hội An</div></div>
-      <div class="chips"><span>👥 4 khách</span><span>🚐 7 chỗ</span><span style="color:#1d4ed8">✈ Đón VN123</span></div>
-    </div>
-    <div class="card new">
-      <div style="display:flex;justify-content:space-between"><div><div class="time">13:00</div><div class="svc">Thuê xe theo ngày · VNECAR261016-0005</div></div><div><span class="tag t-orange">Chờ nhận</span></div></div>
-      <div class="route"><div><span class="dot" style="background:#1677ff"></span>Khách sạn … Đà Nẵng</div></div>
-      <div class="chips"><span>👥 12 khách</span><span>🚐 16 chỗ</span><span style="color:#7e22ce">🧾 Xuất HĐ</span></div>
-    </div>
-  </div>
+  <figure class="shot phone-shot"><img src="img/p1-danh-sach.jpg" alt="Màn hình chính – thẻ Chờ nhận" /><figcaption>Hình: Màn hình chính – thẻ Chờ nhận</figcaption></figure>
   <div>
     <p>Màn hình chính có 4 thẻ:</p>
     <table>
@@ -176,26 +172,9 @@
 <p>Nếu không có xe phù hợp: bấm <span class="btn r">✕ Từ chối</span>, nhập <b>lý do</b> (bắt buộc, ví dụ "hết xe 16 chỗ ngày này") → <span class="btn r">Từ chối</span>. Văn phòng sẽ điều xe khác.</p>
 <div class="note"><b>Lưu ý:</b> Hãy nhận hoặc từ chối <b>càng sớm càng tốt</b> để văn phòng kịp sắp xếp. Chỉ từ chối được chuyến <b>chưa nhận</b>. Chuyến đã nhận mà không chạy được → <b>gọi ngay văn phòng điều hành</b>.</div>
 
-<h2 class="page-break">5. Xem chi tiết chuyến</h2>
+<h2>5. Xem chi tiết chuyến</h2>
 <div class="two">
-  <div class="phone">
-    <div class="hero">
-      <div style="display:flex;justify-content:space-between;font-size:7.5pt"><span>VNECAR261016-0003 · chuyến 1</span><span class="tag t-cyan" style="background:#fff">Đã nhận chuyến</span></div>
-      <div class="time">07:30</div>
-      <div style="font-size:7.5pt">thứ năm, 16/10/2026<br />Đưa đón sân bay · 7 chỗ</div>
-    </div>
-    <div class="quick">
-      <div><i style="background:#e8f1fe">🪧</i>Bảng đón</div>
-      <div><i style="background:#fff3e2">📄</i>Hợp đồng</div>
-      <div><i style="background:#e7f7ee">📍</i>Chỉ đường</div>
-      <div><i style="background:#fff3e2">📞</i>Gọi đoàn</div>
-      <div><i style="background:#f3ecfd">📋</i>Lệnh điều xe</div>
-    </div>
-    <div class="card"><b>🧭 Lộ trình</b><div class="route"><div><span class="dot" style="background:#1677ff"></span>ĐIỂM ĐÓN · 07:30 – Sân bay Đà Nẵng</div><div><span class="dot" style="background:#e3262b"></span>ĐIỂM TRẢ – Khách sạn … Hội An</div></div></div>
-    <div class="card"><b>📞 Liên hệ đón khách</b><br />Nguyễn Văn A · Hướng dẫn viên<div class="footbar"><span style="border:1px solid #cbd5e1;background:#fff">📞 Gọi</span><span style="border:1px solid #1668dc;color:#1668dc;background:#fff">💬 Nhắn Zalo</span></div></div>
-    <div class="card"><b>🪪 Xe &amp; tài xế</b><br />Biển số: <b>43B-123.45</b><br />Tài xế: <b>Trần Văn B</b></div>
-    <div class="footbar"><span style="background:#1668dc;color:#fff">BẮT ĐẦU ĐI ĐÓN</span></div>
-  </div>
+  <figure class="shot phone-shot"><img src="img/p2-chi-tiet.jpg" alt="Chi tiết chuyến" /><figcaption>Hình: Chi tiết chuyến</figcaption></figure>
   <div>
     <h3>5.1. Thanh thao tác nhanh</h3>
     <table>
@@ -217,9 +196,14 @@
     </ul>
   </div>
 </div>
+<div class="phones">
+<figure class="shot"><img src="img/p2b-chi-tiet-duoi.jpg" alt="Phần dưới chi tiết chuyến: giá thuê, yêu cầu xuất hóa đơn, đoàn khách" /><figcaption>Hình: Phần dưới chi tiết chuyến: giá thuê, yêu cầu xuất hóa đơn, đoàn khách</figcaption></figure>
+
+<figure class="shot"><img src="img/p3-cong-no.jpg" alt="Thẻ Công nợ: chọn kỳ, tiền chuyến, đã thanh toán, còn lại" /><figcaption>Hình: Thẻ Công nợ: chọn kỳ, tiền chuyến, đã thanh toán, còn lại</figcaption></figure>
+</div>
 <div class="tip"><b>Mẹo:</b> Đón khách sân bay luôn bấm <b>Tra giờ hạ cánh</b> trước khi xuất phát – chuyến bay trễ hay sớm thì chủ động điều chỉnh giờ ra đón.</div>
 
-<h2 class="page-break">6. Thực hiện chuyến: cập nhật trạng thái</h2>
+<h2>6. Thực hiện chuyến: cập nhật trạng thái</h2>
 <p>Trong khi chạy, nhà xe (hoặc người điều xe) bấm nút lớn ở cuối màn hình chi tiết để báo tiến độ. Văn phòng thấy ngay trạng thái mới.</p>
 <div class="flow">
   <div class="st t-orange">Chờ nhận</div><div class="ar">Nhận chuyến<br />→</div>
@@ -264,7 +248,7 @@
 <p>Bấm <span class="btn o">Sao chép</span> để chép toàn bộ thông tin (kèm giá chưa thuế và mã chuyến) rồi dán vào phần mềm hóa đơn điện tử của nhà xe. Hóa đơn gửi về đúng email ghi trong phần này.</p>
 <p class="small">Với chuyến có xuất hóa đơn, giá thuê hiển thị là <b>giá chưa thuế</b>, kèm dòng "+ VAT …% = tổng gồm thuế".</p>
 
-<h2 class="page-break">9. Công nợ và thanh toán</h2>
+<h2>9. Công nợ và thanh toán</h2>
 <p>Thẻ <b>Công nợ</b> cho biết tình hình tiền giữa nhà xe và công ty:</p>
 <ul>
   <li><b>Tiền chuyến</b> (số chuyến): tổng tiền các chuyến đã chạy, gồm phát sinh đã duyệt; nếu có hóa đơn thì ghi rõ phần chưa thuế + thuế.</li>
