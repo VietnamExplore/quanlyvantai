@@ -35,17 +35,34 @@ interface PlannedRow {
   /** Thông tin sẽ bổ sung vào booking đã nhập */
   fills: string[];
   booking: { id: number; code: string; status: string } | null;
-  pickupTime: string | null;
-  pickupAddress: string;
-  dropoffAddress: string;
-  vehicleType: string | null;
-  passengers: number;
+  /** Các dòng cùng mã đặt chỗ = các chuyến của một booking */
+  trips: {
+    pickupTime: string | null;
+    pickupAddress: string;
+    dropoffAddress: string;
+    vehicleType: string | null;
+    passengers: number;
+    amount: number;
+    flightNumber: string | null;
+    cancelled: boolean;
+  }[];
+  /** Tổng giá TOTO trả (gồm VAT) các chuyến chưa hủy */
   amount: number;
   customerName: string;
   program: string;
-  flightNumber: string | null;
   hasPhone: boolean;
 }
+
+/** Mỗi chuyến của booking một dòng nhỏ trong ô (booking nhiều chuyến hiện đủ các chuyến) */
+const tripLines = (r: PlannedRow, line: (t: PlannedRow['trips'][number]) => React.ReactNode) => (
+  <>
+    {r.trips.map((t, i) => (
+      <div key={i} style={{ textDecoration: t.cancelled ? 'line-through' : undefined, color: t.cancelled ? '#94a3b8' : undefined, marginTop: i ? 6 : 0 }}>
+        {line(t)}
+      </div>
+    ))}
+  </>
+);
 interface Preview {
   rows: PlannedRow[];
   missing: { id: number; code: string; customerRef: string | null; contactName: string; pickupTime: string | null }[];
@@ -181,8 +198,8 @@ export function TotoImportButton() {
     if (!rows) return;
     setBusy(true);
     try {
-      const res = await api<{ created: { reservationId: string; code: string }[]; updated: { reservationId: string; code: string }[]; failed: { reservationId: string; message: string }[] }>('/ota/toto/import', { method: 'POST', body: { rows } });
-      if (res.created.length) message.success(`Đã nhập ${res.created.length} booking TOTO (đã xác nhận, chờ điều xe)`);
+      const res = await api<{ created: { reservationId: string; code: string; trips: number }[]; updated: { reservationId: string; code: string }[]; failed: { reservationId: string; message: string }[] }>('/ota/toto/import', { method: 'POST', body: { rows } });
+      if (res.created.length) message.success(`Đã nhập ${res.created.length} booking TOTO · ${res.created.reduce((n, c) => n + c.trips, 0)} chuyến (đã xác nhận, chờ điều xe)`);
       if (res.updated.length) message.success(`Đã bổ sung thông tin cho ${res.updated.length} booking: ${res.updated.map((u) => u.code).join(', ')}`);
       if (res.failed.length) message.error(`${res.failed.length} booking không nhập được: ${res.failed.map((f) => `#${f.reservationId} – ${f.message}`).join('; ')}`, 10);
       queryClient.invalidateQueries({ queryKey: ['/bookings'] });
@@ -269,6 +286,7 @@ export function TotoImportButton() {
                   render: (v, r) => (
                     <>
                       <b>{v}</b>
+                      {r.trips.length > 1 && <div style={{ fontSize: 12, color: '#64748b' }}>{r.trips.length} chuyến</div>}
                       {r.booking && (
                         <div>
                           <Link to={`/bookings/${r.booking.id}`} target="_blank">
@@ -281,18 +299,31 @@ export function TotoImportButton() {
                 },
                 {
                   title: 'Giờ đón',
-                  dataIndex: 'pickupTime',
-                  render: (v, r) => (
-                    <>
-                      {v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—'}
-                      {r.flightNumber && <div style={{ fontSize: 12, color: '#1d4ed8' }}>✈ {r.flightNumber}</div>}
-                    </>
-                  ),
+                  render: (_, r) =>
+                    tripLines(r, (t) => (
+                      <>
+                        {t.pickupTime ? dayjs(t.pickupTime).format('HH:mm DD/MM/YYYY') : '—'}
+                        {t.flightNumber && <span style={{ fontSize: 12, color: '#1d4ed8' }}> ✈ {t.flightNumber}</span>}
+                      </>
+                    )),
                 },
-                { title: 'Hành trình', render: (_, r) => <span>{[r.pickupAddress, r.dropoffAddress].filter(Boolean).join(' → ')}</span> },
-                { title: 'Xe / khách', render: (_, r) => `${r.vehicleType ?? '—'} · ${r.passengers} khách` },
+                { title: 'Hành trình', render: (_, r) => tripLines(r, (t) => [t.pickupAddress, t.dropoffAddress].filter(Boolean).join(' → ')) },
+                { title: 'Xe / khách', render: (_, r) => tripLines(r, (t) => `${t.vehicleType ?? '—'} · ${t.passengers} khách`) },
                 { title: 'Khách', dataIndex: 'customerName' },
-                { title: 'Giá TOTO trả (gồm VAT)', dataIndex: 'amount', align: 'right', render: (v) => `${formatVnd(v)}đ` },
+                {
+                  title: 'Giá TOTO trả (gồm VAT)',
+                  dataIndex: 'amount',
+                  align: 'right',
+                  render: (v, r) =>
+                    r.trips.length > 1 ? (
+                      <>
+                        {tripLines(r, (t) => `${formatVnd(t.amount)}đ`)}
+                        <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 4, fontWeight: 700 }}>{formatVnd(v)}đ</div>
+                      </>
+                    ) : (
+                      `${formatVnd(v)}đ`
+                    ),
+                },
                 {
                   title: 'Tình trạng',
                   render: (_, r) => (

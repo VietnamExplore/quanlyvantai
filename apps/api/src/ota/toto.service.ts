@@ -83,6 +83,20 @@ const LANG: Record<string, string> = { 'Hàn Quốc': 'ko', 'Trung Quốc': 'zh'
  */
 export type RowState = 'NEW' | 'EXISTS' | 'UPDATE' | 'CHANGED' | 'CANCELLED' | 'ERROR';
 
+/** Một chuyến của booking (một dòng trong file) */
+export interface PlannedTrip {
+  pickupTime: string | null;
+  pickupAddress: string;
+  dropoffAddress: string;
+  vehicleType: string | null;
+  passengers: number;
+  /** Giá TOTO trả cho chuyến (gồm thuế) */
+  amount: number;
+  flightNumber: string | null;
+  cancelled: boolean;
+}
+
+/** Một booking: các dòng cùng mã đặt chỗ trong file gộp thành một booking nhiều chuyến */
 export interface PlannedRow {
   reservationId: string;
   state: RowState;
@@ -91,16 +105,29 @@ export interface PlannedRow {
   /** Thông tin sẽ bổ sung vào booking đã nhập (chỉ điền chỗ còn trống) */
   fills: string[];
   booking?: { id: number; code: string; status: BookingStatus } | null;
-  pickupTime: string | null;
-  pickupAddress: string;
-  dropoffAddress: string;
-  vehicleType: string | null;
-  passengers: number;
+  trips: PlannedTrip[];
+  /** Tổng giá TOTO trả (gồm thuế) của các chuyến chưa hủy */
   amount: number;
   customerName: string;
   program: string;
-  flightNumber: string | null;
   hasPhone: boolean;
+}
+
+/** Dòng file đã đọc: điểm, loại xe, giá… (dùng chung cho xem trước và nhập) */
+interface ParsedTrip {
+  row: TotoRow;
+  iso: string | null;
+  typeId: number | null;
+  typeName: string | null;
+  service: string;
+  pax: number;
+  /** Giá gồm thuế (đ) */
+  gross: number;
+  pick: { address: string; locationId: number | null };
+  drop: { address: string; locationId: number | null };
+  pickupIsAirport: boolean;
+  cancelled: boolean;
+  errors: string[];
 }
 
 /** Booking đã nhập: các trường cần để so sánh / bổ sung */
@@ -129,6 +156,8 @@ interface Fill {
   label: string;
   booking?: Prisma.BookingUpdateInput;
   trip?: { id: number; data: Prisma.BookingTripUpdateInput };
+  /** Sửa nhiều chuyến cùng lúc (tách VAT) */
+  tripsData?: { id: number; data: Prisma.BookingTripUpdateInput }[];
   passenger?: { id: number; data: Prisma.BookingPassengerUpdateInput };
 }
 
@@ -186,31 +215,73 @@ export class TotoService {
     }
   }
 
-  /** Thông tin trang chi tiết (PDF) còn thiếu trong booking đã nhập: chỉ điền chỗ trống, không ghi đè */
-  private fills(b: Existing, r: TotoRow, pickupIsAirport: boolean, gross: number, inv: Awaited<ReturnType<TotoService['invoiceInfo']>>): Fill[] {
+  /** Đọc một dòng: thời gian, loại xe, dịch vụ, điểm đón / trả, giá */
+  private parseTrip(r: TotoRow, refs: Awaited<ReturnType<TotoService['refs']>>): ParsedTrip {
+    const errors: string[] = [];
+    const iso = pickupIso(String(r.meetingTime ?? ''), String(r.checkInDate ?? ''));
+    if (!iso) errors.push('Không đọc được ngày giờ đón');
+    const type = refs.types.find((t) => t.code === vehicleCode(r.carType ?? ''));
+    if (!type) errors.push(`Loại xe "${r.carType}" chưa có trong danh mục Loại xe`);
+    const service = isAirport(`${r.programName} ${r.route}`) ? 'DON_TIEN_SAN_BAY' : 'THEO_TUYEN';
+    if (!refs.services.some((s) => s.code === service)) errors.push(`Chưa có dịch vụ ${service}`);
+    const pax = Math.max(1, Math.round(Number(r.totalPax) || Number(r.adult) + Number(r.child) + Number(r.infant) || 1));
+    if (type && pax > type.maxPassengers) errors.push(`${pax} khách vượt số chỗ của ${type.name}`);
+    const pick = this.place(String(r.meetingPlace || r.route || ''), refs.locations);
+    const drop = this.place(String(r.dropPlace ?? ''), refs.locations);
+    if (!pick.address) errors.push('Thiếu điểm đón');
+    return {
+      row: r,
+      iso,
+      typeId: type?.id ?? null,
+      typeName: type?.name ?? (r.carType || null),
+      service,
+      pax,
+      gross: Math.round((Number(r.totalAmount) || 0) * PRICE_UNIT),
+      pick,
+      drop,
+      pickupIsAirport: isAirport(r.meetingPlace || r.route || ''),
+      cancelled: isCancelled(r),
+      errors,
+    };
+  }
+
+  /** Thông tin còn thiếu trong booking đã nhập: chỉ điền chỗ trống, không ghi đè */
+  private fills(b: Existing, trips: ParsedTrip[], bTrips: Existing['trips'], inv: Awaited<ReturnType<TotoService['invoiceInfo']>>): Fill[] {
     const out: Fill[] = [];
-    const t = b.trips[0];
-    // Chưa xuất hóa đơn, giá chuyến đang là giá gồm thuế (nhập trước khi tách VAT): bật hóa đơn, tách giá
-    if (!b.invoiceRequired && t && b.trips.length === 1 && Number(t.amount) === gross && !(t.surcharges as unknown[] | null)?.length) {
-      const net = netOf(gross, inv.vat);
+    // Chưa xuất hóa đơn, giá các chuyến đang là giá gồm thuế (nhập trước khi tách VAT): bật hóa đơn, tách giá
+    if (
+      !b.invoiceRequired &&
+      bTrips.length === trips.length &&
+      bTrips.every((t, i) => Number(t.amount) === trips[i].gross && !(t.surcharges as unknown[] | null)?.length)
+    ) {
+      const nets = trips.map((t) => netOf(t.gross, inv.vat));
       out.push({
-        label: `Xuất hóa đơn, tách VAT ${inv.vat}%: ${vnd(net)} + thuế = ${vnd(grossOf(net, inv.vat))}`,
+        label: `Xuất hóa đơn, tách VAT ${inv.vat}%: ${nets.map(vnd).join(' + ')} + thuế`,
         booking: { ...inv.invoice, vatPercent: inv.vat },
-        trip: { id: t.id, data: { unitPrice: net, amount: net } },
+        tripsData: bTrips.map((t, i) => ({ id: t.id, data: { unitPrice: nets[i], amount: nets[i] } })),
       });
     }
-    const d = r.detail;
-    if (!d) return out;
-    if (t && d.flightNumber) {
-      if (pickupIsAirport && !t.flightNumber) out.push({ label: `Thêm chuyến bay đón ${d.flightNumber}`, trip: { id: t.id, data: { flightNumber: d.flightNumber } } });
-      if (!pickupIsAirport && !t.departureFlight && isAirport(r.dropPlace || r.route)) out.push({ label: `Thêm chuyến bay tiễn ${d.flightNumber}`, trip: { id: t.id, data: { departureFlight: d.flightNumber } } });
+    // Trang chi tiết (PDF): chuyến bay, yêu cầu theo từng chuyến; SĐT, email theo booking
+    trips.forEach((p, i) => {
+      const d = p.row.detail;
+      const t = bTrips[i];
+      if (!d || !t) return;
+      const no = trips.length > 1 ? `chuyến ${i + 1}: ` : '';
+      if (d.flightNumber) {
+        if (p.pickupIsAirport && !t.flightNumber) out.push({ label: `Thêm ${no}chuyến bay đón ${d.flightNumber}`, trip: { id: t.id, data: { flightNumber: d.flightNumber } } });
+        if (!p.pickupIsAirport && !t.departureFlight && isAirport(p.row.dropPlace || p.row.route)) out.push({ label: `Thêm ${no}chuyến bay tiễn ${d.flightNumber}`, trip: { id: t.id, data: { departureFlight: d.flightNumber } } });
+      }
+      if (d.requestMemo && !(t.notes ?? '').includes(d.requestMemo)) out.push({ label: `Thêm ${no}yêu cầu của khách: ${d.requestMemo}`, trip: { id: t.id, data: { notes: [t.notes, `Yêu cầu của khách: ${d.requestMemo}`].filter(Boolean).join(' · ') } } });
+    });
+    const d = trips.find((t) => t.row.detail?.phone || t.row.detail?.email)?.row.detail;
+    if (d) {
+      const name = trips.find((t) => t.row.customerName)?.row.customerName || null;
+      if (d.phone && !b.contactPhone?.trim()) out.push({ label: 'Thêm SĐT khách', booking: { contactPhone: d.phone, ...(!b.leaderPhone && { leaderPhone: d.phone, leaderName: b.leaderName ?? name }) } });
+      const p = b.passengers[0];
+      if (p && d.phone && !p.phone) out.push({ label: 'Thêm SĐT, quốc tịch vào danh sách khách', passenger: { id: p.id, data: { phone: d.phone, ...(!p.nationality && { nationality: nationalityFromPhone(d.phone) }) } } });
+      const notes = b.internalNotes ?? '';
+      if (d.email && !notes.includes(d.email)) out.push({ label: 'Thêm email khách', booking: { internalNotes: [notes, `Email khách: ${d.email}`].filter(Boolean).join('\n') } });
     }
-    if (d.phone && !b.contactPhone?.trim()) out.push({ label: 'Thêm SĐT khách', booking: { contactPhone: d.phone, ...(!b.leaderPhone && { leaderPhone: d.phone, leaderName: b.leaderName ?? (r.customerName || null) }) } });
-    const p = b.passengers[0];
-    if (p && d.phone && !p.phone) out.push({ label: 'Thêm SĐT, quốc tịch vào danh sách khách', passenger: { id: p.id, data: { phone: d.phone, ...(!p.nationality && { nationality: nationalityFromPhone(d.phone) }) } } });
-    const notes = b.internalNotes ?? '';
-    if (d.email && !notes.includes(d.email)) out.push({ label: 'Thêm email khách', booking: { internalNotes: [notes, `Email khách: ${d.email}`].filter(Boolean).join('\n') } });
-    if (t && d.requestMemo && !(t.notes ?? '').includes(d.requestMemo)) out.push({ label: `Thêm yêu cầu của khách: ${d.requestMemo}`, trip: { id: t.id, data: { notes: [t.notes, `Yêu cầu của khách: ${d.requestMemo}`].filter(Boolean).join(' · ') } } });
     return out;
   }
 
@@ -218,7 +289,7 @@ export class TotoService {
   async preview(rows: TotoRow[]) {
     const { planned, missing, days } = await this.plan(rows);
     return {
-      rows: planned.map(({ fillOps: _f, ...p }) => p),
+      rows: planned.map(({ fillOps: _f, parsed: _p, ...p }) => p),
       missing,
       range: days.length ? { from: days[0], to: days[days.length - 1] } : null,
       counts: (['NEW', 'EXISTS', 'UPDATE', 'CHANGED', 'CANCELLED', 'ERROR'] as const).reduce((o, s) => ({ ...o, [s.toLowerCase()]: planned.filter((r) => r.state === s).length }), {} as Record<Lowercase<RowState>, number>),
@@ -227,63 +298,78 @@ export class TotoService {
 
   private async plan(rows: TotoRow[]) {
     this.validate(rows);
-    const { types, services, locations } = await this.refs();
+    const refs = await this.refs();
     const inv = await this.invoiceInfo();
+    // Các dòng cùng mã đặt chỗ = một booking nhiều chuyến (vd đón sân bay + tiễn sân bay); giữ thứ tự trong file
+    const groups = new Map<string, TotoRow[]>();
+    for (const r of rows) {
+      const id = r.reservationId.trim();
+      groups.set(id, [...(groups.get(id) ?? []), r]);
+    }
     // Mã booking của khách = mã đặt chỗ TOTO (chỉ phần số)
-    const ids = rows.map((r) => r.reservationId.trim());
+    const ids = [...groups.keys()];
     const existing = await this.prisma.booking.findMany({ where: { customerRef: { in: ids }, source: SOURCE.code }, select: EXISTING_SELECT });
-    const planned = rows.map((r) => {
-      const messages: string[] = [];
-      const iso = pickupIso(String(r.meetingTime ?? ''), String(r.checkInDate ?? ''));
-      if (!iso) messages.push('Không đọc được ngày giờ đón');
-      const code = vehicleCode(r.carType ?? '');
-      const type = types.find((t) => t.code === code);
-      if (!type) messages.push(`Loại xe "${r.carType}" chưa có trong danh mục Loại xe`);
-      const service = isAirport(`${r.programName} ${r.route}`) ? 'DON_TIEN_SAN_BAY' : 'THEO_TUYEN';
-      if (!services.some((s) => s.code === service)) messages.push(`Chưa có dịch vụ ${service}`);
-      const pax = Math.max(1, Math.round(Number(r.totalPax) || Number(r.adult) + Number(r.child) + Number(r.infant) || 1));
-      if (type && pax > type.maxPassengers) messages.push(`${pax} khách vượt số chỗ của ${type.name}`);
-      const amount = Math.round((Number(r.totalAmount) || 0) * PRICE_UNIT);
-      const pick = this.place(String(r.meetingPlace || r.route || ''), locations);
-      const drop = this.place(String(r.dropPlace ?? ''), locations);
-      if (!pick.address) messages.push('Thiếu điểm đón');
-      const pickupIsAirport = isAirport(r.meetingPlace || r.route || '');
+
+    const planned = ids.map((reservationId) => {
+      // Chuyến theo giờ đón
+      const parsed = groups
+        .get(reservationId)!
+        .map((r) => this.parseTrip(r, refs))
+        .sort((a, b) => (a.iso ?? '').localeCompare(b.iso ?? ''));
+      const live = parsed.filter((t) => !t.cancelled);
+      const multi = parsed.length > 1;
+      const prefix = (i: number) => (multi ? `Chuyến ${i + 1}: ` : '');
       const base = {
-        reservationId: r.reservationId.trim(),
-        pickupTime: iso,
-        pickupAddress: pick.address,
-        dropoffAddress: drop.address,
-        vehicleType: type?.name ?? r.carType ?? null,
-        passengers: pax,
-        amount,
-        customerName: String(r.customerName ?? '').trim(),
-        program: String(r.programName ?? '').trim(),
-        flightNumber: r.detail?.flightNumber ?? null,
-        hasPhone: !!r.detail?.phone,
+        reservationId,
+        trips: parsed.map<PlannedTrip>((t) => ({
+          pickupTime: t.iso,
+          pickupAddress: t.pick.address,
+          dropoffAddress: t.drop.address,
+          vehicleType: t.typeName,
+          passengers: t.pax,
+          amount: t.gross,
+          flightNumber: t.row.detail?.flightNumber ?? null,
+          cancelled: t.cancelled,
+        })),
+        amount: live.reduce((s, t) => s + t.gross, 0),
+        customerName: String(parsed.find((t) => t.row.customerName?.trim())?.row.customerName ?? '').trim(),
+        program: [...new Set(parsed.map((t) => String(t.row.programName ?? '').trim()).filter(Boolean))].join(' + '),
+        hasPhone: parsed.some((t) => !!t.row.detail?.phone),
+        parsed,
       };
-      const b = existing.find((x) => x.customerRef === base.reservationId);
+
+      const b = existing.find((x) => x.customerRef === reservationId);
       if (b) {
-        // Đã nhập: so giờ đón, điểm đón / trả, số khách, loại xe, giá với chuyến đầu của booking
-        const t = b.trips[0];
+        // Đã nhập: so từng chuyến (theo giờ đón) – giờ, điểm đón / trả, số khách, loại xe, giá gồm thuế
+        const bTrips = [...b.trips].sort((x, y) => +x.pickupTime - +y.pickupTime);
         const diff: string[] = [];
-        if (isCancelled(r) && b.status !== BookingStatus.HUY) diff.push('TOTO đã HỦY đơn này – kiểm tra rồi hủy booking');
-        if (!isCancelled(r) && b.status === BookingStatus.HUY) diff.push('Booking đã hủy trong phần mềm nhưng vẫn còn trên TOTO');
-        if (t && !isCancelled(r)) {
-          if (iso && new Date(iso).getTime() !== t.pickupTime.getTime()) diff.push(`Giờ đón: ${fmt(t.pickupTime)} → ${fmt(new Date(iso))}`);
-          if (norm(t.pickupAddress) !== norm(pick.address)) diff.push(`Điểm đón: ${t.pickupAddress} → ${pick.address}`);
-          if (drop.address && norm(t.dropoffAddress ?? '') !== norm(drop.address)) diff.push(`Điểm trả: ${t.dropoffAddress ?? '—'} → ${drop.address}`);
-          if (t.passengers !== pax) diff.push(`Số khách: ${t.passengers} → ${pax}`);
-          if (type && t.vehicleTypeId !== type.id) diff.push(`Loại xe → ${type.name}`);
-          // So giá TOTO trả (gồm thuế) với tổng booking: chuyến chưa thuế + thuế của booking
-          const current = b.invoiceRequired ? grossOf(Number(t.amount), Number(b.vatPercent)) : Number(t.amount);
-          if (b.trips.length === 1 && Math.abs(current - amount) > 1) diff.push(`Giá (gồm thuế): ${vnd(current)} → ${vnd(amount)}`);
+        if (!live.length && b.status !== BookingStatus.HUY) diff.push('TOTO đã HỦY đơn này – kiểm tra rồi hủy booking');
+        if (live.length && b.status === BookingStatus.HUY) diff.push('Booking đã hủy trong phần mềm nhưng vẫn còn trên TOTO');
+        if (live.length && b.status !== BookingStatus.HUY) {
+          parsed.forEach((t, i) => t.cancelled && multi && diff.push(`${prefix(i)}TOTO đã hủy chuyến này – kiểm tra rồi hủy chuyến`));
+          if (bTrips.length !== live.length) diff.push(`Số chuyến: ${bTrips.length} → ${live.length}`);
+          live.forEach((t, i) => {
+            const bt = bTrips[i];
+            if (!bt) return;
+            const no = live.length > 1 ? `Chuyến ${i + 1} – ` : '';
+            if (t.iso && new Date(t.iso).getTime() !== bt.pickupTime.getTime()) diff.push(`${no}Giờ đón: ${fmt(bt.pickupTime)} → ${fmt(new Date(t.iso))}`);
+            if (norm(bt.pickupAddress) !== norm(t.pick.address)) diff.push(`${no}Điểm đón: ${bt.pickupAddress} → ${t.pick.address}`);
+            if (t.drop.address && norm(bt.dropoffAddress ?? '') !== norm(t.drop.address)) diff.push(`${no}Điểm trả: ${bt.dropoffAddress ?? '—'} → ${t.drop.address}`);
+            if (bt.passengers !== t.pax) diff.push(`${no}Số khách: ${bt.passengers} → ${t.pax}`);
+            if (t.typeId && bt.vehicleTypeId !== t.typeId) diff.push(`${no}Loại xe → ${t.typeName}`);
+            // Giá TOTO trả (gồm thuế) so với chuyến chưa thuế + thuế của booking
+            const current = b.invoiceRequired ? grossOf(Number(bt.amount), Number(b.vatPercent)) : Number(bt.amount);
+            if (Math.abs(current - t.gross) > 1) diff.push(`${no}Giá (gồm thuế): ${vnd(current)} → ${vnd(t.gross)}`);
+          });
         }
-        const fillOps = b.status === BookingStatus.HUY || isCancelled(r) ? [] : this.fills(b, r, pickupIsAirport, amount, inv);
+        const fillOps = b.status === BookingStatus.HUY || !live.length ? [] : this.fills(b, live, bTrips.length === live.length ? bTrips : bTrips.slice(0, live.length), inv);
         const state: RowState = diff.length ? 'CHANGED' : fillOps.length ? 'UPDATE' : 'EXISTS';
         return { ...base, state, messages: diff, fills: fillOps.map((f) => f.label), fillOps, booking: { id: b.id, code: b.code, status: b.status } };
       }
-      if (isCancelled(r)) return { ...base, state: 'CANCELLED' as RowState, messages: ['Đơn đã hủy trên TOTO – không nhập'], fills: [], fillOps: [] as Fill[], booking: null };
-      return { ...base, state: (messages.length ? 'ERROR' : 'NEW') as RowState, messages, fills: [], fillOps: [] as Fill[], booking: null };
+      if (!live.length) return { ...base, state: 'CANCELLED' as RowState, messages: ['Đơn đã hủy trên TOTO – không nhập'], fills: [], fillOps: [] as Fill[], booking: null };
+      const errors = live.flatMap((t, i) => t.errors.map((e) => `${live.length > 1 ? `Chuyến ${i + 1}: ` : ''}${e}`));
+      const notes = parsed.some((t) => t.cancelled) ? ['Chuyến đã hủy trên TOTO không được nhập'] : [];
+      return { ...base, state: (errors.length ? 'ERROR' : 'NEW') as RowState, messages: errors.length ? errors : notes, fills: [], fillOps: [] as Fill[], booking: null };
     });
 
     // Booking TOTO có ngày đón trong khoảng ngày của file nhưng không còn trong file: có thể TOTO đã hủy
@@ -318,17 +404,18 @@ export class TotoService {
   /** Nhập booking mới (đã xác nhận, ghi công nợ khách hàng TOTO Booking) và bổ sung thông tin cho booking đã nhập */
   async import(rows: TotoRow[], user: AuthUser) {
     const { planned } = await this.plan(rows);
-    const created: { reservationId: string; id: number; code: string }[] = [];
+    const created: { reservationId: string; id: number; code: string; trips: number }[] = [];
     const updated: { reservationId: string; code: string; fills: string[] }[] = [];
     const failed: { reservationId: string; message: string }[] = [];
 
-    // Bổ sung (chuyến bay, SĐT, email, yêu cầu) cho booking đã nhập – kể cả booking có thay đổi khác
+    // Bổ sung (hóa đơn, chuyến bay, SĐT, email, yêu cầu) cho booking đã nhập – kể cả booking có thay đổi khác
     for (const p of planned.filter((x) => x.fillOps.length && x.booking)) {
       try {
         await this.prisma.$transaction(async (tx) => {
           for (const f of p.fillOps) {
             if (f.booking) await tx.booking.update({ where: { id: p.booking!.id }, data: f.booking });
             if (f.trip) await tx.bookingTrip.update({ where: { id: f.trip.id }, data: f.trip.data });
+            for (const t of f.tripsData ?? []) await tx.bookingTrip.update({ where: { id: t.id }, data: t.data });
             if (f.passenger) await tx.bookingPassenger.update({ where: { id: f.passenger.id }, data: f.passenger.data });
           }
         });
@@ -341,17 +428,11 @@ export class TotoService {
     const todo = planned.filter((r) => r.state === 'NEW');
     if (todo.length) {
       const customerId = await this.ensureCustomer();
-      const { types, locations } = await this.refs();
       const inv = await this.invoiceInfo();
       for (const p of todo) {
-        const r = rows.find((x) => x.reservationId.trim() === p.reservationId)!;
-        const d = r.detail ?? null;
-        const type = types.find((t) => t.code === vehicleCode(r.carType))!;
-        const pick = this.place(String(r.meetingPlace || r.route || ''), locations);
-        const drop = this.place(String(r.dropPlace ?? ''), locations);
-        const pickupIsAirport = isAirport(r.meetingPlace || r.route || '');
+        const live = p.parsed.filter((t) => !t.cancelled);
+        const d = live.find((t) => t.row.detail?.phone || t.row.detail?.email)?.row.detail ?? null;
         const nationality = d?.phone ? nationalityFromPhone(d.phone) : null;
-        const paxNote = [`Người lớn ${Number(r.adult) || 0}`, Number(r.child) ? `trẻ em ${r.child}` : null, Number(r.infant) ? `em bé ${r.infant}` : null].filter(Boolean).join(', ');
         try {
           const booking = await this.bookings.create(
             {
@@ -368,38 +449,41 @@ export class TotoService {
               ...inv.invoice,
               vatPercent: inv.vat,
               internalNotes: [
-                `Nhập từ ${d ? 'trang chi tiết (PDF)' : 'file Excel'} TOTO Booking · mã đặt chỗ ${p.reservationId}`,
-                `Sản phẩm: ${p.program || r.route}`,
-                r.additionalOption?.trim() ? `Tùy chọn thêm: ${r.additionalOption.trim()}` : null,
+                `Nhập từ ${d || live.some((t) => t.row.detail) ? 'trang chi tiết (PDF)' : 'file Excel'} TOTO Booking · mã đặt chỗ ${p.reservationId}${live.length > 1 ? ` · ${live.length} chuyến` : ''}`,
+                `Sản phẩm: ${p.program || live[0].row.route}`,
+                ...live.map((t) => t.row.additionalOption?.trim()).filter(Boolean).map((o) => `Tùy chọn thêm: ${o}`),
                 d?.email ? `Email khách: ${d.email}` : null,
-                `Giá TOTO trả (gồm thuế): ${vnd(p.amount)} = ${vnd(netOf(p.amount, inv.vat))} + VAT ${inv.vat}% · xuất hóa đơn cho TOTO, ghi công nợ khách hàng Toto Booking`,
+                `Giá TOTO trả (gồm thuế): ${live.map((t) => vnd(t.gross)).join(' + ')}${live.length > 1 ? ` = ${vnd(p.amount)}` : ''} · VAT ${inv.vat}% · xuất hóa đơn cho TOTO, ghi công nợ khách hàng Toto Booking`,
               ]
                 .filter(Boolean)
                 .join('\n'),
               passengers: p.customerName ? [{ fullName: p.customerName, phone: d?.phone ?? null, nationality }] : [],
-              trips: [
-                {
-                  serviceType: isAirport(`${r.programName} ${r.route}`) ? 'DON_TIEN_SAN_BAY' : 'THEO_TUYEN',
-                  pickupTime: p.pickupTime!,
-                  pickupAddress: pick.address,
-                  pickupLocationId: pick.locationId,
-                  dropoffAddress: drop.address || null,
-                  dropoffLocationId: drop.locationId,
-                  ...(d?.flightNumber && (pickupIsAirport ? { flightNumber: d.flightNumber } : isAirport(r.dropPlace || r.route) ? { departureFlight: d.flightNumber } : {})),
-                  passengers: p.passengers,
-                  vehicleTypeId: type.id,
-                  unitPrice: netOf(p.amount, inv.vat),
-                  itinerary: p.program || null,
-                  notes: [`TOTO #${p.reservationId} · ${paxNote}`, r.additionalOption?.trim() || null, d?.requestMemo ? `Yêu cầu của khách: ${d.requestMemo}` : null].filter(Boolean).join(' · '),
-                },
-              ],
+              trips: live.map((t) => {
+                const r = t.row;
+                const td = r.detail;
+                const paxNote = [`Người lớn ${Number(r.adult) || 0}`, Number(r.child) ? `trẻ em ${r.child}` : null, Number(r.infant) ? `em bé ${r.infant}` : null].filter(Boolean).join(', ');
+                return {
+                  serviceType: t.service,
+                  pickupTime: t.iso!,
+                  pickupAddress: t.pick.address,
+                  pickupLocationId: t.pick.locationId,
+                  dropoffAddress: t.drop.address || null,
+                  dropoffLocationId: t.drop.locationId,
+                  ...(td?.flightNumber && (t.pickupIsAirport ? { flightNumber: td.flightNumber } : isAirport(r.dropPlace || r.route) ? { departureFlight: td.flightNumber } : {})),
+                  passengers: t.pax,
+                  vehicleTypeId: t.typeId!,
+                  unitPrice: netOf(t.gross, inv.vat),
+                  itinerary: String(r.programName ?? '').trim() || null,
+                  notes: [`TOTO #${p.reservationId} · ${paxNote}`, r.additionalOption?.trim() || null, td?.requestMemo ? `Yêu cầu của khách: ${td.requestMemo}` : null].filter(Boolean).join(' · '),
+                };
+              }),
             } as unknown as Parameters<BookingsService['create']>[0],
             user,
             BookingStatus.NHAP,
           );
           // Đơn OTA đã xác nhận: chuyển Đã xác nhận (chuyến sắp chạy thì báo điều hành xếp xe)
           await this.bookings.changeStatus(booking.id, { status: BookingStatus.XAC_NHAN }, user);
-          created.push({ reservationId: p.reservationId, id: booking.id, code: booking.code });
+          created.push({ reservationId: p.reservationId, id: booking.id, code: booking.code, trips: live.length });
         } catch (e) {
           failed.push({ reservationId: p.reservationId, message: (e as Error).message });
         }
