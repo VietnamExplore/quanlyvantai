@@ -193,7 +193,8 @@ export class TotoService {
   /** Khách hàng "TOTO Booking" (đại lý) và nguồn khách "TOTO Booking": tạo ở lần nhập đầu */
   private async ensureCustomer() {
     await this.prisma.customerSource.upsert({ where: { code: SOURCE.code }, update: {}, create: { code: SOURCE.code, name: SOURCE.name, sortOrder: 50 } });
-    const found = await this.prisma.customer.findFirst({ where: { name: CUSTOMER_NAME }, select: { id: true } });
+    // Dùng khách hàng đã có (tên không phân biệt hoa thường, vd "Toto Booking" văn phòng tạo trước), chưa có mới tạo
+    const found = await this.prisma.customer.findFirst({ where: { name: { equals: CUSTOMER_NAME, mode: 'insensitive' } }, orderBy: { id: 'asc' }, select: { id: true } });
     if (found) return found.id;
     const agent = await this.prisma.customerKind.findFirst({ where: { isAgent: true }, orderBy: { sortOrder: 'asc' }, select: { code: true } });
     const c = await this.prisma.customer.create({
