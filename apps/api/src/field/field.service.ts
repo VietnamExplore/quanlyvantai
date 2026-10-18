@@ -97,6 +97,7 @@ export const VEHICLE_CHECK_ITEMS = [
   { key: 'lop', label: 'Lốp xe, lốp dự phòng' },
   { key: 'den', label: 'Đèn, còi, gạt mưa' },
   { key: 'phanh', label: 'Phanh, tay lái' },
+  { key: 'day_an_toan', label: 'Dây đai an toàn (ghế lái và các ghế khách)' },
   { key: 'dau_nuoc', label: 'Dầu máy, nước làm mát' },
   { key: 'dieu_hoa', label: 'Điều hòa' },
   { key: 'than_vo', label: 'Thân vỏ (trầy xước, móp)' },
