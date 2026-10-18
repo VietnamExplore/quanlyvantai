@@ -4,7 +4,7 @@ import { Alert, App, Button, Flex, Modal, Table, Tag, Typography, Upload } from 
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api';
+import { api, tokenStore } from '../api';
 import { formatVnd } from './common';
 
 /** Một dòng file "Booking List" của trang nhà cung cấp TOTO Booking */
@@ -24,12 +24,16 @@ interface TotoRow {
   checkInDate: string;
   totalAmount: number;
   additionalOption: string;
+  /** Có khi đọc từ trang chi tiết PDF (chuyến bay, SĐT, email, yêu cầu, trạng thái) */
+  detail?: unknown;
 }
 
 interface PlannedRow {
   reservationId: string;
-  state: 'NEW' | 'EXISTS' | 'CHANGED' | 'ERROR';
+  state: 'NEW' | 'EXISTS' | 'UPDATE' | 'CHANGED' | 'CANCELLED' | 'ERROR';
   messages: string[];
+  /** Thông tin sẽ bổ sung vào booking đã nhập */
+  fills: string[];
   booking: { id: number; code: string; status: string } | null;
   pickupTime: string | null;
   pickupAddress: string;
@@ -39,12 +43,14 @@ interface PlannedRow {
   amount: number;
   customerName: string;
   program: string;
+  flightNumber: string | null;
+  hasPhone: boolean;
 }
 interface Preview {
   rows: PlannedRow[];
   missing: { id: number; code: string; customerRef: string | null; contactName: string; pickupTime: string | null }[];
   range: { from: string; to: string } | null;
-  counts: { new: number; exists: number; changed: number; error: number };
+  counts: { new: number; exists: number; update: number; changed: number; cancelled: number; error: number };
 }
 
 /** Tiêu đề cột trong file → trường (không phân biệt hoa thường, khoảng trắng) */
@@ -108,9 +114,22 @@ async function readTotoFile(file: File): Promise<TotoRow[]> {
 const STATE: Record<PlannedRow['state'], { label: string; color: string }> = {
   NEW: { label: 'Mới – sẽ nhập', color: 'green' },
   EXISTS: { label: 'Đã nhập', color: 'default' },
+  UPDATE: { label: 'Đã nhập – sẽ bổ sung', color: 'blue' },
   CHANGED: { label: 'Đã thay đổi', color: 'orange' },
+  CANCELLED: { label: 'Đã hủy trên TOTO', color: 'red' },
   ERROR: { label: 'Không nhập được', color: 'red' },
 };
+
+/** Trang chi tiết đặt chỗ TOTO in ra PDF: máy chủ đọc (mỗi file một booking) */
+async function readTotoPdfs(files: File[]) {
+  const body = new FormData();
+  for (const f of files) body.append('files', f);
+  const token = tokenStore.get();
+  const res = await fetch('/api/ota/toto/pdf', { method: 'POST', body, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(Array.isArray(data?.message) ? data.message.join('\n') : (data?.message ?? 'Không đọc được file PDF'));
+  return data as { rows: TotoRow[]; errors: { file: string; message: string }[] };
+}
 
 /** Nút "Nhập từ TOTO" ở trang Booking: chọn file Excel → xem trước → nhập booking mới */
 export function TotoImportButton() {
@@ -130,13 +149,25 @@ export function TotoImportButton() {
     setError(null);
   }
 
-  async function pick(file: File) {
+  const [pdfErrors, setPdfErrors] = useState<{ file: string; message: string }[]>([]);
+
+  async function pick(files: File[]) {
     reset();
-    setFileName(file.name);
+    setPdfErrors([]);
+    const pdfs = files.filter((f) => /\.pdf$/i.test(f.name));
+    const xlsx = files.filter((f) => /\.xlsx$/i.test(f.name));
+    setFileName(files.length === 1 ? files[0].name : `${files.length} file`);
     setBusy(true);
     try {
-      const data = await readTotoFile(file);
-      if (!data.length) throw new Error('File không có dòng booking nào');
+      if (xlsx.length > 1 || (xlsx.length && pdfs.length)) throw new Error('Chọn 1 file Excel, hoặc một / nhiều file PDF trang chi tiết – không chọn lẫn hai loại');
+      let data: TotoRow[];
+      if (pdfs.length) {
+        const res = await readTotoPdfs(pdfs);
+        setPdfErrors(res.errors);
+        data = res.rows;
+      } else if (xlsx.length) data = await readTotoFile(xlsx[0]);
+      else throw new Error('Chọn file .xlsx (Booking List) hoặc .pdf (trang chi tiết đặt chỗ)');
+      if (!data.length) throw new Error('Không đọc được booking nào trong file');
       setRows(data);
       setPreview(await api<Preview>('/ota/toto/preview', { method: 'POST', body: { rows: data } }));
     } catch (e) {
@@ -150,8 +181,9 @@ export function TotoImportButton() {
     if (!rows) return;
     setBusy(true);
     try {
-      const res = await api<{ created: { reservationId: string; code: string }[]; failed: { reservationId: string; message: string }[] }>('/ota/toto/import', { method: 'POST', body: { rows } });
+      const res = await api<{ created: { reservationId: string; code: string }[]; updated: { reservationId: string; code: string }[]; failed: { reservationId: string; message: string }[] }>('/ota/toto/import', { method: 'POST', body: { rows } });
       if (res.created.length) message.success(`Đã nhập ${res.created.length} booking TOTO (đã xác nhận, chờ điều xe)`);
+      if (res.updated.length) message.success(`Đã bổ sung thông tin cho ${res.updated.length} booking: ${res.updated.map((u) => u.code).join(', ')}`);
       if (res.failed.length) message.error(`${res.failed.length} booking không nhập được: ${res.failed.map((f) => `#${f.reservationId} – ${f.message}`).join('; ')}`, 10);
       queryClient.invalidateQueries({ queryKey: ['/bookings'] });
       setPreview(await api<Preview>('/ota/toto/preview', { method: 'POST', body: { rows } }));
@@ -178,18 +210,22 @@ export function TotoImportButton() {
         destroyOnHidden
         footer={
           <Flex justify="space-between" align="center" wrap gap={8}>
-            <Typography.Text type="secondary">Giá trong file tính bằng nghìn đồng (giá TOTO trả) · ghi công nợ khách hàng "TOTO Booking"</Typography.Text>
-            <Button type="primary" icon={<ImportOutlined />} disabled={!preview?.counts.new} loading={busy && !!preview} onClick={doImport}>
-              Nhập {preview?.counts.new ?? 0} booking mới
+            <Typography.Text type="secondary">Giá TOTO trả (Excel tính nghìn đồng) · ghi công nợ khách hàng "Toto Booking"</Typography.Text>
+            <Button type="primary" icon={<ImportOutlined />} disabled={!preview || !(preview.counts.new + preview.rows.filter((x) => x.fills.length).length)} loading={busy && !!preview} onClick={doImport}>
+              {preview && preview.rows.some((x) => x.fills.length)
+                ? `Nhập ${preview.counts.new} mới · bổ sung ${preview.rows.filter((x) => x.fills.length).length}`
+                : `Nhập ${preview?.counts.new ?? 0} booking mới`}
             </Button>
           </Flex>
         }
       >
         <Upload.Dragger
-          accept=".xlsx"
+          accept=".xlsx,.pdf"
+          multiple
           showUploadList={false}
-          beforeUpload={(f) => {
-            pick(f);
+          beforeUpload={(f, list) => {
+            // Chọn nhiều file: xử lý một lần cho cả nhóm
+            if (f === list[0]) pick(list as unknown as File[]);
             return false;
           }}
           disabled={busy}
@@ -198,11 +234,16 @@ export function TotoImportButton() {
           <p className="ant-upload-drag-icon">
             <CloudUploadOutlined />
           </p>
-          <p>{fileName ? `Đã chọn: ${fileName} – bấm để chọn file khác` : 'Bấm hoặc kéo file Excel "Booking List" xuất từ trang nhà cung cấp TOTO vào đây'}</p>
-          <p className="ant-upload-hint">Nhập lại file cũ không tạo trùng: booking đã nhập được nhận ra bằng mã đặt chỗ (Reservation ID).</p>
+          <p>{fileName ? `Đã chọn: ${fileName} – bấm để chọn file khác` : 'Bấm hoặc kéo vào đây: file Excel "Booking List", hoặc một / nhiều file PDF trang chi tiết đặt chỗ TOTO'}</p>
+          <p className="ant-upload-hint">
+            PDF trang chi tiết có thêm chuyến bay, SĐT, email, yêu cầu của khách: booking chưa có thì tạo đầy đủ, đã có thì bổ sung chỗ còn trống. Nhập lại file cũ không tạo trùng.
+          </p>
         </Upload.Dragger>
 
         {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />}
+        {pdfErrors.length > 0 && (
+          <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={`${pdfErrors.length} file PDF không đọc được`} description={pdfErrors.map((e) => `${e.file}: ${e.message}`).join(' · ')} />
+        )}
 
         {preview && (
           <>
@@ -210,7 +251,9 @@ export function TotoImportButton() {
               {preview.range && <Tag>Ngày đón {dayjs(preview.range.from).format('DD/MM')} – {dayjs(preview.range.to).format('DD/MM/YYYY')}</Tag>}
               <Tag color="green">Mới: {preview.counts.new}</Tag>
               <Tag>Đã nhập: {preview.counts.exists}</Tag>
+              {preview.counts.update > 0 && <Tag color="blue">Sẽ bổ sung: {preview.counts.update}</Tag>}
               {preview.counts.changed > 0 && <Tag color="orange">Đã thay đổi: {preview.counts.changed}</Tag>}
+              {preview.counts.cancelled > 0 && <Tag color="red">Đã hủy trên TOTO: {preview.counts.cancelled}</Tag>}
               {preview.counts.error > 0 && <Tag color="red">Lỗi: {preview.counts.error}</Tag>}
             </Flex>
             <Table
@@ -236,7 +279,16 @@ export function TotoImportButton() {
                     </>
                   ),
                 },
-                { title: 'Giờ đón', dataIndex: 'pickupTime', render: (v) => (v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—') },
+                {
+                  title: 'Giờ đón',
+                  dataIndex: 'pickupTime',
+                  render: (v, r) => (
+                    <>
+                      {v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—'}
+                      {r.flightNumber && <div style={{ fontSize: 12, color: '#1d4ed8' }}>✈ {r.flightNumber}</div>}
+                    </>
+                  ),
+                },
                 { title: 'Hành trình', render: (_, r) => <span>{[r.pickupAddress, r.dropoffAddress].filter(Boolean).join(' → ')}</span> },
                 { title: 'Xe / khách', render: (_, r) => `${r.vehicleType ?? '—'} · ${r.passengers} khách` },
                 { title: 'Khách', dataIndex: 'customerName' },
@@ -247,8 +299,13 @@ export function TotoImportButton() {
                     <>
                       <Tag color={STATE[r.state].color}>{STATE[r.state].label}</Tag>
                       {r.messages.map((m) => (
-                        <div key={m} style={{ fontSize: 12, color: r.state === 'ERROR' ? '#b91c1c' : '#b45309' }}>
+                        <div key={m} style={{ fontSize: 12, color: r.state === 'ERROR' || r.state === 'CANCELLED' ? '#b91c1c' : '#b45309' }}>
                           {m}
+                        </div>
+                      ))}
+                      {r.fills.map((m) => (
+                        <div key={m} style={{ fontSize: 12, color: '#1d4ed8' }}>
+                          + {m}
                         </div>
                       ))}
                     </>
@@ -262,7 +319,7 @@ export function TotoImportButton() {
                 showIcon
                 style={{ marginTop: 12 }}
                 message="Có booking TOTO đã thay đổi"
-                description="Phần mềm không tự sửa booking đã nhập (có thể đã điều xe). Mở booking theo mã ở cột đầu, sửa chuyến theo thông tin mới và báo lái xe / nhà xe."
+                description="Phần mềm không tự sửa giờ, điểm, số khách, giá hay tự hủy booking đã nhập (có thể đã điều xe). Mở booking theo mã ở cột đầu, sửa / hủy theo thông tin mới và báo lái xe / nhà xe."
               />
             )}
             {preview.missing.length > 0 && (
