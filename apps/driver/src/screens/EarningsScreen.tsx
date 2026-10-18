@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useLoadOnMount } from '../hooks';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api } from '../api';
 import { BRAND, colors, fmtDate, fmtTime } from '../theme';
@@ -61,9 +62,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
     }
   }, [month]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useLoadOnMount(load);
 
   const d = data;
   const isNow = month === thisMonth();
@@ -122,7 +121,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
 
           {(d.pendingTrips?.length ?? 0) > 0 && (
             <Card style={s.warnCard}>
-              <Text style={s.warnText}>⏳ {d.pendingTrips!.length} chuyến đã qua giờ đón nhưng chưa bấm "Hoàn thành" — chưa được tính hoa hồng:</Text>
+              <Text style={s.warnText}>⏳ {d.pendingTrips!.length} chuyến đã qua giờ đón nhưng chưa bấm “Hoàn thành” — chưa được tính hoa hồng:</Text>
               {d.pendingTrips!.map((t) => (
                 <Text key={t.id} style={s.pendingItem} onPress={() => onOpenTrip(t.id)}>
                   • {fmtTime(t.pickupTime)} · {t.booking.code} ›

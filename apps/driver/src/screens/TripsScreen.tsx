@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLoadOnMount } from '../hooks';
 import { AppState, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 import { api } from '../api';
 import { colors, dayLabel, fmtDate, fmtHour, SERVICE, shadow } from '../theme';
@@ -141,13 +142,13 @@ export function TripsScreen({ onOpen, onOpenRun }: { onOpen: (id: number) => voi
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   // Đồng hồ cho dòng nhắc giờ (cập nhật mỗi phút)
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), MIN);
     return () => clearInterval(t);
   }, []);
+  // Tab đang xem (đọc trong hàm tải: bỏ kết quả của tab cũ nếu người dùng đã chuyển tab)
   const tabRef = useRef(tab);
-  tabRef.current = tab;
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -165,9 +166,12 @@ export function TripsScreen({ onOpen, onOpenRun }: { onOpen: (id: number) => voi
     }
   }, []);
 
-  useEffect(() => {
-    load();
+  // Đổi tab: ghi nhận tab mới rồi tải lại
+  const loadTab = useCallback(() => {
+    tabRef.current = tab;
+    return load();
   }, [tab, load]);
+  useLoadOnMount(loadTab);
 
   // Tự kiểm tra chuyến mới mỗi 30 giây khi app đang mở; tải lại khi mở app từ nền
   useEffect(() => {

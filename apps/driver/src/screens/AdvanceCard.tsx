@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useLoadOnMount } from '../hooks';
 import { Alert, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
 import { KEYBOARD_BEHAVIOR, MODAL_ORIENTATIONS, sheetFrame } from '../platform';
@@ -48,9 +49,7 @@ export function AdvanceCard({ netPay, onChanged }: { netPay: number | null; onCh
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useLoadOnMount(load);
 
   const pending = list.find((r) => r.status === 'CHO_DUYET');
 

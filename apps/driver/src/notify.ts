@@ -11,6 +11,8 @@ const KNOWN_KEY = 'last_notification_id';
  * chỉ nạp thư viện khi chạy bản APK thật. Trong Expo Go app vẫn chạy, chỉ không hiện thông báo.
  */
 const inExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+// Nạp có điều kiện (Expo Go không có module này) nên phải dùng require thay cho import
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Notifications: typeof NotificationsModule | null = inExpoGo ? null : require('expo-notifications');
 
 // Hiện thông báo cả khi app đang mở

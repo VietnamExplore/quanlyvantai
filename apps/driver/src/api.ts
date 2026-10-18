@@ -81,19 +81,21 @@ function toBase64(bytes: Uint8Array) {
 
 /** Hook: tải ảnh cần đăng nhập (null = đang tải / không có) */
 export function useAuthImage(path: string | null, reloadKey = 0) {
-  const [state, setState] = useState<{ uri: string | null; loading: boolean; error: string | null }>({ uri: null, loading: !!path, error: null });
+  const key = path ? `${reloadKey}:${path}` : null;
+  const [state, setState] = useState<{ key: string | null; uri: string | null; error: string | null }>({ key: null, uri: null, error: null });
   useEffect(() => {
-    if (!path) return;
+    if (!key || !path) return;
     let alive = true;
-    setState({ uri: null, loading: true, error: null });
     loadAuthImage(path)
-      .then((uri) => alive && setState({ uri, loading: false, error: null }))
-      .catch((e) => alive && setState({ uri: null, loading: false, error: (e as Error).message }));
+      .then((uri) => alive && setState({ key, uri, error: null }))
+      .catch((e) => alive && setState({ key, uri: null, error: (e as Error).message }));
     return () => {
       alive = false;
     };
-  }, [path, reloadKey]);
-  return state;
+  }, [key, path]);
+  // Kết quả của lần tải trước (khóa khác) coi như chưa có
+  const done = !!key && state.key === key;
+  return { uri: done ? state.uri : null, loading: !!key && !done, error: done ? state.error : null };
 }
 
 /** Gửi một file ảnh lên máy chủ (trường "file") */

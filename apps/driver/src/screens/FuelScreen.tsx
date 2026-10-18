@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useLoadOnMount } from '../hooks';
 import { ActivityIndicator, Alert, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { api, apiUpload, useAuthImage } from '../api';
 import { keyboardScroll, MODAL_ORIENTATIONS } from '../platform';
@@ -75,9 +76,7 @@ export function FuelScreen() {
     }
   }, [month]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useLoadOnMount(load);
 
   function openForm() {
     setVehicleId(data?.defaultVehicleId ?? data?.vehicles[0]?.id ?? null);

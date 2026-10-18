@@ -1,4 +1,4 @@
-import type { ServiceType, TripStatus } from './types';
+import type { TripStatus } from './types';
 
 /** Thương hiệu: màu lấy từ logo Vietnam Explore (#1278FA) */
 export const BRAND = {

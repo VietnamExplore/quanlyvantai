@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useLoadOnMount } from '../hooks';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api } from '../api';
 import { contactGuest } from '../contact';
@@ -35,9 +36,7 @@ export function RunScreen({ runId, onOpenTrip }: { runId: number; onOpenTrip: (t
     }
   }, [runId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useLoadOnMount(load);
 
   if (error) {
     return (

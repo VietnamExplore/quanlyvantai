@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KEYBOARD_BEHAVIOR, MODAL_ORIENTATIONS, sheetFrame } from '../platform';
 import { colors } from '../theme';
@@ -34,12 +34,17 @@ export function KmModal({
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [err, setErr] = useState<string | null>(null);
-  useEffect(() => {
-    if (!visible) return;
-    setStart('');
-    setEnd(mode === 'end' && trip.endKm != null ? String(trip.endKm) : '');
-    setErr(null);
-  }, [visible, mode, trip.endKm]);
+  // Mở hộp (hoặc đổi chế độ / km kết thúc): đặt lại ô nhập
+  const openKey = visible ? `${mode}:${trip.endKm ?? ''}` : null;
+  const [shownFor, setShownFor] = useState<string | null>(null);
+  if (openKey !== shownFor) {
+    setShownFor(openKey);
+    if (openKey) {
+      setStart('');
+      setEnd(mode === 'end' && trip.endKm != null ? String(trip.endKm) : '');
+      setErr(null);
+    }
+  }
 
   const startVal = known ?? (start ? Number(start) : null);
   const endVal = end ? Number(end) : null;

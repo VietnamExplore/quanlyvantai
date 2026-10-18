@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
+import { useLoadOnMount } from '../hooks';
 import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, apiUpload, useAuthImage } from '../api';
 import { MODAL_ORIENTATIONS } from '../platform';
@@ -70,12 +71,16 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
     }
   }, [tripId]);
 
+  useLoadOnMount(load);
   useEffect(() => {
-    load();
+    let alive = true;
     api<CostCategory[]>('/driver/cost-categories')
-      .then((list) => setCategories(list.filter((c) => c.isActive)))
+      .then((list) => alive && setCategories(list.filter((c) => c.isActive)))
       .catch(() => undefined);
-  }, [load]);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const total = costs.reduce((s, c) => s + Number(c.amount), 0);
 

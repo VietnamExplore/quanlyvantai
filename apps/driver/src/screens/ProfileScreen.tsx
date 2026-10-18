@@ -10,8 +10,9 @@ import { Button, Card, Row, Section, styles as ui } from '../ui';
 
 /** Hạn giấy tờ: hết hạn → đỏ, còn ≤ 30 ngày → cam */
 function Expiry({ iso }: { iso: string | null }) {
+  const [now] = useState(() => Date.now());
   if (!iso) return <Text style={{ color: colors.muted, fontSize: 15 }}>Chưa cập nhật</Text>;
-  const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+  const days = Math.ceil((new Date(iso).getTime() - now) / 86_400_000);
   const tone = days < 0 ? { bg: '#fdecec', fg: colors.danger, text: 'Đã hết hạn' } : days <= 30 ? { bg: '#fff3e2', fg: colors.warning, text: `Còn ${days} ngày` } : null;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

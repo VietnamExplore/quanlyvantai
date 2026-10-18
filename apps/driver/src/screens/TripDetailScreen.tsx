@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useLoadOnMount } from '../hooks';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
 import { KEYBOARD_BEHAVIOR, keyboardScroll, MODAL_ORIENTATIONS } from '../platform';
@@ -79,9 +80,7 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
     }
   }, [tripId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useLoadOnMount(load);
 
   // Nhóm khách xe ghép: nhận / bắt đầu / đón / hoàn thành ở màn hình chuyến xe ghép
   const next = trip && !trip.shuttleRunId ? NEXT_STEP[trip.status] : undefined;

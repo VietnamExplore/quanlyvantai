@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useLoadOnMount } from '../hooks';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { api } from '../api';
 import type { AppNotification } from '../notify';
@@ -31,9 +32,7 @@ export function NotificationsScreen({ onOpenTrip, onChanged }: { onOpenTrip: (id
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useLoadOnMount(load);
 
   async function open(n: AppNotification) {
     if (!n.readAt) {
