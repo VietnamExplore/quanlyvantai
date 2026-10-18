@@ -26,8 +26,6 @@ export interface TotoRow {
   additionalOption: string;
 }
 
-/** Mã booking của khách = mã đặt chỗ TOTO (không trùng) */
-const REF_PREFIX = 'TOTO-';
 const SOURCE = { code: 'TOTO', name: 'TOTO Booking' };
 const CUSTOMER_NAME = 'TOTO Booking';
 /** Giá trong file tính bằng nghìn đồng */
@@ -121,9 +119,10 @@ export class TotoService {
   async preview(rows: TotoRow[]) {
     this.validate(rows);
     const { types, services, locations } = await this.refs();
-    const ids = rows.map((r) => REF_PREFIX + r.reservationId.trim());
+    // Mã booking của khách = mã đặt chỗ TOTO (chỉ phần số)
+    const ids = rows.map((r) => r.reservationId.trim());
     const existing = await this.prisma.booking.findMany({
-      where: { customerRef: { in: ids } },
+      where: { customerRef: { in: ids }, source: SOURCE.code },
       select: { id: true, code: true, status: true, customerRef: true, trips: { where: { status: { not: TripStatus.HUY } }, select: { pickupTime: true, pickupAddress: true, dropoffAddress: true, passengers: true, vehicleTypeId: true, amount: true }, orderBy: { seq: 'asc' } } },
     });
     const planned: PlannedRow[] = rows.map((r) => {
@@ -152,7 +151,7 @@ export class TotoService {
         customerName: String(r.customerName ?? '').trim(),
         program: String(r.programName ?? '').trim(),
       };
-      const b = existing.find((x) => x.customerRef === REF_PREFIX + base.reservationId);
+      const b = existing.find((x) => x.customerRef === base.reservationId);
       if (b) {
         // Đã nhập: so giờ đón, điểm đón / trả, số khách, loại xe, giá với chuyến đầu của booking
         const t = b.trips[0];
@@ -178,7 +177,7 @@ export class TotoService {
       const from = new Date(`${days[0]}T00:00:00+07:00`);
       const to = new Date(new Date(`${days[days.length - 1]}T00:00:00+07:00`).getTime() + 86_400_000);
       const others = await this.prisma.booking.findMany({
-        where: { customerRef: { startsWith: REF_PREFIX, notIn: ids }, status: { not: BookingStatus.HUY }, trips: { some: { pickupTime: { gte: from, lt: to }, status: { not: TripStatus.HUY } } } },
+        where: { source: SOURCE.code, customerRef: { notIn: ids }, status: { not: BookingStatus.HUY }, trips: { some: { pickupTime: { gte: from, lt: to }, status: { not: TripStatus.HUY } } } },
         select: { id: true, code: true, customerRef: true, contactName: true, trips: { select: { pickupTime: true }, orderBy: { seq: 'asc' }, take: 1 } },
       });
       missing = others.map((o) => ({ id: o.id, code: o.code, customerRef: o.customerRef, contactName: o.contactName, pickupTime: o.trips[0]?.pickupTime ?? null }));
@@ -222,7 +221,7 @@ export class TotoService {
         const booking = await this.bookings.create(
           {
             customerId,
-            customerRef: REF_PREFIX + p.reservationId,
+            customerRef: p.reservationId,
             source: SOURCE.code,
             contactName: p.customerName || CUSTOMER_NAME,
             contactPhone: '',

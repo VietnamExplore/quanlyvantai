@@ -280,7 +280,7 @@ export function TotoImportButton() {
                           <Link to={`/bookings/${m.id}`} target="_blank">
                             {m.code}
                           </Link>{' '}
-                          · {m.customerRef?.replace(/^TOTO-/, 'TOTO #')} · {m.contactName}
+                          · TOTO #{m.customerRef} · {m.contactName}
                           {m.pickupTime ? ` · đón ${dayjs(m.pickupTime).format('HH:mm DD/MM')}` : ''}
                         </li>
                       ))}
