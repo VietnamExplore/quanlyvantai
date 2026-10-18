@@ -37,6 +37,15 @@ const SOURCE = { code: 'TOTO', name: 'TOTO Booking' };
 const CUSTOMER_NAME = 'TOTO Booking';
 /** Giá trong file tính bằng nghìn đồng */
 const PRICE_UNIT = 1000;
+/**
+ * Giá TOTO trả đã gồm thuế GTGT; mọi booking TOTO đều xuất hóa đơn: tách giá chưa thuế + thuế suất này
+ * (vd 432.000 đ = 400.000 đ + 8%). Đổi thuế suất: cài đặt "ota.toto.vatPercent".
+ */
+const DEFAULT_VAT = 8;
+/** Giá đã gồm thuế → giá chưa thuế */
+const netOf = (gross: number, vat: number) => Math.round(gross / (1 + vat / 100));
+/** Tổng gồm thuế của booking (giống bookingTotals: thuế làm tròn theo booking) */
+const grossOf = (net: number, vat: number) => net + Math.round((net * vat) / 100);
 
 const norm = (s: string) =>
   s
@@ -104,10 +113,12 @@ const EXISTING_SELECT = {
   leaderName: true,
   leaderPhone: true,
   internalNotes: true,
+  invoiceRequired: true,
+  vatPercent: true,
   passengers: { select: { id: true, phone: true, nationality: true }, orderBy: { seq: 'asc' }, take: 1 },
   trips: {
     where: { status: { not: TripStatus.HUY } },
-    select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, passengers: true, vehicleTypeId: true, amount: true, flightNumber: true, departureFlight: true, notes: true },
+    select: { id: true, pickupTime: true, pickupAddress: true, dropoffAddress: true, passengers: true, vehicleTypeId: true, amount: true, surcharges: true, flightNumber: true, departureFlight: true, notes: true },
     orderBy: { seq: 'asc' },
   },
 } satisfies Prisma.BookingSelect;
@@ -154,6 +165,19 @@ export class TotoService {
     return { address: loc?.name ?? label, locationId: loc?.id ?? null };
   }
 
+  /** Thuế suất (cài đặt, mặc định 8%) và thông tin xuất hóa đơn của khách hàng TOTO (tên, MST, địa chỉ, email) */
+  private async invoiceInfo() {
+    const [setting, customer] = await Promise.all([
+      this.prisma.setting.findUnique({ where: { key: 'ota.toto.vatPercent' } }),
+      this.prisma.customer.findFirst({ where: { name: { equals: CUSTOMER_NAME, mode: 'insensitive' } }, orderBy: { id: 'asc' }, select: { name: true, taxCode: true, address: true, email: true } }),
+    ]);
+    const v = Number(setting?.value);
+    return {
+      vat: setting?.value && Number.isFinite(v) && v >= 0 && v <= 20 ? v : DEFAULT_VAT,
+      invoice: { invoiceRequired: true, invoiceCompany: customer?.name ?? CUSTOMER_NAME, invoiceTaxCode: customer?.taxCode ?? null, invoiceAddress: customer?.address ?? null, invoiceEmail: customer?.email ?? null },
+    };
+  }
+
   private validate(rows: TotoRow[]) {
     if (!Array.isArray(rows) || !rows.length) throw new BadRequestException('File không có dòng booking nào');
     if (rows.length > 500) throw new BadRequestException('Mỗi lần nhập tối đa 500 booking');
@@ -163,11 +187,20 @@ export class TotoService {
   }
 
   /** Thông tin trang chi tiết (PDF) còn thiếu trong booking đã nhập: chỉ điền chỗ trống, không ghi đè */
-  private fills(b: Existing, r: TotoRow, pickupIsAirport: boolean): Fill[] {
-    const d = r.detail;
-    if (!d) return [];
+  private fills(b: Existing, r: TotoRow, pickupIsAirport: boolean, gross: number, inv: Awaited<ReturnType<TotoService['invoiceInfo']>>): Fill[] {
     const out: Fill[] = [];
     const t = b.trips[0];
+    // Chưa xuất hóa đơn, giá chuyến đang là giá gồm thuế (nhập trước khi tách VAT): bật hóa đơn, tách giá
+    if (!b.invoiceRequired && t && b.trips.length === 1 && Number(t.amount) === gross && !(t.surcharges as unknown[] | null)?.length) {
+      const net = netOf(gross, inv.vat);
+      out.push({
+        label: `Xuất hóa đơn, tách VAT ${inv.vat}%: ${vnd(net)} + thuế = ${vnd(grossOf(net, inv.vat))}`,
+        booking: { ...inv.invoice, vatPercent: inv.vat },
+        trip: { id: t.id, data: { unitPrice: net, amount: net } },
+      });
+    }
+    const d = r.detail;
+    if (!d) return out;
     if (t && d.flightNumber) {
       if (pickupIsAirport && !t.flightNumber) out.push({ label: `Thêm chuyến bay đón ${d.flightNumber}`, trip: { id: t.id, data: { flightNumber: d.flightNumber } } });
       if (!pickupIsAirport && !t.departureFlight && isAirport(r.dropPlace || r.route)) out.push({ label: `Thêm chuyến bay tiễn ${d.flightNumber}`, trip: { id: t.id, data: { departureFlight: d.flightNumber } } });
@@ -195,6 +228,7 @@ export class TotoService {
   private async plan(rows: TotoRow[]) {
     this.validate(rows);
     const { types, services, locations } = await this.refs();
+    const inv = await this.invoiceInfo();
     // Mã booking của khách = mã đặt chỗ TOTO (chỉ phần số)
     const ids = rows.map((r) => r.reservationId.trim());
     const existing = await this.prisma.booking.findMany({ where: { customerRef: { in: ids }, source: SOURCE.code }, select: EXISTING_SELECT });
@@ -240,9 +274,11 @@ export class TotoService {
           if (drop.address && norm(t.dropoffAddress ?? '') !== norm(drop.address)) diff.push(`Điểm trả: ${t.dropoffAddress ?? '—'} → ${drop.address}`);
           if (t.passengers !== pax) diff.push(`Số khách: ${t.passengers} → ${pax}`);
           if (type && t.vehicleTypeId !== type.id) diff.push(`Loại xe → ${type.name}`);
-          if (Number(t.amount) !== amount) diff.push(`Giá: ${vnd(Number(t.amount))} → ${vnd(amount)}`);
+          // So giá TOTO trả (gồm thuế) với tổng booking: chuyến chưa thuế + thuế của booking
+          const current = b.invoiceRequired ? grossOf(Number(t.amount), Number(b.vatPercent)) : Number(t.amount);
+          if (b.trips.length === 1 && Math.abs(current - amount) > 1) diff.push(`Giá (gồm thuế): ${vnd(current)} → ${vnd(amount)}`);
         }
-        const fillOps = b.status === BookingStatus.HUY || isCancelled(r) ? [] : this.fills(b, r, pickupIsAirport);
+        const fillOps = b.status === BookingStatus.HUY || isCancelled(r) ? [] : this.fills(b, r, pickupIsAirport, amount, inv);
         const state: RowState = diff.length ? 'CHANGED' : fillOps.length ? 'UPDATE' : 'EXISTS';
         return { ...base, state, messages: diff, fills: fillOps.map((f) => f.label), fillOps, booking: { id: b.id, code: b.code, status: b.status } };
       }
@@ -306,6 +342,7 @@ export class TotoService {
     if (todo.length) {
       const customerId = await this.ensureCustomer();
       const { types, locations } = await this.refs();
+      const inv = await this.invoiceInfo();
       for (const p of todo) {
         const r = rows.find((x) => x.reservationId.trim() === p.reservationId)!;
         const d = r.detail ?? null;
@@ -327,12 +364,15 @@ export class TotoService {
               ...(d?.phone && { leaderName: p.customerName || null, leaderPhone: d.phone }),
               ...(nationality && LANG[nationality] && { docLanguage: LANG[nationality] }),
               signTitle: p.customerName || null,
+              // Giá TOTO trả đã gồm thuế: luôn xuất hóa đơn, giá chuyến là giá chưa thuế
+              ...inv.invoice,
+              vatPercent: inv.vat,
               internalNotes: [
                 `Nhập từ ${d ? 'trang chi tiết (PDF)' : 'file Excel'} TOTO Booking · mã đặt chỗ ${p.reservationId}`,
                 `Sản phẩm: ${p.program || r.route}`,
                 r.additionalOption?.trim() ? `Tùy chọn thêm: ${r.additionalOption.trim()}` : null,
                 d?.email ? `Email khách: ${d.email}` : null,
-                `Giá TOTO trả: ${vnd(p.amount)} (ghi công nợ khách hàng TOTO Booking)`,
+                `Giá TOTO trả (gồm thuế): ${vnd(p.amount)} = ${vnd(netOf(p.amount, inv.vat))} + VAT ${inv.vat}% · xuất hóa đơn cho TOTO, ghi công nợ khách hàng Toto Booking`,
               ]
                 .filter(Boolean)
                 .join('\n'),
@@ -348,7 +388,7 @@ export class TotoService {
                   ...(d?.flightNumber && (pickupIsAirport ? { flightNumber: d.flightNumber } : isAirport(r.dropPlace || r.route) ? { departureFlight: d.flightNumber } : {})),
                   passengers: p.passengers,
                   vehicleTypeId: type.id,
-                  unitPrice: p.amount,
+                  unitPrice: netOf(p.amount, inv.vat),
                   itinerary: p.program || null,
                   notes: [`TOTO #${p.reservationId} · ${paxNote}`, r.additionalOption?.trim() || null, d?.requestMemo ? `Yêu cầu của khách: ${d.requestMemo}` : null].filter(Boolean).join(' · '),
                 },

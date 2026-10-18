@@ -210,7 +210,7 @@ export function TotoImportButton() {
         destroyOnHidden
         footer={
           <Flex justify="space-between" align="center" wrap gap={8}>
-            <Typography.Text type="secondary">Giá TOTO trả (Excel tính nghìn đồng) · ghi công nợ khách hàng "Toto Booking"</Typography.Text>
+            <Typography.Text type="secondary">Giá TOTO trả đã gồm VAT: tự tách giá chưa thuế + VAT 8%, xuất hóa đơn · ghi công nợ khách hàng "Toto Booking"</Typography.Text>
             <Button type="primary" icon={<ImportOutlined />} disabled={!preview || !(preview.counts.new + preview.rows.filter((x) => x.fills.length).length)} loading={busy && !!preview} onClick={doImport}>
               {preview && preview.rows.some((x) => x.fills.length)
                 ? `Nhập ${preview.counts.new} mới · bổ sung ${preview.rows.filter((x) => x.fills.length).length}`
@@ -292,7 +292,7 @@ export function TotoImportButton() {
                 { title: 'Hành trình', render: (_, r) => <span>{[r.pickupAddress, r.dropoffAddress].filter(Boolean).join(' → ')}</span> },
                 { title: 'Xe / khách', render: (_, r) => `${r.vehicleType ?? '—'} · ${r.passengers} khách` },
                 { title: 'Khách', dataIndex: 'customerName' },
-                { title: 'Giá TOTO trả', dataIndex: 'amount', align: 'right', render: (v) => `${formatVnd(v)}đ` },
+                { title: 'Giá TOTO trả (gồm VAT)', dataIndex: 'amount', align: 'right', render: (v) => `${formatVnd(v)}đ` },
                 {
                   title: 'Tình trạng',
                   render: (_, r) => (
