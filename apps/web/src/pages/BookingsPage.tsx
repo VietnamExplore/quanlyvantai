@@ -14,6 +14,7 @@ import { BookingFilterBar, useBookingFilters } from '../components/BookingFilter
 import { BookingStatusMenu } from '../components/BookingStatusMenu';
 import { Clamp, EnumTag, Money, ServiceTag, formatVnd, paged, byText } from '../components/common';
 import { PaidTag } from '../components/finance';
+import { TotoImportButton } from '../components/TotoImport';
 import { BOOKING_STATUS } from '../labels';
 import type { Booking } from '../types';
 
@@ -78,9 +79,12 @@ export default function BookingsPage() {
           Booking <Typography.Text type="secondary">({data.length})</Typography.Text>
         </Typography.Title>
         {canEdit && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/bookings/new')}>
-            Tạo booking
-          </Button>
+          <Flex gap={8} wrap>
+            <TotoImportButton />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/bookings/new')}>
+              Tạo booking
+            </Button>
+          </Flex>
         )}
       </Flex>
 
