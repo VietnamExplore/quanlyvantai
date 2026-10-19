@@ -1,10 +1,10 @@
-import { CloudUploadOutlined, ImportOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined, DeleteOutlined, ImportOutlined, PictureOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Flex, Modal, Table, Tag, Typography, Upload } from 'antd';
+import { Alert, App, Button, Flex, Modal, Select, Table, Tag, Typography, Upload } from 'antd';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, tokenStore } from '../api';
+import { api, apiUpload, tokenStore } from '../api';
 import { formatVnd } from './common';
 
 /** Một dòng file "Booking List" của trang nhà cung cấp TOTO Booking */
@@ -148,6 +148,31 @@ async function readTotoPdfs(files: File[]) {
   return data as { rows: TotoRow[]; errors: { file: string; message: string }[] };
 }
 
+/** File bảng đón đã chọn, ghép với booking theo mã đặt chỗ / tên khách (hoặc văn phòng tự chọn) */
+interface SignFile {
+  file: File;
+  reservationId: string | null;
+  by: 'ma' | 'ten' | 'tay' | null;
+}
+const SIGN_TYPES: Record<string, string> = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+const SIGN_BY: Record<string, { label: string; color: string }> = {
+  ma: { label: 'Theo mã đặt chỗ', color: 'green' },
+  ten: { label: 'Theo tên khách', color: 'cyan' },
+  tay: { label: 'Chọn tay', color: 'blue' },
+};
+
+/** Máy chủ đọc nội dung các file bảng đón để ghép với booking (file chưa lưu ở bước này) */
+async function matchSigns(files: File[], candidates: { reservationId: string; customerName: string }[]) {
+  const body = new FormData();
+  for (const f of files) body.append('files', f);
+  body.append('candidates', JSON.stringify(candidates));
+  const token = tokenStore.get();
+  const res = await fetch('/api/ota/toto/sign-match', { method: 'POST', body, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(Array.isArray(data?.message) ? data.message.join('\n') : (data?.message ?? 'Không đọc được file bảng đón'));
+  return data as { file: string; reservationId: string | null; by: 'ma' | 'ten' | null }[];
+}
+
 /** Nút "Nhập từ TOTO" ở trang Booking: chọn file Excel → xem trước → nhập booking mới */
 export function TotoImportButton() {
   const { message } = App.useApp();
@@ -159,11 +184,59 @@ export function TotoImportButton() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [signs, setSigns] = useState<SignFile[]>([]);
+
   function reset() {
     setFileName(null);
     setRows(null);
     setPreview(null);
     setError(null);
+    setSigns([]);
+  }
+
+  // Booking nhận được bảng đón: booking mới / đã nhập trong bảng xem trước (không tính đơn đã hủy, lỗi)
+  const signTargets = (preview?.rows ?? []).filter((x) => x.state !== 'CANCELLED' && x.state !== 'ERROR');
+
+  async function pickSigns(files: File[]) {
+    if (!preview) return;
+    setBusy(true);
+    try {
+      const res = await matchSigns(files, signTargets.map((x) => ({ reservationId: x.reservationId, customerName: x.customerName })));
+      setSigns((old) => [
+        // Chọn lại cùng tên file: thay file cũ
+        ...old.filter((o) => !files.some((f) => f.name === o.file.name)),
+        ...files.map((file, i) => ({ file, reservationId: res[i]?.reservationId ?? null, by: res[i]?.by ?? null })),
+      ]);
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Tải bảng đón lên từng booking (sau khi nhập: booking mới đã có mã) */
+  async function uploadSigns(created: { reservationId: string; id: number }[]) {
+    const idOf = (rid: string) => created.find((c) => c.reservationId === rid)?.id ?? preview?.rows.find((x) => x.reservationId === rid)?.booking?.id;
+    const done: string[] = [];
+    const failed: string[] = [];
+    for (const sg of signs.filter((x) => x.reservationId)) {
+      const id = idOf(sg.reservationId!);
+      if (!id) {
+        failed.push(`${sg.file.name} (booking #${sg.reservationId} chưa được nhập)`);
+        continue;
+      }
+      try {
+        // Loại file theo đuôi (một số máy không gắn loại file khi chọn): máy chủ chỉ nhận PDF / ảnh
+        const type = SIGN_TYPES[sg.file.name.split('.').pop()!.toLowerCase()] ?? sg.file.type;
+        await apiUpload(`/bookings/${id}/sign-file`, sg.file.type === type ? sg.file : new File([sg.file], sg.file.name, { type }));
+        done.push(sg.file.name);
+      } catch (e) {
+        failed.push(`${sg.file.name}: ${(e as Error).message}`);
+      }
+    }
+    if (done.length) message.success(`Đã lưu ${done.length} bảng đón vào booking`);
+    if (failed.length) message.error(`${failed.length} bảng đón chưa lưu được: ${failed.join('; ')}`, 10);
+    setSigns((old) => old.filter((x) => !done.includes(x.file.name)));
   }
 
   const [pdfErrors, setPdfErrors] = useState<{ file: string; message: string }[]>([]);
@@ -195,10 +268,14 @@ export function TotoImportButton() {
   }
 
   async function doImport() {
-    if (!rows) return;
+    if (!rows || !preview) return;
     setBusy(true);
     try {
-      const res = await api<{ created: { reservationId: string; code: string; trips: number }[]; updated: { reservationId: string; code: string }[]; failed: { reservationId: string; message: string }[] }>('/ota/toto/import', { method: 'POST', body: { rows } });
+      const needImport = preview.counts.new + preview.rows.filter((x) => x.fills.length).length > 0;
+      const res = needImport
+        ? await api<{ created: { reservationId: string; id: number; code: string; trips: number }[]; updated: { reservationId: string; code: string }[]; failed: { reservationId: string; message: string }[] }>('/ota/toto/import', { method: 'POST', body: { rows } })
+        : { created: [], updated: [], failed: [] };
+      if (signs.some((x) => x.reservationId)) await uploadSigns(res.created);
       if (res.created.length) message.success(`Đã nhập ${res.created.length} booking TOTO · ${res.created.reduce((n, c) => n + c.trips, 0)} chuyến (đã xác nhận, chờ điều xe)`);
       if (res.updated.length) message.success(`Đã bổ sung thông tin cho ${res.updated.length} booking: ${res.updated.map((u) => u.code).join(', ')}`);
       if (res.failed.length) message.error(`${res.failed.length} booking không nhập được: ${res.failed.map((f) => `#${f.reservationId} – ${f.message}`).join('; ')}`, 10);
@@ -228,10 +305,21 @@ export function TotoImportButton() {
         footer={
           <Flex justify="space-between" align="center" wrap gap={8}>
             <Typography.Text type="secondary">Giá TOTO trả đã gồm VAT: tự tách giá chưa thuế + VAT 8%, xuất hóa đơn · ghi công nợ khách hàng "Toto Booking"</Typography.Text>
-            <Button type="primary" icon={<ImportOutlined />} disabled={!preview || !(preview.counts.new + preview.rows.filter((x) => x.fills.length).length)} loading={busy && !!preview} onClick={doImport}>
-              {preview && preview.rows.some((x) => x.fills.length)
-                ? `Nhập ${preview.counts.new} mới · bổ sung ${preview.rows.filter((x) => x.fills.length).length}`
-                : `Nhập ${preview?.counts.new ?? 0} booking mới`}
+            <Button
+              type="primary"
+              icon={<ImportOutlined />}
+              disabled={!preview || !(preview.counts.new + preview.rows.filter((x) => x.fills.length).length + signs.filter((x) => x.reservationId).length)}
+              loading={busy && !!preview}
+              onClick={doImport}
+            >
+              {[
+                preview?.counts.new || !(preview?.rows.some((x) => x.fills.length) || signs.some((x) => x.reservationId)) ? `Nhập ${preview?.counts.new ?? 0} booking mới` : null,
+                preview?.rows.some((x) => x.fills.length) ? `bổ sung ${preview.rows.filter((x) => x.fills.length).length}` : null,
+                signs.some((x) => x.reservationId) ? `lưu ${signs.filter((x) => x.reservationId).length} bảng đón` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+                .replace(/^./, (c) => c.toUpperCase())}
             </Button>
           </Flex>
         }
@@ -344,6 +432,60 @@ export function TotoImportButton() {
                 },
               ]}
             />
+            <div style={{ marginTop: 16 }}>
+              <Typography.Text strong>
+                <PictureOutlined /> Bảng đón (không bắt buộc)
+              </Typography.Text>
+              <Upload.Dragger
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                multiple
+                showUploadList={false}
+                beforeUpload={(f, list) => {
+                  if (f === list[0]) pickSigns(list as unknown as File[]);
+                  return false;
+                }}
+                disabled={busy}
+                style={{ marginTop: 6 }}
+              >
+                <p style={{ margin: 0 }}>Bấm hoặc kéo vào đây các file bảng đón (PDF / ảnh) của các booking trên – chọn nhiều file một lần</p>
+                <p className="ant-upload-hint" style={{ margin: 0 }}>
+                  Phần mềm ghép theo mã đặt chỗ hoặc tên khách có trong tên file / nội dung PDF; không ghép được thì chọn booking ở cột "Booking". Booking đã có bảng đón sẽ được thay bằng file mới.
+                </p>
+              </Upload.Dragger>
+              {signs.length > 0 && (
+                <Table
+                  rowKey={(x) => x.file.name}
+                  size="small"
+                  style={{ marginTop: 8 }}
+                  pagination={false}
+                  dataSource={signs}
+                  columns={[
+                    { title: 'File bảng đón', render: (_, x) => x.file.name },
+                    {
+                      title: 'Booking',
+                      width: 340,
+                      render: (_, x) => (
+                        <Select
+                          style={{ width: '100%' }}
+                          placeholder="Chọn booking"
+                          allowClear
+                          value={x.reservationId ?? undefined}
+                          status={x.reservationId ? undefined : 'warning'}
+                          options={signTargets.map((t) => ({ value: t.reservationId, label: `#${t.reservationId} · ${t.customerName || '—'}${t.booking ? ` · ${t.booking.code}` : ' · mới'}` }))}
+                          onChange={(v: string | undefined) => setSigns((old) => old.map((o) => (o.file === x.file ? { ...o, reservationId: v ?? null, by: v ? 'tay' : null } : o)))}
+                        />
+                      ),
+                    },
+                    { title: 'Ghép', width: 140, render: (_, x) => (x.by ? <Tag color={SIGN_BY[x.by].color}>{SIGN_BY[x.by].label}</Tag> : <Tag color="orange">Chưa ghép</Tag>) },
+                    {
+                      title: '',
+                      width: 44,
+                      render: (_, x) => <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => setSigns((old) => old.filter((o) => o.file !== x.file))} />,
+                    },
+                  ]}
+                />
+              )}
+            </div>
             {preview.counts.changed > 0 && (
               <Alert
                 type="warning"

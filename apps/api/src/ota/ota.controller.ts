@@ -5,6 +5,7 @@ import { IsArray } from 'class-validator';
 import { memoryStorage } from 'multer';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { parseTotoPdf, type TotoPdfRow } from './toto-pdf';
+import { matchSign, type SignCandidate, type SignMatch } from './toto-sign';
 import { TotoService, type TotoRow } from './toto.service';
 
 class TotoRowsDto {
@@ -42,6 +43,36 @@ export class OtaController {
       }
     }
     return { rows, errors };
+  }
+
+  /**
+   * Ghép các file bảng đón (PDF / ảnh) với booking TOTO trong bảng xem trước.
+   * File không lưu ở bước này: trình duyệt giữ file, sau khi nhập thì tải lên từng booking (bảng đón của booking).
+   */
+  @Post('toto/sign-match')
+  @HttpCode(200)
+  @UseInterceptors(
+    FilesInterceptor('files', 100, {
+      storage: memoryStorage(),
+      limits: { fileSize: 30 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => (/\.(pdf|jpe?g|png|webp)$/i.test(file.originalname) ? cb(null, true) : cb(new BadRequestException('Bảng đón: chỉ nhận PDF, JPG, PNG, WEBP'), false)),
+    }),
+  )
+  async signMatch(@UploadedFiles() files: Express.Multer.File[] = [], @Body('candidates') raw?: string) {
+    if (!files.length) throw new BadRequestException('Chưa chọn file bảng đón');
+    let candidates: SignCandidate[] = [];
+    try {
+      candidates = (JSON.parse(raw ?? '[]') as SignCandidate[]).filter((c) => c && typeof c.reservationId === 'string' && /^\w{3,40}$/.test(c.reservationId)).map((c) => ({ reservationId: c.reservationId, customerName: String(c.customerName ?? '') }));
+    } catch {
+      throw new BadRequestException('Danh sách booking không hợp lệ');
+    }
+    const out: SignMatch[] = [];
+    for (const f of files) {
+      // Tên file tiếng Việt gửi lên dạng latin1
+      const name = Buffer.from(f.originalname, 'latin1').toString('utf8');
+      out.push(await matchSign({ name, data: new Uint8Array(f.buffer), pdf: /\.pdf$/i.test(name) }, candidates));
+    }
+    return out;
   }
 
   /** Xem trước: booking mới / đã nhập / bổ sung / đã thay đổi / đã hủy / lỗi, và booking cùng ngày không còn trong file Excel */

@@ -6,7 +6,7 @@ import type { TotoRow } from './toto.service';
  */
 
 /** Chữ trên PDF theo thứ tự vẽ: cùng dòng thì nối (cách xa thì thêm dấu cách), khác dòng thì xuống dòng */
-async function pdfText(data: Uint8Array) {
+export async function pdfText(data: Uint8Array) {
   // pdfjs là ESM: nạp động (máy chủ biên dịch CommonJS)
   const pdfjs = await (new Function('s', 'return import(s)') as (s: string) => Promise<typeof import('pdfjs-dist/legacy/build/pdf.mjs')>)('pdfjs-dist/legacy/build/pdf.mjs');
   const doc = await pdfjs.getDocument({ data, useSystemFonts: true, isEvalSupported: false }).promise;
