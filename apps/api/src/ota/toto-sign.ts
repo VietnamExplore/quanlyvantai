@@ -1,4 +1,5 @@
 import { pdfText } from './toto-pdf';
+import { readSignImage, readSignPhoto } from './toto-sign-ocr';
 
 /** Booking có thể nhận bảng đón: mã đặt chỗ TOTO + tên khách */
 export interface SignCandidate {
@@ -31,10 +32,16 @@ export async function matchSign(file: { name: string; data: Uint8Array; pdf: boo
   let text = '';
   if (file.pdf) {
     try {
-      text = await pdfText(file.data);
+      // Bản sao: thư viện PDF chiếm vùng dữ liệu được đưa vào (còn dùng để đọc ảnh nếu cần)
+      text = await pdfText(file.data.slice());
     } catch {
       /* PDF chỉ có ảnh / không đọc được chữ: ghép theo tên file */
     }
+  }
+  // Bảng đón TOTO là ảnh (PDF tạo bằng jsPDF, không có chữ): đọc chữ trên ảnh – mã sau "BK :", tên khách chữ Latin
+  if (!text.trim()) {
+    const ocr = file.pdf ? await readSignImage(file.data) : await readSignPhoto(Buffer.from(file.data));
+    text = [ocr.bk ? `BK : ${ocr.bk}` : '', ocr.name ?? '', ocr.text ?? ''].join('\n');
   }
   const hay = `${file.name}\n${text}`;
   // 1. Mã đặt chỗ (dãy số đứng riêng, không nằm trong số dài hơn)
