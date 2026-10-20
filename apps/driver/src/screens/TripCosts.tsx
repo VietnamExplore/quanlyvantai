@@ -186,7 +186,7 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
         </View>
       ))}
 
-      {canAdd && !adding && <Button title="Thêm chi phí" icon="➕" size="sm" variant="soft" onPress={() => setAdding(true)} style={{ marginTop: 10 }} />}
+      {canAdd && !adding && <Button title="Thêm chi phí" icon="add-circle-outline" size="sm" variant="soft" onPress={() => setAdding(true)} style={{ marginTop: 10 }} />}
       {adding && (
         <View style={{ marginTop: 10 }}>
           <Text style={ui.label}>Loại chi phí</Text>
@@ -218,8 +218,8 @@ export function TripCosts({ tripId, canAdd }: { tripId: number; canAdd: boolean 
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-              <Button title="Chụp hóa đơn" icon="📷" size="sm" variant="soft" onPress={() => pickPhoto('camera').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
-              <Button title="Chọn ảnh" icon="🖼" size="sm" variant="soft" onPress={() => pickPhoto('library').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
+              <Button title="Chụp hóa đơn" icon="camera" size="sm" variant="soft" onPress={() => pickPhoto('camera').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
+              <Button title="Chọn ảnh" icon="images-outline" size="sm" variant="soft" onPress={() => pickPhoto('library').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
             </View>
           )}
           <View style={{ flexDirection: 'row', gap: 8 }}>

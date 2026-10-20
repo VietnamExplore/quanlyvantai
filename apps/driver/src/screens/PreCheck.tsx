@@ -126,7 +126,7 @@ export function PreCheckForm({ trip, onClose, onSaved }: { trip: Trip; onClose: 
             ) : (
               <>
                 <Card style={positive ? { borderColor: colors.danger, borderWidth: 1.5 } : undefined}>
-                  <Section icon="👤" title="Lái xe" />
+                  <Section icon="person-outline" title="Lái xe" />
                   <Text style={s.group}>Nồng độ cồn{state.required ? ' (bắt buộc)' : ''}</Text>
                   <Text style={s.hint}>Thổi máy đo. Luật giao thông cấm lái xe có nồng độ cồn – chỉ đạt khi kết quả bằng 0.</Text>
                   <View style={[s.chips, { marginTop: 8, marginBottom: 6 }]}>
@@ -144,7 +144,7 @@ export function PreCheckForm({ trip, onClose, onSaved }: { trip: Trip; onClose: 
                 </Card>
 
                 <Card>
-                  <Section icon="🚐" title={`Xe ${trip.vehicle?.plateNumber ?? ''}`} />
+                  <Section icon="car" title={`Xe ${trip.vehicle?.plateNumber ?? ''}`} />
                   <Text style={ui.label}>Số km đồng hồ (km bắt đầu chuyến)</Text>
                   <TextInput style={ui.input} keyboardType="number-pad" value={odo} onChangeText={setOdo} placeholder="Ví dụ 125430" />
                   <Text style={ui.label}>Mức nhiên liệu</Text>
@@ -186,7 +186,7 @@ export function PreCheckCard({ trip, onOpen }: { trip: Trip; onOpen: () => void 
   const passed = preCheckPassed(c);
   return (
     <Card style={before && !passed ? { borderColor: c?.driverOk === false ? colors.danger : colors.warning, borderWidth: 1.5 } : undefined}>
-      <Section icon="🛡️" title="Kiểm tra trước chuyến" />
+      <Section icon="shield-checkmark" title="Kiểm tra trước chuyến" />
       {!c ? (
         <Text style={s.hint}>Chưa kiểm tra. Trước khi bắt đầu chuyến: đo nồng độ cồn, tự kiểm tra sức khỏe, giấy tờ và kỹ thuật xe.</Text>
       ) : (
@@ -207,7 +207,7 @@ export function PreCheckCard({ trip, onOpen }: { trip: Trip; onOpen: () => void 
           {before && c.driverOk && !passed && <Text style={s.bad}>Lần kiểm tra từ hôm trước – cần kiểm tra lại.</Text>}
         </>
       )}
-      {before && <Button title={c ? 'Kiểm tra lại' : 'Kiểm tra trước chuyến'} icon="🛡️" variant={passed ? 'soft' : 'primary'} onPress={onOpen} style={{ marginTop: 10 }} />}
+      {before && <Button title={c ? 'Kiểm tra lại' : 'Kiểm tra trước chuyến'} icon="shield-checkmark" variant={passed ? 'soft' : 'primary'} onPress={onOpen} style={{ marginTop: 10 }} />}
     </Card>
   );
 }

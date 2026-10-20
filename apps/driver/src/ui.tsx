@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Icon, isIconName } from './icons';
 import { BRAND, colors, shadow, STATUS } from './theme';
 import type { TripStatus } from './types';
 
@@ -36,10 +37,13 @@ export function Button({
   const content = loading ? (
     <ActivityIndicator color={fg} />
   ) : (
-    <Text style={[styles.btnText, styles[`btnText_${sz}`], { color: fg }]} numberOfLines={1}>
-      {icon ? `${icon}  ` : ''}
-      {title}
-    </Text>
+    <View style={styles.btnInner}>
+      {icon && isIconName(icon) ? <Icon name={icon} size={sz === 'lg' ? 22 : sz === 'sm' ? 16 : 19} color={fg} /> : null}
+      <Text style={[styles.btnText, styles[`btnText_${sz}`], { color: fg }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+        {icon && !isIconName(icon) ? `${icon}  ` : ''}
+        {title}
+      </Text>
+    </View>
   );
   const box = [styles.btn, styles[`btn_${sz}`]];
   return (
@@ -76,12 +80,13 @@ export function Button({
 /** Ô thao tác nhanh: biểu tượng lớn + nhãn ngắn (Bảng đón, Chỉ đường, Liên hệ…) */
 export function QuickAction({ icon, label, onPress, tone = 'blue' }: { icon: string; label: string; onPress: () => void; tone?: 'blue' | 'green' | 'orange' | 'purple' }) {
   const bg = { blue: '#e8f1fe', green: '#e7f7ee', orange: '#fff3e2', purple: '#f1ecfd' }[tone];
+  const fg = { blue: colors.primary, green: '#15803d', orange: '#c2410c', purple: '#6d28d9' }[tone];
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.quick, { opacity: pressed ? 0.8 : 1 }]}>
       <View style={[styles.quickIcon, { backgroundColor: bg }]}>
-        <Text style={{ fontSize: 22 }}>{icon}</Text>
+        <Icon name={icon} size={24} color={fg} />
       </View>
-      <Text style={styles.quickLabel} numberOfLines={1}>
+      <Text style={styles.quickLabel} numberOfLines={2}>
         {label}
       </Text>
     </Pressable>
@@ -103,10 +108,12 @@ export function Card({ children, style, onPress }: { children: ReactNode; style?
 export function Section({ icon, title, right }: { icon?: string; title: string; right?: ReactNode }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionText}>
-        {icon ? `${icon}  ` : ''}
-        {title}
-      </Text>
+      <View style={styles.sectionLeft}>
+        {icon ? isIconName(icon) ? <View style={styles.sectionIcon}><Icon name={icon} size={15} color={colors.primary} /></View> : <Text style={styles.sectionText}>{icon}</Text> : null}
+        <Text style={[styles.sectionText, { flexShrink: 1 }]} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
       {right}
     </View>
   );
@@ -123,10 +130,14 @@ export function StatusBadge({ status, onDark }: { status: TripStatus; onDark?: b
 }
 
 /** Nhãn nhỏ thông tin (số khách, biển số, chuyến bay…) */
-export function Chip({ text, tone = 'gray' }: { text: string; tone?: 'gray' | 'blue' }) {
+export function Chip({ text, tone = 'gray', icon }: { text: string; tone?: 'gray' | 'blue' | 'green' | 'orange'; icon?: string }) {
+  const c = { gray: { bg: '#eef2f7', fg: colors.text2 }, blue: { bg: colors.primarySoft, fg: colors.primary }, green: { bg: '#e7f7ee', fg: '#15803d' }, orange: { bg: '#fff3e2', fg: '#b45309' } }[tone];
   return (
-    <View style={[styles.chip, tone === 'blue' && { backgroundColor: colors.primarySoft }]}>
-      <Text style={[styles.chipText, tone === 'blue' && { color: colors.primary }]}>{text}</Text>
+    <View style={[styles.chip, { backgroundColor: c.bg }]}>
+      {icon ? <Icon name={icon} size={14} color={c.fg} /> : null}
+      <Text style={[styles.chipText, { color: c.fg }]} numberOfLines={1}>
+        {text}
+      </Text>
     </View>
   );
 }
@@ -142,29 +153,32 @@ export function Row({ label, children }: { label: string; children: ReactNode })
 
 export const styles = StyleSheet.create({
   btn: { borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  btnInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, maxWidth: '100%' },
   btn_sm: { minHeight: 40, borderRadius: 12, paddingHorizontal: 12 },
   btn_md: { minHeight: 48 },
   btn_lg: { minHeight: 58, borderRadius: 16 },
   btnGlow: { borderRadius: 16, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 6 },
-  btnText: { fontWeight: '700' },
+  btnText: { fontWeight: '700', flexShrink: 1 },
   btnText_sm: { fontSize: 14 },
   btnText_md: { fontSize: 16 },
   btnText_lg: { fontSize: 17, fontWeight: '800', letterSpacing: 0.6 },
-  quick: { flex: 1, alignItems: 'center', gap: 6 },
+  quick: { flex: 1, minWidth: 64, alignItems: 'center', gap: 6 },
   quickIcon: { width: 54, height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { fontSize: 12.5, fontWeight: '600', color: colors.text2 },
-  card: { backgroundColor: colors.card, borderRadius: 18, padding: 16, marginBottom: 12, ...shadow },
-  section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  sectionText: { fontSize: 12.5, fontWeight: '800', color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase' },
+  quickLabel: { fontSize: 12.5, fontWeight: '700', color: colors.text2, textAlign: 'center' },
+  card: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, ...shadow },
+  section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 },
+  sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  sectionIcon: { width: 26, height: 26, borderRadius: 9, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  sectionText: { fontSize: 12.5, fontWeight: '800', color: colors.text2, letterSpacing: 0.8, textTransform: 'uppercase' },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
   badgeDot: { width: 7, height: 7, borderRadius: 4 },
   badgeText: { fontSize: 12.5, fontWeight: '700' },
-  chip: { backgroundColor: '#f1f4f9', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 },
-  chipText: { fontSize: 13, color: colors.text2, fontWeight: '600' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#eef2f7', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5, maxWidth: '100%' },
+  chipText: { fontSize: 13, color: colors.text2, fontWeight: '700', flexShrink: 1 },
   row: { flexDirection: 'row', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   rowLabel: { width: 110, color: colors.muted, fontSize: 14 },
   rowValue: { color: colors.text, fontSize: 15, fontWeight: '500' },
-  input: { backgroundColor: '#f4f7fc', borderWidth: 1.5, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.text, marginBottom: 12 },
+  input: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.text, marginBottom: 12 },
   label: { fontSize: 13.5, color: colors.text2, marginBottom: 6, fontWeight: '600' },
   error: { color: colors.danger, fontSize: 14, marginBottom: 12 },
 });

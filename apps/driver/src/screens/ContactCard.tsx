@@ -81,7 +81,7 @@ export function ContactCard({ contact }: { contact: GuestContact }) {
 
   return (
     <Card>
-      <Section icon="📍" title="Liên hệ đón khách" />
+      <Section icon="location" title="Liên hệ đón khách" />
       <View style={s.person}>
         <View style={s.avatar}>
           <Text style={s.avatarText}>{contact.name.trim().charAt(0).toUpperCase()}</Text>
@@ -105,8 +105,8 @@ export function ContactCard({ contact }: { contact: GuestContact }) {
       {reachable ? (
         <>
           <View style={s.row}>
-            <Button title={`Gọi ${label}`} icon="📞" size="sm" onPress={call} style={{ flex: 1 }} />
-            <Button title="Nhắn tin" icon="💬" size="sm" variant="soft" onPress={message} style={{ flex: 1 }} />
+            <Button title={`Gọi ${label}`} icon="call" size="sm" onPress={call} style={{ flex: 1 }} />
+            <Button title="Nhắn tin" icon="chatbubbles" size="sm" variant="soft" onPress={message} style={{ flex: 1 }} />
           </View>
           <Pressable onPress={() => setChoosing('call')} hitSlop={8} style={{ alignSelf: 'center', marginTop: 10 }}>
             <Text style={s.other}>Dùng ứng dụng khác…</Text>

@@ -73,7 +73,7 @@ export function ProfileScreen({ user, onLogout }: { user: AuthUser; onLogout: ()
 
       {profile && (
         <Card>
-          <Section icon="🪪" title="Hồ sơ lái xe" />
+          <Section icon="id-card-outline" title="Hồ sơ lái xe" />
           <Row label="Số điện thoại">{profile.phone}</Row>
           <Row label="Hạng bằng">{profile.licenseClass ?? '—'}</Row>
           <Row label="Hạn bằng lái">
@@ -86,7 +86,7 @@ export function ProfileScreen({ user, onLogout }: { user: AuthUser; onLogout: ()
       )}
 
       <Card>
-        <Section icon="🔒" title="Đổi mật khẩu" />
+        <Section icon="lock-closed-outline" title="Đổi mật khẩu" />
         <TextInput placeholderTextColor={colors.muted} style={ui.input} secureTextEntry placeholder="Mật khẩu hiện tại" value={current} onChangeText={setCurrent} />
         <TextInput placeholderTextColor={colors.muted} style={ui.input} secureTextEntry placeholder="Mật khẩu mới (ít nhất 6 ký tự)" value={next} onChangeText={setNext} />
         <Button title="Đổi mật khẩu" variant="soft" size="sm" onPress={changePassword} loading={busy} />
@@ -94,7 +94,7 @@ export function ProfileScreen({ user, onLogout }: { user: AuthUser; onLogout: ()
 
       <Button
         title="Đăng xuất"
-        icon="⎋"
+        icon="log-out-outline"
         variant="danger"
         onPress={() =>
           Alert.alert('Đăng xuất?', 'Bạn sẽ không nhận được thông báo chuyến mới cho đến khi đăng nhập lại.', [
@@ -104,7 +104,7 @@ export function ProfileScreen({ user, onLogout }: { user: AuthUser; onLogout: ()
         }
       />
       <Text style={{ textAlign: 'center', color: colors.muted, fontSize: 12, marginTop: 16 }}>
-        {BRAND.company} · Máy chủ: {getServer()} · Phiên bản {Constants.expoConfig?.version}
+        {BRAND.appName} · Máy chủ: {getServer()} · Phiên bản {Constants.expoConfig?.version}
       </Text>
     </ScrollView>
   );

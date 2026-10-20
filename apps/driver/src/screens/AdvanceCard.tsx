@@ -101,7 +101,7 @@ export function AdvanceCard({ netPay, onChanged }: { netPay: number | null; onCh
 
   return (
     <Card>
-      <Section icon="🤝" title="Tạm ứng" />
+      <Section icon="mci:hand-coin-outline" title="Tạm ứng" />
       {pending ? (
         <View style={s.pendingBox}>
           <Text style={s.pendingText}>⏳ Đang chờ văn phòng duyệt {vnd(pending.amount)}</Text>
@@ -110,7 +110,7 @@ export function AdvanceCard({ netPay, onChanged }: { netPay: number | null; onCh
           </Pressable>
         </View>
       ) : (
-        <Button title="Đề nghị tạm ứng" icon="✍️" variant="soft" onPress={() => setOpen(true)} />
+        <Button title="Đề nghị tạm ứng" icon="create-outline" variant="soft" onPress={() => setOpen(true)} />
       )}
 
       {list.length > 0 && (

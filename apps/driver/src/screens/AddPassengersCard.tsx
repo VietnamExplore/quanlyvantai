@@ -85,7 +85,7 @@ export function AddPassengersCard({ trip, onChanged }: { trip: Trip; onChanged: 
 
   return (
     <Card>
-      <Section icon="➕" title="Bổ sung hành khách" />
+      <Section icon="add-circle-outline" title="Bổ sung hành khách" />
       {missing > 0 ? (
         <Text style={s.warn}>
           Danh sách mới có {pax.length}/{trip.passengers} khách. Khi đón, hỏi tên khách và thêm cho đủ — hợp đồng, lệnh vận chuyển tự cập nhật.
@@ -109,7 +109,7 @@ export function AddPassengersCard({ trip, onChanged }: { trip: Trip; onChanged: 
           </Pressable>
         </View>
       ))}
-      {missing > 0 && <Button title={`Thêm khách (còn thiếu ${missing})`} icon="➕" onPress={() => setEditing({ id: null, draft: EMPTY })} style={{ marginTop: 10 }} />}
+      {missing > 0 && <Button title={`Thêm khách (còn thiếu ${missing})`} icon="add-circle-outline" onPress={() => setEditing({ id: null, draft: EMPTY })} style={{ marginTop: 10 }} />}
 
       <Modal supportedOrientations={MODAL_ORIENTATIONS} visible={!!editing} animationType="slide" onRequestClose={() => setEditing(null)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>

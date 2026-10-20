@@ -101,7 +101,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
           )}
 
           <Card>
-            <Section icon="🧮" title="Cách tính" />
+            <Section icon="calculator-outline" title="Cách tính" />
             <Line label="Lương cứng" hint={d.baseSalary ? `${vnd(d.baseSalary)}/tháng, tính theo ngày làm` : undefined} value={vnd(d.baseAmount ?? 0)} />
             <Line label="Tổng hoa hồng" hint={`${d.trips ?? 0} chuyến đã hoàn thành`} value={vnd(d.commission ?? 0)} />
             <Line label="Tổng lương" value={vnd(d.total ?? 0)} strong />
@@ -136,7 +136,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
 
       {d && d.holdingTotal > 0 && (
         <Card style={s.holdCard}>
-          <Section icon="💵" title="Tiền thu hộ đang giữ" />
+          <Section icon="cash-outline" title="Tiền thu hộ đang giữ" />
           <Text style={s.holdTotal}>{vnd(d.holdingTotal)}</Text>
           <Text style={s.holdHint}>Tiền mặt thu của khách, cần nộp lại văn phòng.</Text>
           {d.holding.map((h) => (
@@ -149,7 +149,7 @@ export function EarningsScreen({ onOpenTrip }: { onOpenTrip: (id: number) => voi
 
       {d && !d.partner && (d.advances?.length ?? 0) > 0 && (
         <Card>
-          <Section icon="🧾" title="Khoản bạn chi hộ (được hoàn)" />
+          <Section icon="receipt-outline" title="Khoản bạn chi hộ (được hoàn)" />
           {d.advances!.map((a, i) => (
             <View key={i} style={s.trip}>
               <View style={{ flex: 1 }}>

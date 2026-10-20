@@ -60,7 +60,7 @@ export function CollectCard({ trip, onChanged }: { trip: Trip; onChanged: (t: Tr
           {trip.collectMethod !== 'CHUYEN_KHOAN' ? '\nNhớ nộp lại tiền cho văn phòng.' : ''}
         </Text>
       ) : canConfirm ? (
-        <Button title="XÁC NHẬN ĐÃ THU TIỀN" icon="💵" onPress={start} style={{ marginTop: 12 }} />
+        <Button title="XÁC NHẬN ĐÃ THU TIỀN" icon="cash-outline" onPress={start} style={{ marginTop: 12 }} />
       ) : (
         <Text style={s.meta}>Nhận chuyến xong mới xác nhận thu tiền được.</Text>
       )}

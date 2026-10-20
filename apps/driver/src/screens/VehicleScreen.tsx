@@ -58,7 +58,7 @@ export function VehicleScreen() {
       }
     >
       <Card>
-        <Section icon="🛡️" title="Kiểm tra trước chuyến" />
+        <Section icon="shield-checkmark" title="Kiểm tra trước chuyến" />
         <Text style={s.text}>
           Mỗi chuyến xe công ty, trước khi bấm Bắt đầu: mở chuyến → <Text style={{ fontWeight: '800' }}>Kiểm tra trước chuyến</Text>.
         </Text>
@@ -69,16 +69,16 @@ export function VehicleScreen() {
       </Card>
 
       <Card>
-        <Section icon="⚠️" title="Sự cố" />
+        <Section icon="warning" title="Sự cố" />
         <Text style={s.text}>Báo sự cố không thuộc chuyến nào (xe hỏng ở bãi, va quẹt khi đỗ…). Sự cố trong chuyến báo ở màn hình chuyến.</Text>
-        <Button title="Báo sự cố" icon="⚠️" variant="danger" onPress={() => setIncidentOpen(true)} style={{ marginTop: 10 }} />
+        <Button title="Báo sự cố" icon="warning" variant="danger" onPress={() => setIncidentOpen(true)} style={{ marginTop: 10 }} />
         {incidents.slice(0, 5).map((i) => (
           <IncidentRow key={i.id} item={i} />
         ))}
       </Card>
 
       <Card>
-        <Section icon="🕘" title="Lịch sử kiểm tra" />
+        <Section icon="time-outline" title="Lịch sử kiểm tra" />
         {state.recent.length ? state.recent.slice(0, 20).map((c: VehicleCheck) => <CheckRow key={c.id} c={c} />) : <Text style={s.text}>Chưa có lần kiểm tra nào.</Text>}
       </Card>
 

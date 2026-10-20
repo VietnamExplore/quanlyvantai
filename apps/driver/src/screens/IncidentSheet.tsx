@@ -7,16 +7,17 @@ import { colors, fmtDate, fmtHour } from '../theme';
 import type { Incident, IncidentType } from '../types';
 import { Button, Card, Section, styles as ui } from '../ui';
 import { pickPhoto, type Photo } from './TripCosts';
+import { Icon } from '../icons';
 
 export const INCIDENT_TYPES: { value: IncidentType; label: string; icon: string }[] = [
-  { value: 'HONG_XE', label: 'Hỏng xe', icon: '🔧' },
-  { value: 'VA_CHAM', label: 'Va chạm / tai nạn', icon: '💥' },
-  { value: 'TRE_GIO', label: 'Kẹt xe / trễ giờ', icon: '⏰' },
-  { value: 'KHACH_VANG', label: 'Khách không có mặt', icon: '🙋' },
-  { value: 'DOI_LICH_TRINH', label: 'Khách đổi lịch trình', icon: '🔀' },
-  { value: 'KHAC', label: 'Khác', icon: '❗' },
+  { value: 'HONG_XE', label: 'Hỏng xe', icon: 'construct' },
+  { value: 'VA_CHAM', label: 'Va chạm / tai nạn', icon: 'mci:car-emergency' },
+  { value: 'TRE_GIO', label: 'Kẹt xe / trễ giờ', icon: 'time' },
+  { value: 'KHACH_VANG', label: 'Khách không có mặt', icon: 'person-remove' },
+  { value: 'DOI_LICH_TRINH', label: 'Khách đổi lịch trình', icon: 'git-compare' },
+  { value: 'KHAC', label: 'Khác', icon: 'alert-circle' },
 ];
-const TYPE_LABEL = Object.fromEntries(INCIDENT_TYPES.map((t) => [t.value, `${t.icon} ${t.label}`])) as Record<IncidentType, string>;
+const TYPE_LABEL = Object.fromEntries(INCIDENT_TYPES.map((t) => [t.value, t.label])) as Record<IncidentType, string>;
 
 export const INCIDENT_STATUS: Record<string, { label: string; color: string }> = {
   MOI: { label: 'Đã gửi, chờ văn phòng', color: colors.warning },
@@ -105,15 +106,17 @@ export function IncidentSheet({ visible, tripId, onClose, onSent }: { visible: b
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
         <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={[{ padding: 16 }, sheetFrame]} keyboardShouldPersistTaps="handled">
-            <Text style={s.title}>⚠️ Báo sự cố</Text>
+            <View style={s.typeRow}>
+              <Icon name="warning" size={22} color={colors.warning} />
+              <Text style={s.title}>Báo sự cố</Text>
+            </View>
             <Text style={s.sub}>Điều hành nhận thông báo ngay. Trường hợp nguy hiểm, hãy đảm bảo an toàn và gọi điện cho văn phòng.</Text>
             <Text style={ui.label}>Loại sự cố</Text>
             <View style={s.types}>
               {INCIDENT_TYPES.map((t) => (
-                <Pressable key={t.value} onPress={() => setType(t.value)} style={[s.type, type === t.value && s.typeOn]}>
-                  <Text style={[s.typeText, type === t.value && { color: '#fff' }]}>
-                    {t.icon} {t.label}
-                  </Text>
+                <Pressable key={t.value} onPress={() => setType(t.value)} style={[s.type, s.typeRow, type === t.value && s.typeOn]}>
+                  <Icon name={t.icon} size={16} color={type === t.value ? '#fff' : colors.text2} />
+                  <Text style={[s.typeText, type === t.value && { color: '#fff' }]}>{t.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -146,7 +149,7 @@ export function TripIncidents({ tripId, reloadKey }: { tripId: number; reloadKey
   if (!items.length) return null;
   return (
     <Card>
-      <Section icon="⚠️" title="Sự cố đã báo" />
+      <Section icon="warning" title="Sự cố đã báo" />
       {items.map((i) => (
         <IncidentRow key={i.id} item={i} />
       ))}
@@ -172,6 +175,7 @@ export function IncidentRow({ item: i }: { item: Incident }) {
 }
 
 const s = StyleSheet.create({
+  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   title: { fontSize: 20, fontWeight: '800', color: colors.text },
   sub: { color: colors.text2, marginTop: 4, marginBottom: 14 },
   types: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },

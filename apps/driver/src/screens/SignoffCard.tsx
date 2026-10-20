@@ -78,7 +78,7 @@ function SignaturePad({ onChange }: { onChange: (path: string) => void }) {
       </View>
       <Button
         title="Ký lại"
-        icon="↺"
+        icon="refresh"
         size="sm"
         variant="ghost"
         onPress={() => {
@@ -142,7 +142,7 @@ export function SignoffCard({ trip, onSigned }: { trip: Trip; onSigned: (t: Pick
 
   return (
     <Card>
-      <Section icon="✍️" title="Khách ký nhận" />
+      <Section icon="create-outline" title="Khách ký nhận" />
       {trip.signoffAt ? (
         <>
           <Text style={s.done}>
@@ -153,7 +153,7 @@ export function SignoffCard({ trip, onSigned }: { trip: Trip; onSigned: (t: Pick
       ) : (
         <>
           <Text style={s.hint}>Khi trả khách, mời trưởng đoàn / HDV ký xác nhận đã hoàn thành chuyến ngay trên điện thoại.</Text>
-          <Button title="Mời khách ký nhận" icon="✍️" onPress={start} style={{ marginTop: 10 }} />
+          <Button title="Mời khách ký nhận" icon="create-outline" onPress={start} style={{ marginTop: 10 }} />
         </>
       )}
 

@@ -173,7 +173,7 @@ export function RunScreen({ runId, onOpenTrip }: { runId: number; onOpenTrip: (t
         )}
 
         <Card>
-          <Section icon="📍" title="Thứ tự đón" />
+          <Section icon="location" title="Thứ tự đón" />
           {byStop.map((st, i) => (
             <View key={st.name} style={[s.stop, i > 0 && s.stopBorder]}>
               <View style={s.stopHead}>
@@ -186,7 +186,7 @@ export function RunScreen({ runId, onOpenTrip }: { runId: number; onOpenTrip: (t
                     {st.time ? `Đón ${fmtHour(st.time)}` : ''} · {st.groups.reduce((n, g) => n + g.passengers, 0)} khách
                   </Text>
                 </View>
-                {st.address && <Button title="Chỉ đường" icon="🧭" size="sm" variant="soft" onPress={() => openMap(st.address!)} />}
+                {st.address && <Button title="Chỉ đường" icon="navigate" size="sm" variant="soft" onPress={() => openMap(st.address!)} />}
               </View>
               {st.groups.map((g) => {
                 const name = g.booking.leaderName ?? g.booking.contactName ?? g.booking.customer?.name ?? g.booking.code;
@@ -209,7 +209,7 @@ export function RunScreen({ runId, onOpenTrip }: { runId: number; onOpenTrip: (t
                       </View>
                     </Pressable>
                     <View style={{ gap: 6, alignItems: 'flex-end' }}>
-                      {phone && <Button title="Gọi" icon="📞" size="sm" variant="soft" onPress={() => contactGuest(phone, g.booking.leaderApp, g.booking.leaderAppId)} />}
+                      {phone && <Button title="Gọi" icon="call" size="sm" variant="soft" onPress={() => contactGuest(phone, g.booking.leaderApp, g.booking.leaderAppId)} />}
                       {g.status === 'DANG_DEN_DON' && <Button title="Đã lên xe" size="sm" loading={busy === `pick-${g.id}`} onPress={() => pickGroup(g)} />}
                     </View>
                   </View>

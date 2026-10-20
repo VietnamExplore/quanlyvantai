@@ -15,10 +15,10 @@ export function DocsCard({ trip }: { trip: Trip }) {
   const contract = trip.booking.contract;
   return (
     <Card>
-      <Section icon="📑" title="Giấy tờ chuyến" />
-      {trip.orderPath && <Button title="Lệnh vận chuyển" icon="🧾" variant="soft" onPress={() => open(trip.orderPath!)} />}
+      <Section icon="documents-outline" title="Giấy tờ chuyến" />
+      {trip.orderPath && <Button title="Lệnh vận chuyển" icon="receipt-outline" variant="soft" onPress={() => open(trip.orderPath!)} />}
       {contract ? (
-        <Button title={`Hợp đồng vận chuyển ${contract.number}`} icon="📄" variant="soft" onPress={() => open(`/e/hd/${contract.token}`)} style={{ marginTop: 8 }} />
+        <Button title={`Hợp đồng vận chuyển ${contract.number}`} icon="document-text-outline" variant="soft" onPress={() => open(`/e/hd/${contract.token}`)} style={{ marginTop: 8 }} />
       ) : trip.shuttleRunId ? (
         <Text style={s.note}>Chuyến xe ghép: dùng lệnh vận chuyển chung của cả chuyến ghép.</Text>
       ) : (

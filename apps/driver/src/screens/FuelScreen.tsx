@@ -160,11 +160,11 @@ export function FuelScreen() {
         </View>
       </View>
 
-      {!adding && <Button title="GHI ĐỔ XĂNG" icon="⛽" size="lg" onPress={openForm} style={{ marginBottom: 12 }} />}
+      {!adding && <Button title="GHI ĐỔ XĂNG" icon="mci:gas-station" size="lg" onPress={openForm} style={{ marginBottom: 12 }} />}
 
       {adding && (
         <Card>
-          <Section icon="⛽" title="Ghi đổ xăng hôm nay" />
+          <Section icon="mci:gas-station" title="Ghi đổ xăng hôm nay" />
           <Text style={ui.label}>{data?.assigned ? 'Xe được phân công' : 'Xe (bạn chưa được phân công xe, chọn xe đã đổ)'}</Text>
           {data?.assigned && data.vehicles.length === 1 ? (
             <View style={s.assignedCar}>
@@ -215,8 +215,8 @@ export function FuelScreen() {
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-              <Button title="Chụp hóa đơn" icon="📷" size="sm" variant="soft" onPress={() => pickPhoto('camera').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
-              <Button title="Chọn ảnh" icon="🖼" size="sm" variant="soft" onPress={() => pickPhoto('library').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
+              <Button title="Chụp hóa đơn" icon="camera" size="sm" variant="soft" onPress={() => pickPhoto('camera').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
+              <Button title="Chọn ảnh" icon="images-outline" size="sm" variant="soft" onPress={() => pickPhoto('library').then((p) => p && setPhoto(p))} style={{ flex: 1 }} />
             </View>
           )}
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -227,7 +227,7 @@ export function FuelScreen() {
       )}
 
       <Card>
-        <Section icon="🧾" title={`Lần đổ trong tháng (${items.length})`} />
+        <Section icon="receipt-outline" title={`Lần đổ trong tháng (${items.length})`} />
         {items.length === 0 && <Text style={{ color: colors.muted, fontSize: 14 }}>Chưa có lần đổ xăng nào trong tháng này.</Text>}
         {items.map((f) => (
           <View key={f.id} style={s.row}>

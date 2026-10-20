@@ -5,6 +5,7 @@ import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, Sc
 import { api, getServer, setServer, setToken } from '../api';
 import { BRAND, colors } from '../theme';
 import type { AuthUser } from '../types';
+import { Icon } from '../icons';
 
 const LOGO = require('../../assets/logo.png');
 
@@ -20,7 +21,7 @@ function Field({
   const [focused, setFocused] = useState(false);
   return (
     <View style={[s.field, focused && s.fieldFocused]}>
-      <Text style={s.fieldIcon}>{icon}</Text>
+      <Icon name={icon} size={20} color={colors.muted} style={s.fieldIcon} />
       <TextInput
         placeholderTextColor="#94a3b8"
         style={s.fieldInput}
@@ -81,9 +82,10 @@ export function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: AuthUser) => vo
             <View style={s.logoDisc}>
               <Image source={LOGO} style={s.logo} resizeMode="contain" />
             </View>
-            <Text style={s.company}>{BRAND.company}</Text>
-            <View style={s.appBadge}>
-              <Text style={s.appBadgeText}>🚐  APP LÁI XE</Text>
+            <Text style={s.company}>VIETNAM EXPLORE</Text>
+            <View style={[s.appBadge, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+              <Icon name="mci:steering" size={16} color="#fff" />
+              <Text style={s.appBadgeText}>DRIVER</Text>
             </View>
           </View>
 
@@ -91,9 +93,9 @@ export function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: AuthUser) => vo
             <Text style={s.welcome}>Xin chào!</Text>
             <Text style={s.welcomeSub}>Đăng nhập để nhận và chạy chuyến</Text>
 
-            <Field icon="👤" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Tên đăng nhập / số điện thoại" returnKeyType="next" />
+            <Field icon="person-outline" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Tên đăng nhập / số điện thoại" returnKeyType="next" />
             <Field
-              icon="🔒"
+              icon="lock-closed-outline"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -108,7 +110,7 @@ export function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: AuthUser) => vo
             />
 
             {showServer ? (
-              <Field icon="🌐" value={server} onChangeText={setServerInput} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="Địa chỉ máy chủ, vd: vantai.congty.vn" />
+              <Field icon="globe-outline" value={server} onChangeText={setServerInput} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="Địa chỉ máy chủ, vd: vantai.congty.vn" />
             ) : (
               <Pressable onPress={() => setShowServer(true)} style={s.serverRow} hitSlop={6}>
                 <Text style={s.serverText} numberOfLines={1}>

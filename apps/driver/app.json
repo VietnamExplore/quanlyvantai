@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Lái Xe",
+    "name": "Vietnam Explore Driver",
     "slug": "lai-xe",
-    "version": "1.7.0",
+    "version": "1.8.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "vn.vantai.laixe",
-      "buildNumber": "13",
+      "buildNumber": "14",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "vn.vantai.laixe",
-      "versionCode": 17,
+      "versionCode": 18,
       "adaptiveIcon": {
         "backgroundColor": "#1278FA",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -73,7 +73,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

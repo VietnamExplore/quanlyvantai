@@ -3,6 +3,8 @@ import { useCallback, useRef, useState } from 'react';
 import { useLoadOnMount } from '../hooks';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
+import { Icon } from '../icons';
+import { useLayout } from '../layout';
 import { KEYBOARD_BEHAVIOR, keyboardScroll, MODAL_ORIENTATIONS } from '../platform';
 import { BRAND, colors, dayLabel, fmtDate, fmtHour, fmtTime, NEXT_STEP, SERVICE } from '../theme';
 import type { Passenger, Trip } from '../types';
@@ -37,7 +39,8 @@ function PassengerRow({ p, onContact }: { p: Passenger; onContact: (c: GuestCont
       </View>
       {p.phone && (
         <Pressable onPress={() => onContact({ role: 'Khách', name: p.fullName, phone: p.phone })} hitSlop={8} style={({ pressed }) => [s.paxCall, pressed && { opacity: 0.7 }]}>
-          <Text style={s.paxCallText}>💬 {APP_LABEL[guessApp(p.phone)]}</Text>
+          <Icon name="chatbubble-ellipses" size={15} color={colors.primary} />
+          <Text style={s.paxCallText}>{APP_LABEL[guessApp(p.phone)]}</Text>
         </Pressable>
       )}
     </View>
@@ -51,6 +54,7 @@ const openMap = (address: string) =>
   Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&hl=vi&gl=vn`);
 
 export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number; onBack: () => void; onOpenRun?: (runId: number) => void }) {
+  const L = useLayout();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -180,39 +184,52 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
   const service = trip.service?.name ?? SERVICE[trip.serviceType] ?? trip.serviceType;
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView {...keyboardScroll} ref={scrollRef} contentContainerStyle={{ padding: 12, paddingBottom: next ? 170 : 40 }}>
+      <ScrollView {...keyboardScroll} ref={scrollRef} contentContainerStyle={{ padding: L.pad, paddingBottom: next ? 170 : 40 }}>
+        {L.tablet ? (
+          // Máy tính bảng: 2 cột – trái: giờ, hành trình, thông tin, liên hệ; phải: thu tiền, đoàn khách, ký nhận, km, chi phí
+          <View style={s.columns}>
+            <View style={s.col}>
         {/* Khối đầu: giờ đón, trạng thái */}
         <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
           <View style={s.heroTop}>
-            <Text style={s.heroCode}>{b.code}</Text>
+            <View style={s.heroCodeBox}>
+              <Icon name="document-text-outline" size={14} color="rgba(255,255,255,0.9)" />
+              <Text style={s.heroCode}>{b.code}</Text>
+            </View>
             <StatusBadge status={trip.status} onDark />
           </View>
           <Text style={s.heroTime}>{fmtHour(trip.pickupTime)}</Text>
           <Text style={s.heroDay}>
             {dayLabel(trip.pickupTime)} · {fmtDate(trip.pickupTime)}
           </Text>
-          <Text style={s.heroSub}>
-            {service} · dự kiến xong {fmtTime(trip.endTime)}
-          </Text>
+          <View style={s.heroSubRow}>
+            <Icon name={trip.serviceType === 'DON_TIEN_SAN_BAY' ? 'airplane' : 'car'} size={15} color="rgba(255,255,255,0.9)" />
+            <Text style={s.heroSub}>
+              {service} · dự kiến xong {fmtTime(trip.endTime)}
+            </Text>
+          </View>
         </LinearGradient>
 
         {/* Thao tác nhanh */}
         <Card style={s.quickRow}>
-          <QuickAction icon="🪧" label="Bảng đón" onPress={() => setSignOpen(true)} />
-          <QuickAction icon="🧭" label="Chỉ đường" tone="green" onPress={() => openMap(trip.pickupAddress)} />
-          {guestContact && <QuickAction icon="💬" label="Liên hệ" tone="purple" onPress={() => scrollRef.current?.scrollTo({ y: contactY - 12, animated: true })} />}
-          {trip.status !== 'DA_GAN' && trip.status !== 'HUY' && <QuickAction icon="⚠️" label="Sự cố" tone="orange" onPress={() => setIncidentOpen(true)} />}
-          {trip.dropoffAddress && <QuickAction icon="🏁" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
+          <QuickAction icon="mci:card-account-details-outline" label="Bảng đón" onPress={() => setSignOpen(true)} />
+          <QuickAction icon="navigate" label="Chỉ đường" tone="green" onPress={() => openMap(trip.pickupAddress)} />
+          {guestContact && <QuickAction icon="chatbubbles" label="Liên hệ" tone="purple" onPress={() => scrollRef.current?.scrollTo({ y: contactY - 12, animated: true })} />}
+          {trip.status !== 'DA_GAN' && trip.status !== 'HUY' && <QuickAction icon="warning" label="Sự cố" tone="orange" onPress={() => setIncidentOpen(true)} />}
+          {trip.dropoffAddress && <QuickAction icon="flag" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
         </Card>
 
         {trip.shuttleRun ? (
           <Card style={s.runBox}>
-            <Text style={s.runTitle}>🚌 Nhóm khách của chuyến xe ghép</Text>
+            <View style={s.runTitleRow}>
+              <Icon name="bus" size={18} color={colors.primary} />
+              <Text style={s.runTitle}>Nhóm khách của chuyến xe ghép</Text>
+            </View>
             <Text style={s.runText}>
               {trip.shuttleRun.route.name} · xuất bến {fmtHour(trip.shuttleRun.departAt)} {fmtDate(trip.shuttleRun.departAt).slice(0, 5)}
               {trip.shuttlePickupStop ? ` · đón tại ${trip.shuttlePickupStop.name}` : ''}
             </Text>
-            {onOpenRun && <Button title="Mở chuyến xe ghép" icon="🚌" variant="soft" size="sm" onPress={() => onOpenRun(trip.shuttleRun!.id)} style={{ alignSelf: 'flex-start', marginTop: 8 }} />}
+            {onOpenRun && <Button title="Mở chuyến xe ghép" icon="bus" variant="soft" size="sm" onPress={() => onOpenRun(trip.shuttleRun!.id)} style={{ alignSelf: 'flex-start', marginTop: 8 }} />}
           </Card>
         ) : (
           <PreCheckCard trip={trip} onOpen={() => setCheckOpen(true)} />
@@ -220,7 +237,7 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
 
         {/* Tuyến đường: đón → lịch trình → trả */}
         <Card>
-          <Section icon="🗺️" title="Hành trình" />
+          <Section icon="map" title="Hành trình" />
           <View style={s.stop}>
             <View style={s.stopRail}>
               <View style={[s.stopDot, { backgroundColor: colors.primary }]} />
@@ -229,7 +246,7 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
             <View style={s.stopBody}>
               <Text style={s.stopLabel}>ĐIỂM ĐÓN</Text>
               <Text style={s.address}>{trip.pickupAddress}</Text>
-              <Button title="Chỉ đường" icon="🧭" size="sm" variant="soft" onPress={() => openMap(trip.pickupAddress)} style={s.stopBtn} />
+              <Button title="Chỉ đường" icon="navigate" size="sm" variant="soft" onPress={() => openMap(trip.pickupAddress)} style={s.stopBtn} />
             </View>
           </View>
           {trip.itinerary && (
@@ -254,7 +271,188 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
               <View style={[s.stopBody, { paddingBottom: 0 }]}>
                 <Text style={s.stopLabel}>ĐIỂM TRẢ</Text>
                 <Text style={s.address}>{trip.dropoffAddress}</Text>
-                <Button title="Chỉ đường" icon="🧭" size="sm" variant="soft" onPress={() => openMap(trip.dropoffAddress!)} style={s.stopBtn} />
+                <Button title="Chỉ đường" icon="navigate" size="sm" variant="soft" onPress={() => openMap(trip.dropoffAddress!)} style={s.stopBtn} />
+              </View>
+            </View>
+          )}
+        </Card>
+
+        {/* Thông tin chuyến */}
+        <Card>
+          <Section icon="information-circle" title="Thông tin chuyến" />
+          <View style={s.chips}>
+            <Chip icon="people" text={`${trip.passengers} khách`} />
+            <Chip icon="car" text={trip.vehicle ? trip.vehicle.plateNumber : trip.vehicleType.name} />
+            {trip.vehicle && <Chip text={trip.vehicleType.name} />}
+            {trip.days > 1 && <Chip icon="calendar" text={`${trip.days} ngày`} />}
+            {trip.flightNumber && <Chip tone="blue" icon="airplane" text={`Đón ${trip.flightNumber}`} />}
+            {trip.departureFlight && <Chip tone="blue" icon="airplane" text={`Tiễn ${trip.departureFlight}`} />}
+          </View>
+          <View style={{ marginTop: 10 }}>
+            <Row label="Giờ đón khách">
+              <Text style={s.pickupStrong}>
+                {fmtHour(trip.pickupTime)} · {dayLabel(trip.pickupTime)} {fmtDate(trip.pickupTime)}
+              </Text>
+            </Row>
+            {trip.flightNumber && (
+              <Row label="Chuyến bay đón">
+                <Text style={s.pickupStrong}>
+                  {trip.flightNumber}
+                  {'  '}
+                  <Text style={s.flightLink} onPress={() => openFlight(trip.flightNumber!)}>
+                    Tra giờ hạ cánh
+                  </Text>
+                </Text>
+              </Row>
+            )}
+            {trip.departureFlight && (
+              <Row label="Chuyến bay tiễn">
+                <Text style={s.pickupStrong}>
+                  {trip.departureFlight}
+                  {'  '}
+                  <Text style={s.flightLink} onPress={() => openFlight(trip.departureFlight!)}>
+                    Tra giờ cất cánh
+                  </Text>
+                </Text>
+              </Row>
+            )}
+          </View>
+          {trip.notes && (
+            <View style={{ marginTop: 10 }}>
+              <Row label="Ghi chú">{trip.notes}</Row>
+            </View>
+          )}
+          {trip.dispatchNote && (
+            <View style={s.dispatchNote}>
+              <View style={s.runTitleRow}>
+                <Icon name="alert-circle" size={17} color={colors.warning} />
+                <Text style={s.dispatchTitle}>Lưu ý từ điều hành</Text>
+              </View>
+              <Text style={s.dispatchText}>{trip.dispatchNote}</Text>
+            </View>
+          )}
+        </Card>
+
+        {guestContact && (
+          <View onLayout={(e) => setContactY(e.nativeEvent.layout.y)}>
+            <ContactCard contact={guestContact} />
+          </View>
+        )}
+
+            </View>
+            <View style={s.col}>
+        <CollectCard trip={trip} onChanged={setTrip} />
+
+        <DocsCard trip={trip} />
+
+        <AddPassengersCard trip={trip} onChanged={(list) => setTrip({ ...trip, booking: { ...trip.booking, passengers: list } })} />
+
+        <SignoffCard trip={trip} onSigned={(r) => setTrip({ ...trip, ...r })} />
+
+        <TripIncidents tripId={trip.id} reloadKey={incidentKey} />
+
+        {pax.length > 0 && (
+          <Card>
+            <Section icon="people" title={`Đoàn khách · ${pax.length} người`} />
+            {(allPax ? pax : pax.slice(0, PAX_PREVIEW)).map((p) => (
+              <PassengerRow key={p.seq} p={p} onContact={contactPax} />
+            ))}
+            {pax.length > PAX_PREVIEW && (
+              <Button title={allPax ? 'Thu gọn' : `Xem tất cả ${pax.length} khách`} variant="ghost" size="sm" onPress={() => setAllPax(!allPax)} style={{ marginTop: 6 }} />
+            )}
+          </Card>
+        )}
+
+        <OdometerCard trip={trip} onEditEnd={trip.status === 'HOAN_THANH' ? () => setKmMode('fix') : undefined} />
+
+        {trip.status !== 'DA_GAN' && <TripCosts tripId={trip.id} canAdd={trip.status !== 'HUY'} />}
+            </View>
+          </View>
+        ) : (
+          <>
+        {/* Khối đầu: giờ đón, trạng thái */}
+        <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
+          <View style={s.heroTop}>
+            <View style={s.heroCodeBox}>
+              <Icon name="document-text-outline" size={14} color="rgba(255,255,255,0.9)" />
+              <Text style={s.heroCode}>{b.code}</Text>
+            </View>
+            <StatusBadge status={trip.status} onDark />
+          </View>
+          <Text style={s.heroTime}>{fmtHour(trip.pickupTime)}</Text>
+          <Text style={s.heroDay}>
+            {dayLabel(trip.pickupTime)} · {fmtDate(trip.pickupTime)}
+          </Text>
+          <View style={s.heroSubRow}>
+            <Icon name={trip.serviceType === 'DON_TIEN_SAN_BAY' ? 'airplane' : 'car'} size={15} color="rgba(255,255,255,0.9)" />
+            <Text style={s.heroSub}>
+              {service} · dự kiến xong {fmtTime(trip.endTime)}
+            </Text>
+          </View>
+        </LinearGradient>
+
+        {/* Thao tác nhanh */}
+        <Card style={s.quickRow}>
+          <QuickAction icon="mci:card-account-details-outline" label="Bảng đón" onPress={() => setSignOpen(true)} />
+          <QuickAction icon="navigate" label="Chỉ đường" tone="green" onPress={() => openMap(trip.pickupAddress)} />
+          {guestContact && <QuickAction icon="chatbubbles" label="Liên hệ" tone="purple" onPress={() => scrollRef.current?.scrollTo({ y: contactY - 12, animated: true })} />}
+          {trip.status !== 'DA_GAN' && trip.status !== 'HUY' && <QuickAction icon="warning" label="Sự cố" tone="orange" onPress={() => setIncidentOpen(true)} />}
+          {trip.dropoffAddress && <QuickAction icon="flag" label="Điểm trả" tone="orange" onPress={() => openMap(trip.dropoffAddress!)} />}
+        </Card>
+
+        {trip.shuttleRun ? (
+          <Card style={s.runBox}>
+            <View style={s.runTitleRow}>
+              <Icon name="bus" size={18} color={colors.primary} />
+              <Text style={s.runTitle}>Nhóm khách của chuyến xe ghép</Text>
+            </View>
+            <Text style={s.runText}>
+              {trip.shuttleRun.route.name} · xuất bến {fmtHour(trip.shuttleRun.departAt)} {fmtDate(trip.shuttleRun.departAt).slice(0, 5)}
+              {trip.shuttlePickupStop ? ` · đón tại ${trip.shuttlePickupStop.name}` : ''}
+            </Text>
+            {onOpenRun && <Button title="Mở chuyến xe ghép" icon="bus" variant="soft" size="sm" onPress={() => onOpenRun(trip.shuttleRun!.id)} style={{ alignSelf: 'flex-start', marginTop: 8 }} />}
+          </Card>
+        ) : (
+          <PreCheckCard trip={trip} onOpen={() => setCheckOpen(true)} />
+        )}
+
+        {/* Tuyến đường: đón → lịch trình → trả */}
+        <Card>
+          <Section icon="map" title="Hành trình" />
+          <View style={s.stop}>
+            <View style={s.stopRail}>
+              <View style={[s.stopDot, { backgroundColor: colors.primary }]} />
+              {(trip.itinerary || trip.dropoffAddress) && <View style={s.stopLine} />}
+            </View>
+            <View style={s.stopBody}>
+              <Text style={s.stopLabel}>ĐIỂM ĐÓN</Text>
+              <Text style={s.address}>{trip.pickupAddress}</Text>
+              <Button title="Chỉ đường" icon="navigate" size="sm" variant="soft" onPress={() => openMap(trip.pickupAddress)} style={s.stopBtn} />
+            </View>
+          </View>
+          {trip.itinerary && (
+            <View style={s.stop}>
+              <View style={s.stopRail}>
+                <View style={[s.stopDot, s.stopDotSmall]} />
+                {trip.dropoffAddress && <View style={s.stopLine} />}
+              </View>
+              <View style={s.stopBody}>
+                <Text style={s.stopLabel}>LỊCH TRÌNH</Text>
+                <View style={s.itinerary}>
+                  <Text style={s.itineraryText}>{trip.itinerary}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+          {trip.dropoffAddress && (
+            <View style={s.stop}>
+              <View style={s.stopRail}>
+                <View style={[s.stopDot, { backgroundColor: colors.accent }]} />
+              </View>
+              <View style={[s.stopBody, { paddingBottom: 0 }]}>
+                <Text style={s.stopLabel}>ĐIỂM TRẢ</Text>
+                <Text style={s.address}>{trip.dropoffAddress}</Text>
+                <Button title="Chỉ đường" icon="navigate" size="sm" variant="soft" onPress={() => openMap(trip.dropoffAddress!)} style={s.stopBtn} />
               </View>
             </View>
           )}
@@ -278,14 +476,14 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
 
         {/* Thông tin chuyến */}
         <Card>
-          <Section icon="ℹ️" title="Thông tin chuyến" />
+          <Section icon="information-circle" title="Thông tin chuyến" />
           <View style={s.chips}>
-            <Chip text={`👥 ${trip.passengers} khách`} />
-            <Chip text={`🚐 ${trip.vehicle ? trip.vehicle.plateNumber : trip.vehicleType.name}`} />
+            <Chip icon="people" text={`${trip.passengers} khách`} />
+            <Chip icon="car" text={trip.vehicle ? trip.vehicle.plateNumber : trip.vehicleType.name} />
             {trip.vehicle && <Chip text={trip.vehicleType.name} />}
-            {trip.days > 1 && <Chip text={`📅 ${trip.days} ngày`} />}
-            {trip.flightNumber && <Chip tone="blue" text={`✈ Đón ${trip.flightNumber}`} />}
-            {trip.departureFlight && <Chip tone="blue" text={`✈ Tiễn ${trip.departureFlight}`} />}
+            {trip.days > 1 && <Chip icon="calendar" text={`${trip.days} ngày`} />}
+            {trip.flightNumber && <Chip tone="blue" icon="airplane" text={`Đón ${trip.flightNumber}`} />}
+            {trip.departureFlight && <Chip tone="blue" icon="airplane" text={`Tiễn ${trip.departureFlight}`} />}
           </View>
           <View style={{ marginTop: 10 }}>
             <Row label="Giờ đón khách">
@@ -296,7 +494,7 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
             {trip.flightNumber && (
               <Row label="Chuyến bay đón">
                 <Text style={s.pickupStrong}>
-                  ✈ {trip.flightNumber}
+                  {trip.flightNumber}
                   {'  '}
                   <Text style={s.flightLink} onPress={() => openFlight(trip.flightNumber!)}>
                     Tra giờ hạ cánh
@@ -307,7 +505,7 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
             {trip.departureFlight && (
               <Row label="Chuyến bay tiễn">
                 <Text style={s.pickupStrong}>
-                  ✈ {trip.departureFlight}
+                  {trip.departureFlight}
                   {'  '}
                   <Text style={s.flightLink} onPress={() => openFlight(trip.departureFlight!)}>
                     Tra giờ cất cánh
@@ -323,7 +521,10 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
           )}
           {trip.dispatchNote && (
             <View style={s.dispatchNote}>
-              <Text style={s.dispatchTitle}>⚠️ Lưu ý từ điều hành</Text>
+              <View style={s.runTitleRow}>
+                <Icon name="alert-circle" size={17} color={colors.warning} />
+                <Text style={s.dispatchTitle}>Lưu ý từ điều hành</Text>
+              </View>
               <Text style={s.dispatchText}>{trip.dispatchNote}</Text>
             </View>
           )}
@@ -331,7 +532,7 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
 
         {pax.length > 0 && (
           <Card>
-            <Section icon="👥" title={`Đoàn khách · ${pax.length} người`} />
+            <Section icon="people" title={`Đoàn khách · ${pax.length} người`} />
             {(allPax ? pax : pax.slice(0, PAX_PREVIEW)).map((p) => (
               <PassengerRow key={p.seq} p={p} onContact={contactPax} />
             ))}
@@ -344,18 +545,22 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
         <OdometerCard trip={trip} onEditEnd={trip.status === 'HOAN_THANH' ? () => setKmMode('fix') : undefined} />
 
         {trip.status !== 'DA_GAN' && <TripCosts tripId={trip.id} canAdd={trip.status !== 'HUY'} />}
+          </>
+        )}
       </ScrollView>
 
       {next && (
-        <View style={s.bottomBar}>
+        <View style={[s.bottomBar, { paddingHorizontal: L.pad }]}>
+          <View style={{ width: '100%', maxWidth: 640, alignSelf: 'center' }}>
           {trip.status === 'DA_GAN' ? (
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Button title="Từ chối" variant="danger" size="lg" onPress={() => setRejectOpen(true)} style={{ flex: 1 }} />
+              <Button title="Từ chối" icon={L.tablet ? 'close-circle-outline' : undefined} variant="danger" size="lg" onPress={() => setRejectOpen(true)} style={{ flex: 1, minWidth: 104 }} />
               <Button title={next.label} size="lg" onPress={advance} loading={busy} style={{ flex: 2 }} />
             </View>
           ) : (
             <Button title={next.label} size="lg" onPress={advance} loading={busy} />
           )}
+          </View>
         </View>
       )}
 
@@ -385,12 +590,16 @@ export function TripDetailScreen({ tripId, onBack, onOpenRun }: { tripId: number
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   hero: { borderRadius: 22, padding: 18, marginBottom: 12 },
-  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  heroCode: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  heroCodeBox: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 1 },
+  heroCode: { color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  heroSubRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   heroTime: { color: '#fff', fontSize: 44, fontWeight: '800', letterSpacing: -1, marginTop: 6 },
   heroDay: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: -2 },
-  heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13.5, marginTop: 6 },
-  quickRow: { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 8 },
+  heroSub: { color: 'rgba(255,255,255,0.9)', fontSize: 13.5, flexShrink: 1 },
+  columns: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  col: { flex: 1, minWidth: 0 },
+  quickRow: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 12, paddingVertical: 14, paddingHorizontal: 8 },
   stop: { flexDirection: 'row', gap: 12 },
   stopRail: { width: 14, alignItems: 'center', paddingTop: 4 },
   stopDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 3, borderColor: '#fff', elevation: 2 },
@@ -404,20 +613,21 @@ const s = StyleSheet.create({
   itineraryText: { fontSize: 15, color: colors.text, lineHeight: 22 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   dispatchNote: { backgroundColor: '#fff7e6', borderRadius: 12, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#ffe2b0' },
-  dispatchTitle: { fontWeight: '800', color: colors.warning, marginBottom: 2 },
+  dispatchTitle: { fontWeight: '800', color: colors.warning },
   dispatchText: { fontSize: 15, color: colors.text, lineHeight: 21 },
   paxRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   paxSeqBox: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   paxSeq: { color: colors.primary, fontSize: 13, fontWeight: '800' },
   paxName: { fontSize: 15, fontWeight: '700', color: colors.text },
   paxInfo: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  paxCall: { backgroundColor: colors.primarySoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
+  paxCall: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.primarySoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
   paxCallText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
   bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, paddingBottom: 18, backgroundColor: 'rgba(255,255,255,0.97)', borderTopLeftRadius: 22, borderTopRightRadius: 22, elevation: 16, shadowColor: '#0b2a5c', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: -4 } },
   modalBg: { flex: 1, backgroundColor: 'rgba(8,24,56,0.45)', justifyContent: 'center', padding: 24 },
   modal: { backgroundColor: '#fff', borderRadius: 22, padding: 20 },
   runBox: { backgroundColor: '#eef4ff', borderWidth: 1, borderColor: '#c7d8fb' },
-  runTitle: { fontWeight: '800', color: colors.primary, fontSize: 15 },
+  runTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  runTitle: { fontWeight: '800', color: colors.primary, fontSize: 15, flexShrink: 1 },
   runText: { fontSize: 14, color: colors.text, marginTop: 4, lineHeight: 20 },
   pickupStrong: { fontSize: 15.5, fontWeight: '800', color: colors.primary },
   flightLink: { fontSize: 13, fontWeight: '700', color: colors.primary, textDecorationLine: 'underline' },

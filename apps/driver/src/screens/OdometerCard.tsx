@@ -100,7 +100,7 @@ export function OdometerCard({ trip, onEditEnd }: { trip: Trip; onEditEnd?: () =
   const km = trip.startKm != null && trip.endKm != null ? trip.endKm - trip.startKm : null;
   return (
     <Card>
-      <Section icon="🛣" title="Km đồng hồ xe" right={onEditEnd ? <Text style={s.edit} onPress={onEditEnd}>Sửa km</Text> : undefined} />
+      <Section icon="speedometer-outline" title="Km đồng hồ xe" right={onEditEnd ? <Text style={s.edit} onPress={onEditEnd}>Sửa km</Text> : undefined} />
       <View style={s.grid}>
         <Cell label="Km bắt đầu" value={trip.startKm != null ? num(trip.startKm) : '—'} />
         <Cell label="Km kết thúc" value={trip.endKm != null ? num(trip.endKm) : 'Chưa ghi'} />
