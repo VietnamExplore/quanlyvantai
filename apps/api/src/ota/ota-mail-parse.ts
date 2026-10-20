@@ -309,16 +309,20 @@ function parseVexere(subject: string, text: string): ParsedMail {
   const ref = subject.match(/Mã vé:\s*([A-Z0-9]{4,12})/i)?.[1] ?? null;
   const kind: MailKind = /hu[ỷỶyY] v[ée]/i.test(subject) ? 'CANCEL' : /đặt vé/i.test(subject) ? 'BOOKING' : /đổi|thay đổi/i.test(subject) ? 'CHANGE' : 'OTHER';
   if (!ref || kind === 'OTHER') return { channel: ch, kind: 'OTHER', ref, booking: null };
-  const L = ['Tên khách:', 'Điện thoại:', 'Email:', 'Tuyến đường:', 'Ngày đi:', 'Giờ khởi hành:', 'Giờ đón dự kiến:', 'Sơ đồ ghế/giường:', 'Số lượng:', 'Số lượng ghế/giường đã hủy:', 'Số lượng ghế/giường còn lại:', 'Mã ghế/giường:', 'Giảm Giá NX:', 'Tổng tiền:', 'Đón tại:', 'Trả tại:', 'Khách', 'Em cám ơn', 'Ghi chú:'];
+  const L = ['Tên khách:', 'Điện thoại:', 'Email:', 'Tuyến đường:', 'Ngày đi:', 'Giờ khởi hành:', 'Giờ đón dự kiến:', 'Sơ đồ ghế/giường:', 'Số lượng:', 'Số lượng ghế/giường đã hủy:', 'Số lượng ghế/giường còn lại:', 'Mã ghế/giường:', 'Giảm Giá NX:', 'Tổng tiền:', 'Đón tại:', 'Trả tại:', 'Trung chuyển đón tại:', 'Trung chuyển trả tại:', 'Khách đã', 'Khách chưa', 'Em cám ơn', 'Ghi chú:'];
   const f = (l: string) => field(t, l, L);
   const route = f('Tuyến đường:') ?? '';
+  // Điểm đón / trả theo tuyến đường ("A - B (thuộc tuyến …)") khi email không ghi "Đón tại" / "Trả tại"
+  const [routeFrom, routeTo] = route.replace(/\s*\(thuộc tuyến[^)]*\)/i, '').split(/\s+-\s+/);
+  const transferFrom = f('Trung chuyển đón tại:');
+  const transferTo = f('Trung chuyển trả tại:');
   const busRoute = route.match(/\(thuộc tuyến ([^)]+)\)/i)?.[1] ?? route;
   const qty = Number(f('Số lượng:')?.match(/\d+/)?.[0] ?? 0);
   const cancelled = Number(f('Số lượng ghế/giường đã hủy:')?.match(/\d+/)?.[0] ?? 0);
   const left = Number(f('Số lượng ghế/giường còn lại:')?.match(/\d+/)?.[0] ?? 0);
   const priceText = f('Tổng tiền:');
   const pickupAt = f('Giờ đón dự kiến:');
-  const paid = between(t, / (Khách (?:đã|chưa) thanh toán[^.]*)/, / Em cám ơn/) ?? t.match(/Khách (?:đã|chưa) thanh toán[^.]*/)?.[0] ?? null;
+  const paid = t.match(/Khách (?:đã|chưa) thanh toán[^.]*/)?.[0]?.trim() ?? null;
   return {
     channel: ch,
     kind,
@@ -333,8 +337,8 @@ function parseVexere(subject: string, text: string): ParsedMail {
       customerEmail: f('Email:'),
       phone: digits(f('Điện thoại:')),
       language: 'Vietnamese',
-      pickup: f('Đón tại:'),
-      dropoff: f('Trả tại:'),
+      pickup: f('Đón tại:') ?? routeFrom ?? transferFrom,
+      dropoff: f('Trả tại:') ?? routeTo ?? transferTo,
       priceText,
       ...money(priceText ?? ''),
       transport: true,
@@ -345,6 +349,8 @@ function parseVexere(subject: string, text: string): ParsedMail {
         f('Sơ đồ ghế/giường:') ? `Loại xe Vexere: ${f('Sơ đồ ghế/giường:')}` : null,
         f('Mã ghế/giường:') ? `Ghế: ${f('Mã ghế/giường:')}` : null,
         f('Giảm Giá NX:') ? `Giảm giá nhà xe: ${f('Giảm Giá NX:')}` : null,
+        transferFrom ? `Trung chuyển đón tại: ${transferFrom}` : null,
+        transferTo ? `Trung chuyển trả tại: ${transferTo}` : null,
         paid,
         kind === 'CANCEL' ? `Hủy ${cancelled} vé, còn ${left} vé` : null,
       ].filter((x): x is string => !!x),
