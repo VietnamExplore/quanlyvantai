@@ -26,7 +26,7 @@ INSERT INTO "Setting"(key, value) VALUES ('driverApp.release', :'val') ON CONFLI
 SQL
 rm -f /root/release.json /root/publish-apk.sh
 # Chỉ giữ bản vừa đưa lên và bản ngay trước
-docker compose exec -T api sh -c "cd /data/uploads/app && ls -1t *.apk | tail -n +3 | xargs -r rm -f; ls -l" < /dev/null
+docker compose exec -T api sh -c "cd /data/uploads/app && ls -1t *.apk | tail -n +2 | xargs -r rm -f; ls -l" < /dev/null
 EOS
 scp -q "$APK" "$HOST:/root/$NAME"
 scp -q "$TMP/release.json" "$HOST:/root/release.json"

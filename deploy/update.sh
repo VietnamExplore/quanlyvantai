@@ -58,6 +58,8 @@ done
 # API tự áp dụng thay đổi CSDL khi khởi động
 docker compose up -d --remove-orphans
 docker image prune -f >/dev/null
+# Bộ nhớ đệm build: chỉ giữ 2GB phần dùng gần nhất (lần build sau vẫn nhanh, ổ cứng không phình dần)
+docker builder prune -af --reserved-space 2GB >/dev/null 2>&1 || true
 
 # Kiểm tra API đã chạy (tối đa 3 phút)
 for i in $(seq 1 36); do

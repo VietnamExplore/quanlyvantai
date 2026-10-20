@@ -89,12 +89,11 @@ export class AppReleaseController {
       unlinkSync(file.path);
       throw new BadRequestException('Nhập số phiên bản (vd 1.7.0) và mã phiên bản (số nguyên, vd 17)');
     }
-    const prev = await this.release();
     const next: DriverAppRelease = { version, versionCode, file: file.filename, size: file.size, notes: body.notes?.trim() || null, updatedAt: new Date().toISOString() };
     await this.prisma.setting.upsert({ where: { key: KEY }, update: { value: JSON.stringify(next) }, create: { key: KEY, value: JSON.stringify(next) } });
-    // Xóa các file cũ, chỉ giữ bản vừa tải và bản ngay trước
+    // Xóa các file cũ, chỉ giữ bản vừa tải (bản cũ lưu ở máy văn phòng D:\Android\apk nếu cần quay lại)
     for (const f of readdirSync(APP_DIR)) {
-      if (f !== next.file && f !== prev?.file && f.endsWith('.apk')) unlinkSync(join(APP_DIR, f));
+      if (f !== next.file && f.endsWith('.apk')) unlinkSync(join(APP_DIR, f));
     }
     return this.info();
   }
