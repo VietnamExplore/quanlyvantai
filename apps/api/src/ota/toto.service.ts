@@ -5,6 +5,7 @@ import { BookingsService } from '../bookings/bookings.service';
 import { nationalityFromPhone } from '../common/nationality';
 import { PrismaService } from '../prisma/prisma.service';
 import { vehicleCode } from '../website/website.service';
+import { otaSalesUserId } from './ota-sales';
 import type { TotoDetail } from './toto-pdf';
 
 /**
@@ -428,6 +429,8 @@ export class TotoService {
     const todo = planned.filter((r) => r.state === 'NEW');
     if (todo.length) {
       const customerId = await this.ensureCustomer();
+      // Booking OTA tính cho nhân viên kinh doanh "Sale team"
+      const salesUserId = await otaSalesUserId(this.prisma);
       const inv = await this.invoiceInfo();
       for (const p of todo) {
         const live = p.parsed.filter((t) => !t.cancelled);
@@ -437,6 +440,7 @@ export class TotoService {
           const booking = await this.bookings.create(
             {
               customerId,
+              salesUserId,
               customerRef: p.reservationId,
               source: SOURCE.code,
               contactName: p.customerName || CUSTOMER_NAME,

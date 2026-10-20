@@ -6,8 +6,10 @@ import { BookingsService } from '../bookings/bookings.service';
 import { nationalityFromPhone } from '../common/nationality';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
-import { isBusProduct, isTransportProduct, routeEnds, WebsiteService } from '../website/website.service';
-import { htmlToText, type OtaChannel, type OtaMailBooking, parseOtaMail, type ParsedMail } from './ota-mail-parse';
+import { ShuttleService } from '../shuttle/shuttle.service';
+import { isBusProduct, routeEnds, WebsiteService } from '../website/website.service';
+import { htmlToText, isOtaTransport, type OtaChannel, type OtaMailBooking, parseOtaMail, type ParsedMail } from './ota-mail-parse';
+import { otaSalesUserId } from './ota-sales';
 
 /** Cài đặt hộp thư nhận booking OTA (tiền tố "sys." – không trả về trang Thông tin công ty) */
 const K = {
@@ -41,6 +43,26 @@ export const OTA_MAIL_KIND: Record<string, string> = { BOOKING: 'Đặt mới', 
 
 const LANG: Record<string, string> = { japanese: 'ja', korean: 'ko', chinese: 'zh', mandarin: 'zh', cantonese: 'zh', vietnamese: 'vi' };
 const vnd = (n: number) => `${Math.round(n).toLocaleString('vi-VN')}đ`;
+/** Chữ thường không dấu, chỉ chữ + số (so khớp tên điểm dừng, tên khách) */
+const fold = (v: string) =>
+  v
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+/** Tên điểm dừng khớp địa chỉ khách: chứa nhau, hoặc ≥ 60% từ của tên ngắn hơn có trong tên dài hơn */
+function stopMatches(stop: string, place: string) {
+  const a = fold(stop);
+  const b = fold(place);
+  if (!a || !b) return false;
+  if (a.includes(b) || b.includes(a)) return true;
+  const [short, long] = a.split(' ').length <= b.split(' ').length ? [a, b] : [b, a];
+  const words = short.split(' ').filter((w) => w.length > 1);
+  const longWords = new Set(long.split(' '));
+  return words.length >= 2 && words.filter((w) => longWords.has(w)).length / words.length >= 0.6;
+}
 const when = (iso: string | null | undefined) => (iso ? `${iso.slice(11, 16)} ${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '?');
 
 /**
@@ -60,6 +82,7 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
     private readonly bookings: BookingsService,
     private readonly push: PushService,
     private readonly website: WebsiteService,
+    private readonly shuttle: ShuttleService,
   ) {}
 
   onModuleInit() {
@@ -215,7 +238,7 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
     const sender = mail.from?.value?.[0]?.address ?? mail.from?.text ?? '';
     const subject = (mail.subject ?? '').trim();
     const text = mail.html ? htmlToText(mail.html) : (mail.text ?? '');
-    const parsed = parseOtaMail({ sender, subject, text });
+    const parsed = parseOtaMail({ sender, subject, text, receivedAt });
     if (!parsed.channel || parsed.kind === 'OTHER') return null;
     const messageId = mail.messageId ?? `${sender}|${subject}|${receivedAt.toISOString()}`;
     // Đã xử lý (quét lại / tải file lại): bỏ qua
@@ -258,12 +281,15 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
       });
       return { status: 'UNPARSED', note: 'Kênh chưa có mẫu đọc tự động' };
     }
-    const transport = !b.product || isTransportProduct(b.product);
-    const existing = p.ref ? await this.prisma.booking.findFirst({ where: { customerRef: p.ref, source: ch.code }, select: { id: true, code: true, internalNotes: true } }) : null;
+    // Chỉ booking vận chuyển / xe ghép (tour, vé tham quan… không nhập)
+    const transport = !!b.transport || (!!b.product && isOtaTransport(b.product));
+    const existing = p.ref ? await this.prisma.booking.findFirst({ where: { customerRef: p.ref }, orderBy: { id: 'asc' }, select: { id: true, code: true, internalNotes: true } }) : null;
 
     if (p.kind === 'BOOKING') {
       if (!transport) return { status: 'SKIPPED', note: b.product ?? null };
       if (existing) return { status: 'DUPLICATE', bookingId: existing.id, note: `Đã có booking ${existing.code}` };
+      const manual = await this.manualTwin(b);
+      if (manual) return { status: 'DUPLICATE', bookingId: manual.id, note: `Có thể trùng booking ${manual.code} nhập tay (cùng ngày, cùng khách) – kiểm tra, thêm mã ${p.ref} vào booking nếu đúng` };
       return this.createBooking(ch, b as Partial<OtaMailBooking> & { ref: string });
     }
 
@@ -273,35 +299,64 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
       p.kind === 'CANCEL'
         ? `${ch.name} báo HỦY booking ${p.ref ?? ''}${b.pickupTime ? ` (đón ${when(b.pickupTime)})` : ''}`
         : `${ch.name} báo THAY ĐỔI booking ${p.ref ?? ''}: ${[b.pickupTime && `giờ đón ${when(b.pickupTime)}`, b.pickup && `điểm đón ${b.pickup}`, b.adults && `${b.adults} khách`].filter(Boolean).join(' · ') || 'xem email'}`;
+    const more = (b.extra ?? []).filter((x) => /hủy|còn/i.test(x));
     if (existing) {
       const line = `⚠ ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}: ${detail}.`;
-      await this.prisma.booking.update({ where: { id: existing.id }, data: { internalNotes: [line, existing.internalNotes].filter(Boolean).join('\n') } });
+      await this.prisma.booking.update({ where: { id: existing.id }, data: { internalNotes: [line, ...more, existing.internalNotes].filter(Boolean).join('\n') } });
     }
     await this.push.notifyRoles([Role.ADMIN, Role.DIEU_HANH], {
       type: 'OTA_EMAIL',
       title: `📧 ${detail}`,
-      body: existing ? `Booking ${existing.code} – kiểm tra và ${p.kind === 'CANCEL' ? 'hủy booking / chuyến' : 'sửa booking'}` : `Chưa tìm thấy booking mã ${p.ref ?? '?'} trong phần mềm – kiểm tra`,
+      body: existing ? `${more.length ? `${more.join(' · ')} · ` : ''}Booking ${existing.code} – kiểm tra và ${p.kind === 'CANCEL' ? 'hủy booking / chuyến' : 'sửa booking'}` : `Chưa tìm thấy booking mã ${p.ref ?? '?'} trong phần mềm – kiểm tra`,
       link: existing ? `/bookings/${existing.id}` : '/system',
     });
     return { status: 'NOTIFIED', bookingId: existing?.id ?? null, note: detail };
   }
 
-  /** Khách hàng + nguồn khách mang tên kênh OTA (ghi công nợ kênh): dùng cái đã có, chưa có thì tạo */
+  /**
+   * Khách hàng của kênh (ghi công nợ): khách hàng văn phòng đã tạo (vd "Getyourguide VNE", "Vé Xe Rẻ", "12Go"), chưa có thì tạo.
+   * Nguồn khách: "OTA" (danh mục có sẵn), chưa có thì tạo nguồn theo mã kênh.
+   */
   private async ensureChannel(ch: OtaChannel) {
-    await this.prisma.customerSource.upsert({ where: { code: ch.code }, update: {}, create: { code: ch.code, name: ch.name, sortOrder: 50 } });
-    const found = await this.prisma.customer.findFirst({ where: { name: { equals: ch.name, mode: 'insensitive' } }, orderBy: { id: 'asc' }, select: { id: true } });
-    if (found) return found.id;
+    const ota = await this.prisma.customerSource.findUnique({ where: { code: 'OTA' }, select: { code: true } });
+    const source = ota?.code ?? ch.code;
+    if (!ota) await this.prisma.customerSource.upsert({ where: { code: ch.code }, update: {}, create: { code: ch.code, name: ch.name, sortOrder: 50 } });
+    const all = await this.prisma.customer.findMany({ orderBy: { id: 'asc' }, select: { id: true, name: true } });
+    const found = all.find((c) => ch.alias.test(c.name) || fold(c.name) === fold(ch.name));
+    if (found) return { customerId: found.id, source };
     const agent = await this.prisma.customerKind.findFirst({ where: { isAgent: true }, orderBy: { sortOrder: 'asc' }, select: { code: true } });
     const c = await this.prisma.customer.create({
       data: { name: ch.name, type: agent?.code ?? 'KHACH_LE', notes: `Kênh OTA ${ch.name}. Booking tự nhập từ email thông báo đặt chỗ; giá = giá trên email.` },
     });
-    return c.id;
+    return { customerId: c.id, source };
+  }
+
+  /** Booking văn phòng đã nhập tay (không có mã đặt chỗ): cùng ngày đi, cùng SĐT hoặc cùng tên khách */
+  private async manualTwin(b: Partial<OtaMailBooking>) {
+    if (!b.pickupTime) return null;
+    const day = new Date(`${b.pickupTime.slice(0, 10)}T00:00:00+07:00`);
+    const list = await this.prisma.booking.findMany({
+      where: { status: { not: BookingStatus.HUY }, trips: { some: { pickupTime: { gte: day, lt: new Date(day.getTime() + 86_400_000) } } } },
+      select: { id: true, code: true, contactName: true, contactPhone: true, passengers: { select: { fullName: true, phone: true } } },
+    });
+    const phone = (b.phone ?? '').replace(/\D/g, '').slice(-9);
+    const name = fold(b.customerName ?? '');
+    const sameName = (x: string | null | undefined) => !!x && name.length >= 5 && (fold(x) === name || fold(x).split(' ').sort().join(' ') === name.split(' ').sort().join(' '));
+    return (
+      list.find(
+        (x) =>
+          (phone.length >= 8 && [x.contactPhone, ...x.passengers.map((p) => p.phone)].some((v) => (v ?? '').replace(/\D/g, '').slice(-9) === phone)) ||
+          sameName(x.contactName) ||
+          x.passengers.some((p) => sameName(p.fullName)),
+      ) ?? null
+    );
   }
 
   /** Tạo booking từ email đặt chỗ: bus / xe ghép → chuyến xe ghép đúng tuyến + giờ; xe riêng / đưa đón → loại xe vừa số khách */
   private async createBooking(ch: OtaChannel, b: Partial<OtaMailBooking> & { ref: string }) {
     const bot = await this.website.botUser();
-    const customerId = await this.ensureChannel(ch);
+    const { customerId, source } = await this.ensureChannel(ch);
+    const salesUserId = await otaSalesUserId(this.prisma);
     const product = b.product || ch.name;
     const pax = Math.max(1, (b.adults ?? 0) + (b.children ?? 0));
     const vndPrice = b.currency === 'VND' && b.price ? Math.round(b.price) : 0;
@@ -310,27 +365,34 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
     let trip: Record<string, unknown> | null = null;
     if (!b.pickupTime) skipped.push('không đọc được ngày / giờ đi');
     else {
-      const ends = isBusProduct(product) ? routeEnds(product) : null;
+      // Xe ghép / bus: tuyến theo email (Vé xe rẻ: "thuộc tuyến Đà Nẵng - Hội An") hoặc theo tên sản phẩm
+      const ends = (b.busRoute ? routeEnds(b.busRoute) : null) ?? (isBusProduct(product) ? routeEnds(product) : null);
       const services = await this.prisma.service.findMany({ where: { isActive: true }, select: { code: true } });
       const has = (c: string) => services.some((s) => s.code === c);
       if (ends && has('XE_GHEP')) {
         const found = await this.website.shuttleFor(ends, product, b.pickupTime, pax ? Math.round(vndPrice / pax) : vndPrice, origin);
         if (typeof found === 'string') skipped.push(found);
-        else
+        else {
+          // Điểm đón / trả trên tuyến khớp địa chỉ khách (vd "Bảo tàng Điêu khắc Chăm Đà Nẵng" → điểm "Bảo tàng Chăm")
+          const pick = (b.pickup && found.route.stops.find((x) => x.canPickup && stopMatches(x.name, b.pickup!))) || found.pick;
+          const drop = (b.dropoff && [...found.route.stops].reverse().find((x) => x.canDropoff && x.seq > pick.seq && stopMatches(x.name, b.dropoff!))) || found.drop;
           trip = {
             serviceType: 'XE_GHEP',
             pickupTime: b.pickupTime,
-            pickupAddress: b.pickup || found.pick.name,
-            dropoffAddress: b.dropoff || found.drop.name,
+            pickupAddress: b.pickup || pick.name,
+            dropoffAddress: b.dropoff || drop.name,
             passengers: pax,
             childCount: b.children ?? 0,
             vehicleTypeId: found.route.vehicleTypeId,
             unitPrice: vndPrice,
             shuttleRunId: found.runId,
-            shuttlePickupStopId: found.pick.id,
-            shuttleDropoffStopId: found.drop.id,
-            notes: `${origin}: ${product}${b.pickup ? ` · khách đón tại ${b.pickup}` : ''}`,
+            shuttlePickupStopId: pick.id,
+            shuttleDropoffStopId: drop.id,
+            notes: [`${origin}: ${product}${b.pickup ? ` · khách đón tại ${b.pickup}` : ''}`, b.review].filter(Boolean).join(' · '),
           };
+        }
+      } else if (b.busRoute) {
+        skipped.push(`không nhận ra tuyến xe ghép "${b.busRoute}"`);
       } else {
         const airport = /airport|san bay|sân bay/i.test(product);
         const service = airport && has('DON_TIEN_SAN_BAY') ? 'DON_TIEN_SAN_BAY' : 'THEO_TUYEN';
@@ -360,12 +422,15 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
       b.language ? `Ngôn ngữ khách: ${b.language}` : null,
       b.priceText ? `Giá trên email: ${b.priceText}${b.currency && b.currency !== 'VND' ? ' – ngoại tệ, nhập giá VNĐ tay' : ''}` : 'Email không có giá – nhập giá tay',
       `Ghi công nợ khách hàng ${ch.name} · không xuất hóa đơn`,
+      ...(b.extra ?? []),
+      b.review ?? null,
       ...skipped.map((x) => `Chưa tự tạo chuyến: ${x}`),
     ].filter(Boolean);
     const dto = {
       customerId,
       customerRef: b.ref,
-      source: ch.code,
+      source,
+      salesUserId,
       contactName: b.customerName || ch.name,
       contactPhone: b.phone ?? '',
       ...(b.phone && { leaderName: b.customerName || null, leaderPhone: b.phone }),
@@ -387,7 +452,22 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
     }
     // Đơn OTA đã xác nhận: có chuyến thì chuyển Đã xác nhận (báo điều hành xếp xe); chưa có chuyến thì để Nháp và báo nhập chuyến
     // (tạo booking / xác nhận đã tự báo Admin, Điều hành; chỉ báo thêm khi phải thêm chuyến tay)
-    if (trip) await this.bookings.changeStatus(booking.id, { status: BookingStatus.XAC_NHAN }, bot);
+    // (email thiếu số khách / giá – 12Go: để Nháp cho điều hành kiểm tra)
+    if (trip && !b.review) {
+      if (b.pickupTime && new Date(b.pickupTime).getTime() > Date.now()) await this.bookings.changeStatus(booking.id, { status: BookingStatus.XAC_NHAN }, bot);
+      else {
+        // Chuyến đã qua (email cũ nhập lại): chỉ đổi trạng thái, không báo điều xe
+        await this.prisma.booking.update({ where: { id: booking.id }, data: { status: BookingStatus.XAC_NHAN } });
+        await this.shuttle.syncRuns([trip.shuttleRunId as number | undefined]);
+      }
+    }
+    else if (b.review)
+      await this.push.notifyRoles([Role.ADMIN, Role.DIEU_HANH], {
+        type: 'OTA_EMAIL',
+        title: `📧 Booking ${ch.name} ${b.ref} – cần kiểm tra`,
+        body: `${b.customerName ?? ''} · ${product} · ${when(b.pickupTime)} · ${b.review}`,
+        link: `/bookings/${booking.id}`,
+      });
     else
       await this.push.notifyRoles([Role.ADMIN, Role.DIEU_HANH], {
         type: 'OTA_EMAIL',
