@@ -9,3 +9,10 @@ build/
 uploads/
 deploy/backups/
 backups/
+
+# Khóa ký app Android (bí mật – không đưa lên git)
+apps/driver/credentials.json
+apps/driver/credentials/
+# Thư mục native sinh ra khi build trên máy
+apps/driver/android/
+apps/driver/ios/
