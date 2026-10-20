@@ -62,6 +62,12 @@ export interface OtaMailBooking {
   review?: string | null;
   /** Ghi chú thêm vào booking */
   extra?: string[];
+  /** Danh sách hành khách (tên, năm sinh) – 12Go PDF */
+  travelers?: { name: string; birthYear: number | null }[];
+  /** Email hủy một phần (Vé xe rẻ): số vé còn lại */
+  remaining?: number;
+  /** Giờ trên email là giờ đón tại điểm đón (không phải giờ xuất bến của tuyến) */
+  atPickupStop?: boolean;
 }
 
 export interface ParsedMail {
@@ -333,6 +339,7 @@ function parseVexere(subject: string, text: string): ParsedMail {
       ...money(priceText ?? ''),
       transport: true,
       busRoute,
+      ...(kind === 'CANCEL' && { remaining: left }),
       extra: [
         pickupAt ? `Giờ đón dự kiến: ${pickupAt}` : null,
         f('Sơ đồ ghế/giường:') ? `Loại xe Vexere: ${f('Sơ đồ ghế/giường:')}` : null,
@@ -345,55 +352,112 @@ function parseVexere(subject: string, text: string): ParsedMail {
   };
 }
 
-/** 12Go (noreply@12go.asia): "PLEASE CONFIRM!! NEW BOOKING - #12GO… 26 Oct 11:00 <đón>-<trả>" / "Cancellation happened for booking 12GO…" */
-function parse12go(subject: string, text: string, receivedAt: Date): ParsedMail {
+/** Địa danh gần tọa độ nhất (trong bán kính, độ) – tên viết theo kiểu routeEnds nhận ra */
+const CITY_POINTS: [string, number, number, number][] = [
+  ['Ba Na', 16.026, 108.036, 0.05],
+  ['Hoi An', 15.88, 108.33, 0.08],
+  ['Da Nang', 16.05, 108.2, 0.16],
+  ['Hue', 16.46, 107.59, 0.15],
+  ['Nha Trang', 12.24, 109.19, 0.15],
+  ['Da Lat', 11.94, 108.44, 0.15],
+  ['Ha Noi', 21.03, 105.85, 0.2],
+  ['Ha Long', 20.95, 107.07, 0.2],
+  ['Ho Chi Minh', 10.78, 106.7, 0.25],
+];
+function cityOf(lat: number, lng: number) {
+  const hit = CITY_POINTS.map(([name, la, ln, r]) => ({ name, r, d: Math.hypot(lat - la, lng - ln) }))
+    .filter((x) => x.d <= x.r)
+    .sort((a, b) => a.d / a.r - b.d / b.r)[0];
+  return hit?.name ?? null;
+}
+
+/**
+ * 12Go (noreply@12go.asia). Chỉ tạo booking từ email "Confirmed booking" (tiêu đề "#12GO… - 26 Sep 08:00, <đón>-<trả> for <khách>")
+ * có PDF vé đính kèm: PDF ghi tuyến, giờ, loại xe, số khách, tên từng khách, địa chỉ điểm đón / trả; email ghi giá + liên hệ khách.
+ * Email "PLEASE CONFIRM!! NEW BOOKING" (chưa đủ thông tin) bỏ qua. "Cancellation happened for booking 12GO…" → hủy.
+ */
+function parse12go(subject: string, text: string, pdf: string): ParsedMail {
   const ch = channel('12GO');
   const t = flat(text);
   const ref = (subject.match(/#?(12GO\d{6,})/i) ?? t.match(/(12GO\d{6,})/i))?.[1].toUpperCase() ?? null;
-  const kind: MailKind = /cancel/i.test(subject) ? 'CANCEL' : /new booking/i.test(subject) ? 'BOOKING' : /chang|amend|modif/i.test(subject) ? 'CHANGE' : 'OTHER';
-  if (!ref || kind === 'OTHER') return { channel: ch, kind: 'OTHER', ref, booking: null };
-  const name = between(t, / Customer name: /, / PLEASE| Thank you| Click|$/);
-  if (kind === 'CANCEL') {
+  if (!ref) return { channel: ch, kind: 'OTHER', ref, booking: null };
+  if (/cancel/i.test(subject)) {
     return {
       channel: ch,
-      kind,
+      kind: 'CANCEL',
       ref,
-      booking: { product: between(t, / Direction: /, / Date \(time\)/) ?? undefined, pickupTime: dmyDateTime(between(t, / Date \(time\): /, / Number of seats/) ?? ''), adults: Number(between(t, / Number of seats: /, / Customer/)) || undefined, customerName: name, transport: true },
+      booking: {
+        product: between(t, / Direction: /, / Date \(time\)/) ?? undefined,
+        pickupTime: dmyDateTime(between(t, / Date \(time\): /, / Number of seats/) ?? ''),
+        adults: Number(between(t, / Number of seats: /, / Customer/)) || undefined,
+        customerName: between(t, / Customer name: /, / Thank you|$/),
+        transport: true,
+      },
     };
   }
-  // "26 Oct 11:00 Vincom Plaza Hue-35 Dao Duy Tu" (năm: năm nhận email, tháng đã qua thì năm sau)
-  const m = subject.match(/(\d{1,2}) ([A-Za-z]{3}) (\d{1,2}):(\d{2})\s+(.+)$/);
-  let pickupTime: string | null = null;
-  let pickup: string | null = null;
-  let dropoff: string | null = null;
-  if (m) {
-    const mon = monthOf(m[2]);
-    const y = receivedAt.getFullYear() + (mon < receivedAt.getMonth() - 1 ? 1 : 0);
-    pickupTime = iso(y, mon, Number(m[1]), Number(m[3]), m[4]);
-    const parts = m[5].split(/\s*-\s*/);
-    pickup = parts[0] || null;
-    dropoff = parts.slice(1).join(' - ') || null;
+  const confirmed = /^#?12GO\d+ - .+ for /i.test(subject) || / Confirmed booking for /i.test(t);
+  if (!confirmed || !/Booking ID/i.test(pdf)) return { channel: ch, kind: 'OTHER', ref, booking: null };
+  const lines = pdf.split('\n').map((x) => x.trim()).filter(Boolean);
+  const line = (re: RegExp) => lines.find((x) => re.test(x))?.replace(re, '').trim() || null;
+  const from = line(/^From:\s*/);
+  const to = line(/^To:\s*/);
+  // Địa chỉ đầy đủ (có tên thành phố) ngay sau tên điểm trong khối "Boarding point" / "Arrival point"
+  const addressAfter = (label: string, name: string | null) => {
+    const i = lines.findIndex((x) => x === label);
+    const next = i >= 0 ? lines.slice(i + 1, i + 4) : [];
+    const addr = next.find((x, k) => k > 0 && !/^Coordinates|^Arrival point|^Login|^Booking#/i.test(x) && x !== name);
+    return addr && /,/.test(addr) ? addr : null;
+  };
+  const fromAddr = addressAfter('Boarding point', from);
+  const toAddr = addressAfter('Arrival point', to);
+  // Thành phố theo tọa độ điểm đón / trả (có điểm chỉ ghi số nhà, vd "35 Dao Duy Tu")
+  const cityAt = (label: string) => {
+    const i = lines.findIndex((x) => x === label);
+    const c = (i >= 0 ? lines.slice(i + 1, i + 5) : []).find((x) => /^Coordinates/i.test(x))?.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+    return c ? cityOf(Number(c[1]), Number(c[2])) : null;
+  };
+  const fromCity = cityAt('Boarding point');
+  const toCity = cityAt('Arrival point');
+  const paxLine = lines.find((x) => /^PASSENGERS\b/i.test(x)) ?? '';
+  const adults = Number(paxLine.match(/Adults?\s+(\d+)/i)?.[1] ?? 0);
+  const children = Number(paxLine.match(/Child(?:ren)?\s+(\d+)/i)?.[1] ?? 0) + Number(paxLine.match(/Infants?\s+(\d+)/i)?.[1] ?? 0);
+  const pi = lines.findIndex((x) => /^PASSENGERS\b/i.test(x));
+  const travelers: { name: string; birthYear: number | null }[] = [];
+  for (const x of pi >= 0 ? lines.slice(pi + 1) : []) {
+    if (/^INFORMATION\b/i.test(x)) break;
+    const m = x.match(/^(.+?)\s*\((\d{1,2} [A-Za-z]{3} (\d{4}))\)$/);
+    travelers.push({ name: (m?.[1] ?? x).trim(), birthYear: m ? Number(m[3]) : null });
   }
+  const priceText = t.match(/Total paid ([A-Z]{3} [\d.,]+)/i)?.[1] ?? null;
+  // Liên hệ khách: tên, SĐT, email (các dòng sau "Customer's contact information:")
+  const contact = between(t, / Customer.s contact information: /, / Thank you/) ?? '';
+  const phone = contact.match(/\+?\d[\d ()-]{6,}\d/)?.[0] ?? null;
+  const email = contact.match(/[\w.+-]+@[\w-]+\.[\w.]+/)?.[0] ?? null;
+  const name = (phone ? contact.slice(0, contact.indexOf(phone)) : contact).trim() || subject.match(/ for (.+)$/)?.[1]?.trim() || null;
+  const cls = line(/^Class:\s*/);
   return {
     channel: ch,
-    kind,
+    kind: 'BOOKING',
     ref,
     booking: {
       ref,
-      product: `12Go: ${pickup ?? '?'} → ${dropoff ?? '?'}`,
-      pickupTime,
-      adults: 1,
-      children: 0,
+      product: `12Go: ${from ?? '?'} → ${to ?? '?'}${cls ? ` (${cls})` : ''}`,
+      pickupTime: dmyDateTime(line(/^Date:\s*/) ?? ''),
+      adults: adults || (children ? 0 : travelers.length || 1),
+      children,
       customerName: name,
-      pickup,
-      dropoff,
-      price: null,
-      currency: null,
-      priceText: null,
+      customerEmail: email,
+      phone: digits(phone),
+      language: null,
+      pickup: from,
+      dropoff: to,
+      priceText,
+      ...money(priceText ?? ''),
       transport: true,
-      busRoute: pickup && dropoff ? `${pickup} - ${dropoff}` : null,
-      review: 'Email 12Go không ghi số khách, giá và tuyến – xem trên trang 12Go (op.12go.asia) rồi sửa booking',
-      extra: [between(t, / Booking ID: [^,]+, /, / Customer name/) ?? ''].filter(Boolean),
+      busRoute: `${fromCity ?? fromAddr ?? from ?? ''} - ${toCity ?? toAddr ?? to ?? ''}`,
+      atPickupStop: true,
+      travelers,
+      extra: [fromAddr && `Điểm đón: ${fromAddr}`, toAddr && `Điểm trả: ${toAddr}`, cls && `Loại xe 12Go: ${cls}`].filter((x): x is string => !!x),
     },
   };
 }
@@ -461,7 +525,7 @@ export function detectChannel(sender: string, subject: string, text: string) {
   return OTA_CHANNELS.find((c) => c.from.test(sender)) ?? OTA_CHANNELS.find((c) => c.mark && (c.mark.test(subject) || c.mark.test(text.slice(0, 4000)))) ?? null;
 }
 
-export function parseOtaMail(mail: { sender: string; subject: string; text: string; receivedAt?: Date }): ParsedMail {
+export function parseOtaMail(mail: { sender: string; subject: string; text: string; receivedAt?: Date; pdf?: string }): ParsedMail {
   const subject = mail.subject.replace(/^((fwd?|tr|chuyển tiếp|re):\s*)+/i, '').trim();
   // Trả lời / chuyển tiếp trong cùng chuỗi email: không phải thông báo gốc
   if (/^re:/i.test(mail.subject.trim())) return { channel: null, kind: 'OTHER', ref: null, booking: null };
@@ -473,7 +537,7 @@ export function parseOtaMail(mail: { sender: string; subject: string; text: stri
   if (ch.code === 'GYG') return parseGyg(subject, mail.text);
   if (ch.code === 'VIATOR' && /viator\.com/i.test(mail.sender)) return parseViator(subject, mail.text);
   if (ch.code === 'VEXERE') return parseVexere(subject, mail.text);
-  if (ch.code === '12GO') return parse12go(subject, mail.text, mail.receivedAt ?? new Date());
+  if (ch.code === '12GO') return parse12go(subject, mail.text, mail.pdf ?? '');
   return { channel: ch, kind: kindOf(subject), ref: null, booking: null };
 }
 

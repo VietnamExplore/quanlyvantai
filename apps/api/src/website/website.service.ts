@@ -442,7 +442,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Chuyến xe ghép đúng tuyến + giờ: lấy chuyến theo lịch, chưa có thì tạo thêm (website bán cả giờ lẻ) */
-  private async runFor(routeId: number, iso: string, note = 'Tạo thêm theo đơn đặt trên website') {
+  async runFor(routeId: number, iso: string, note = 'Tạo thêm theo đơn đặt trên website') {
     const departAt = new Date(iso);
     const find = () => this.prisma.shuttleRun.findFirst({ where: { routeId, departAt, status: { not: 'HUY' } }, select: { id: true } });
     let run = await find();

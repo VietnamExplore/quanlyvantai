@@ -29,13 +29,14 @@ interface OtaMailStatus {
   }[];
 }
 
-const STATUS_COLOR: Record<string, string> = { CREATED: 'green', DUPLICATE: 'default', SKIPPED: 'default', NOTIFIED: 'gold', UNPARSED: 'orange', ERROR: 'red' };
+const STATUS_COLOR: Record<string, string> = { CREATED: 'green', CANCELLED: 'volcano', DUPLICATE: 'default', SKIPPED: 'default', NOTIFIED: 'gold', UNPARSED: 'orange', ERROR: 'red' };
 const KIND_COLOR: Record<string, string> = { BOOKING: 'blue', CHANGE: 'gold', CANCEL: 'red' };
 const EML_STATUS: Record<string, string> = {
   CREATED: 'đã tạo booking',
   DUPLICATE: 'đã có booking',
   SKIPPED: 'không phải vận chuyển',
   NOTIFIED: 'đã báo điều hành',
+  CANCELLED: 'đã tự hủy booking',
   UNPARSED: 'kênh chưa có mẫu – đã báo điều hành',
   ERROR: 'lỗi',
   SEEN: 'đã xử lý trước đó',
@@ -148,8 +149,9 @@ export function OtaMailCard() {
         Mỗi 5 phút phần mềm đọc email mới trong hộp thư nhận booking, chỉ lấy email <b>đặt / đổi / hủy</b> của các kênh OTA (GetYourGuide, Klook, KKday, Viator, Trip.com, Traveloka, Agoda, Booking.com, Expedia, Vé xe rẻ, redBus,
         Easybook, 12Go) và chỉ booking <b>vận chuyển / xe ghép</b> (bus, shuttle, xe riêng, đưa đón, thuê xe) – tour, vé tham quan, show, khách sạn… không nhập; tin nhắn khách, email quảng cáo bỏ qua. Kênh đã có mẫu đọc (
         <b>GetYourGuide, Viator, Vé xe rẻ, Agoda (GlobalTix), 12Go</b>) tự tạo booking: nguồn &quot;OTA&quot;, khách hàng là đại lý của kênh (ghi công nợ, vd &quot;Getyourguide VNE&quot;), nhân viên kinh doanh <b>Sale team</b>, giá giữ nguyên
-        số trên email, không xuất hóa đơn; bus / xe ghép tự xếp vào chuyến xe ghép. Booking trùng mã hoặc trùng booking nhập tay (cùng ngày, cùng khách) không tạo lại. 12Go không gửi số khách / giá: booking để Nháp cho Điều hành kiểm tra.
-        Email đổi / hủy được ghi vào booking và báo Điều hành sửa tay. Kênh chưa có mẫu: báo Điều hành nhập tay.
+        số trên email, không xuất hóa đơn; bus / xe ghép tự xếp vào chuyến xe ghép. Booking trùng mã hoặc trùng booking nhập tay (cùng ngày, cùng khách) không tạo lại. 12Go: chỉ tạo booking từ email &quot;Confirmed booking&quot; có vé PDF đính kèm (tuyến, giờ, số khách, tên khách trong PDF; giá, liên hệ trong email).
+        Email <b>hủy</b>: tự chuyển booking sang Hủy (trừ booking đã hoàn thành / đang chạy chuyến, hoặc chỉ hủy một phần số vé – báo Điều hành). Email đổi: ghi vào booking và báo Điều hành sửa tay. Kênh chưa có mẫu: báo Điều hành
+        nhập tay.
       </Typography.Paragraph>
 
       {ready && (
