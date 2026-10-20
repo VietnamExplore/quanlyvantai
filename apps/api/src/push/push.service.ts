@@ -126,6 +126,14 @@ export class PushService {
         body: JSON.stringify({ to: token, title, body, data, sound: 'default', priority: 'high', channelId: 'trips' }),
       });
       if (!res.ok) this.logger.warn(`Gửi thông báo thất bại: HTTP ${res.status}`);
+      else {
+        // Máy đã gỡ app / đổi máy: bỏ mã nhận thông báo cũ (app mở lại sẽ tự đăng ký mã mới)
+        const out = (await res.json().catch(() => null)) as { data?: { status?: string; message?: string; details?: { error?: string } } } | null;
+        if (out?.data?.status === 'error') {
+          this.logger.warn(`Gửi thông báo thất bại: ${out.data.details?.error ?? out.data.message}`);
+          if (out.data.details?.error === 'DeviceNotRegistered') await this.prisma.user.update({ where: { id: driver.user.id }, data: { pushToken: null } });
+        }
+      }
     } catch (e) {
       this.logger.warn(`Gửi thông báo thất bại: ${(e as Error).message}`);
     }
