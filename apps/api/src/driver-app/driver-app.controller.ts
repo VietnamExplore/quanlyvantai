@@ -6,6 +6,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Headers,
   HttpCode,
   NotFoundException,
   Param,
@@ -20,7 +21,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { existsSync } from 'fs';
 import { BookingStatus, PaymentMethod, Prisma, Role, TripStatus, VoucherType } from '@prisma/client';
-import { IsBoolean, IsDateString, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, Matches, MaxLength, Min, ValidateNested } from 'class-validator';
 import { AdvancesService } from '../advances/advances.service';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { CreateTripCostDto } from '../finance/finance.dto';
@@ -102,6 +104,17 @@ class FuelDto {
 }
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+class WebPushKeysDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) p256dh: string;
+  @IsString() @IsNotEmpty() @MaxLength(100) auth: string;
+}
+
+/** Đăng ký nhận thông báo của trình duyệt (PushSubscription.toJSON()) */
+class WebPushSubscribeDto {
+  @IsUrl({ protocols: ['https'], require_tld: true }, { message: 'Địa chỉ nhận thông báo không hợp lệ' }) @MaxLength(1000) endpoint: string;
+  @ValidateNested() @Type(() => WebPushKeysDto) keys: WebPushKeysDto;
+}
 
 class PushTokenDto {
   @IsOptional()
@@ -692,6 +705,37 @@ export class DriverAppController {
   @Get('fuel/:id/receipt')
   async fuelReceiptFile(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     sendReceipt(res, await this.ownFuel(user, id));
+  }
+
+  /** Bản web (iPhone): khóa công khai VAPID để trình duyệt đăng ký nhận thông báo đẩy */
+  @Get('webpush/key')
+  async webPushKey() {
+    return { publicKey: (await this.push.vapid()).publicKey };
+  }
+
+  /** Bản web (iPhone): lưu đăng ký nhận thông báo của máy này */
+  @Post('webpush/subscribe')
+  @HttpCode(200)
+  async webPushSubscribe(@CurrentUser() user: AuthUser, @Body() dto: WebPushSubscribeDto, @Headers('user-agent') ua?: string) {
+    const data = { userId: user.id, p256dh: dto.keys.p256dh, auth: dto.keys.auth, userAgent: ua?.slice(0, 300) ?? null };
+    await this.prisma.webPushSubscription.upsert({ where: { endpoint: dto.endpoint }, create: { endpoint: dto.endpoint, ...data }, update: data });
+    return { ok: true };
+  }
+
+  /** Bản web: tắt thông báo / đăng xuất trên máy này */
+  @Post('webpush/unsubscribe')
+  @HttpCode(200)
+  async webPushUnsubscribe(@CurrentUser() user: AuthUser, @Body() dto: { endpoint?: string }) {
+    if (dto?.endpoint) await this.prisma.webPushSubscription.deleteMany({ where: { endpoint: dto.endpoint, userId: user.id } });
+    return { ok: true };
+  }
+
+  /** Bản web: gửi thử một thông báo tới máy của mình */
+  @Post('webpush/test')
+  @HttpCode(200)
+  async webPushTest(@CurrentUser() user: AuthUser) {
+    await this.push.webPush(user.id, { title: '🔔 Thông báo đã bật', body: 'Bạn sẽ nhận thông báo chuyến mới, đổi giờ, hủy chuyến trên máy này.', type: 'TEST' });
+    return { ok: true };
   }
 
   @Post('push-token')

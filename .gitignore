@@ -16,3 +16,4 @@ apps/driver/credentials/
 # Thư mục native sinh ra khi build trên máy
 apps/driver/android/
 apps/driver/ios/
+apps/driver/dist-web/

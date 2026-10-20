@@ -10,6 +10,17 @@ RUN npm ci -w web --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeou
 COPY apps/web apps/web
 RUN npm run build -w web
 
+# App lái xe bản web cho iPhone / iPad (Safari → Thêm vào Màn hình chính), phục vụ tại /laixe
+FROM node:24-bookworm-slim AS driver
+WORKDIR /driver
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
+COPY apps/driver/package.json apps/driver/package-lock.json ./
+RUN npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 \
+ && npm cache clean --force
+COPY apps/driver ./
+RUN node scripts/build-web.cjs dist-web /laixe
+
 FROM caddy:2-alpine
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/apps/web/dist /srv
+COPY --from=driver /driver/dist-web /srv/laixe

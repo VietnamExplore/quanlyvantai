@@ -6,7 +6,13 @@
 **/*.log
 .git
 .claude
-apps/driver
+# App lái xe: chỉ mã nguồn (đóng gói bản web cho iPhone); không bao giờ đưa khóa ký, thư mục build native
+apps/driver/credentials
+apps/driver/credentials.json
+apps/driver/android
+apps/driver/ios
+apps/driver/dist-web
+apps/driver/.expo
 apps/api/uploads
 deploy/backups
 deploy/.env

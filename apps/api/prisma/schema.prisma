@@ -46,6 +46,7 @@ model User {
   tripEvents       TripEvent[]
   decidedAdvances  AdvanceRequest[]    @relation("AdvanceDecider")
   notifications    Notification[]
+  webPushSubs      WebPushSubscription[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   handledIncidents FieldIncident[]     @relation("IncidentHandler")
@@ -1113,4 +1114,20 @@ model OtaEmail {
 
   @@index([ref])
   @@index([createdAt])
+}
+
+/// Đăng ký nhận thông báo đẩy của app lái xe bản web (iPhone: thêm vào Màn hình chính)
+model WebPushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Địa chỉ nhận của trình duyệt (Apple / Google / Mozilla)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }

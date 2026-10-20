@@ -17,6 +17,8 @@ import { TripsScreen } from './src/screens/TripsScreen';
 import { RunScreen } from './src/screens/RunScreen';
 import { Icon } from './src/icons';
 import { useLayout } from './src/layout';
+import { disableWebPush, onWebPushOpen, registerWorker, setAppBadge, syncWebPush } from './src/webpush';
+import { WebPushBanner } from './src/WebPushBanner';
 import { BRAND, colors } from './src/theme';
 
 const LOGO = require('./assets/logo.png');
@@ -62,6 +64,7 @@ export default function App() {
     try {
       const { items, unread: count } = await api<{ items: AppNotification[]; unread: number }>('/notifications?limit=20');
       setUnread(count);
+      setAppBadge(count);
       const fresh = await takeNew(items);
       if (fresh.length) {
         setToast({ n: fresh[fresh.length - 1], more: fresh.length - 1 });
@@ -130,7 +133,21 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     setupNotifications().catch(() => undefined);
-    return onNotificationOpen((tripId) => setScreen({ name: 'trip', id: tripId, from: 'trips' }));
+    const off = onNotificationOpen((tripId) => setScreen({ name: 'trip', id: tripId, from: 'trips' }));
+    // Bản web (iPhone): đăng ký nhận thông báo đẩy (đã cho phép), bấm thông báo → mở chuyến
+    if (Platform.OS === 'web') {
+      registerWorker().then(() => syncWebPush()).catch(() => undefined);
+      const trip = Number(new URLSearchParams(window.location.search).get('trip'));
+      if (trip) {
+        setScreen({ name: 'trip', id: trip, from: 'trips' });
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+    const offWeb = onWebPushOpen((tripId) => setScreen(tripId ? { name: 'trip', id: tripId, from: 'trips' } : { name: 'notifications' }));
+    return () => {
+      off();
+      offWeb();
+    };
   }, [user]);
 
   // Nút Back của Android: quay về danh sách thay vì thoát app (iPhone/iPad dùng nút ‹ trên đầu trang)
@@ -146,6 +163,7 @@ export default function App() {
   }, [screen]);
 
   async function logout() {
+    await disableWebPush();
     await api('/driver/push-token', { method: 'POST', body: { token: null } }).catch(() => undefined);
     await setToken(null);
     await clearKnown();
@@ -266,6 +284,7 @@ export default function App() {
                     <Icon name="chevron-forward" size={20} color="#047857" />
                   </Pressable>
                 )}
+                {screen.name === 'trips' && Platform.OS === 'web' && <WebPushBanner margin={L.pad} />}
                 {screen.name === 'trips' && <TripsScreen onOpen={(id) => openTrip(id, 'trips')} onOpenRun={(id) => setScreen({ name: 'run', id })} />}
                 {screen.name === 'run' && <RunScreen key={screen.id} runId={screen.id} onOpenTrip={(id) => setScreen({ name: 'trip', id, from: 'trips', runId: screen.id })} />}
                 {screen.name === 'vehicle' && <VehicleScreen />}

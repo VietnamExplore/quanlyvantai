@@ -26,7 +26,8 @@ Notifications?.setNotificationHandler({
 });
 
 export async function setupNotifications() {
-  if (!Notifications) return;
+  // Bản web (iPhone): thông báo đẩy qua Web Push (src/webpush.ts)
+  if (!Notifications || Platform.OS === 'web') return;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('trips', {
       name: 'Chuyến xe',
@@ -95,7 +96,7 @@ export async function takeNew(items: AppNotification[]): Promise<AppNotification
 
 /** Bấm vào thông báo: gọi lại với mã chuyến. Trả về hàm hủy đăng ký. */
 export function onNotificationOpen(cb: (tripId: number) => void) {
-  if (!Notifications) return () => undefined;
+  if (!Notifications || Platform.OS === 'web') return () => undefined;
   const sub = Notifications.addNotificationResponseReceivedListener((res) => {
     const tripId = Number(res.notification.request.content.data?.tripId);
     if (tripId) cb(tripId);
