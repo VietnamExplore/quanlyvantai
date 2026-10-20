@@ -134,6 +134,15 @@ export function isTransportOrder(o: { line_items?: { name: string; meta_data?: W
 
 const sameKey = (a: string, b: string) => a === b || a.includes(b) || b.includes(a);
 
+/** Tuyến xe ghép cùng điểm đi – điểm đến, ưu tiên cùng loại xe (Limousine / VIP / Sleeper) */
+function matchRoutes<R extends { name: string }>(routes: R[], ends: NonNullable<ReturnType<typeof routeEnds>>) {
+  return routes
+    .map((r) => ({ r, e: routeEnds(r.name) }))
+    .filter(({ e }) => e && sameKey(e.from.key, ends.from.key) && sameKey(e.to.key, ends.to.key))
+    .map(({ r, e }) => ({ r, score: ends.hints.filter((h) => e!.hints.includes(h)).length - e!.hints.filter((h) => !ends.hints.includes(h)).length * 0.1 }))
+    .sort((a, b) => b.score - a.score);
+}
+
 /** Loại xe khách chọn ("Xe 7 chỗ", "Kia Carnival"…) → mã loại xe */
 export function vehicleCode(label: string) {
   const n = norm(label);
@@ -431,7 +440,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Chuyến xe ghép đúng tuyến + giờ: lấy chuyến theo lịch, chưa có thì tạo thêm (website bán cả giờ lẻ) */
-  private async runFor(routeId: number, iso: string) {
+  private async runFor(routeId: number, iso: string, note = 'Tạo thêm theo đơn đặt trên website') {
     const departAt = new Date(iso);
     const find = () => this.prisma.shuttleRun.findFirst({ where: { routeId, departAt, status: { not: 'HUY' } }, select: { id: true } });
     let run = await find();
@@ -441,7 +450,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       run = await find();
     }
     if (!run) {
-      await this.shuttle.createRun({ routeId, departAt: departAt.toISOString(), note: 'Tạo thêm theo đơn đặt trên website' }).catch(() => undefined);
+      await this.shuttle.createRun({ routeId, departAt: departAt.toISOString(), note }).catch(() => undefined);
       run = await find();
     }
     return run?.id ?? null;
@@ -455,7 +464,8 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
     ends: NonNullable<ReturnType<typeof routeEnds>>,
     product: string,
     price: number,
-    orderNumber: string,
+    /** Nguồn đơn để ghi chú, vd "đơn website #123", "GetYourGuide GYG…" */
+    origin: string,
     types: { id: number; code: string }[],
   ) {
     try {
@@ -474,7 +484,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
         durationMinutes: duration,
         adultPrice: price,
         childPrice: price,
-        notes: `Tự tạo từ đơn website #${orderNumber} (${product}). Kiểm tra lại: giá, loại xe, số ghế, điểm đón / trả, thời gian chạy, giờ chạy cố định.`,
+        notes: `Tự tạo từ ${origin} (${product}). Kiểm tra lại: giá, loại xe, số ghế, điểm đón / trả, thời gian chạy, giờ chạy cố định.`,
         isActive: true,
         stops: [
           { name: `Trung tâm ${ends.from.label}`, kind: 'KHU_VUC', offsetMinutes: 0, canPickup: true, canDropoff: false },
@@ -485,7 +495,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       await this.push.notifyRoles([Role.ADMIN, Role.DIEU_HANH], {
         type: 'SHUTTLE_ROUTE_NEW',
         title: `🚌 Tự tạo tuyến xe ghép ${name}`,
-        body: `Từ đơn website #${orderNumber} (${product}) · giá ${price.toLocaleString('vi-VN')} đ/khách – kiểm tra giá, loại xe, điểm đón / trả, giờ chạy`,
+        body: `Từ ${origin} (${product}) · giá ${price.toLocaleString('vi-VN')} đ/khách – kiểm tra giá, loại xe, điểm đón / trả, giờ chạy`,
         link: '/shuttle-routes',
       });
       return this.prisma.shuttleRoute.findUnique({ where: { id: (created as { id: number }).id }, include: { stops: { where: { isActive: true }, orderBy: { seq: 'asc' } } } });
@@ -493,6 +503,41 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Không tự tạo được tuyến xe ghép: ${(e as Error).message}`);
       return null;
     }
+  }
+
+  /**
+   * Tuyến xe ghép (chưa có thì tự tạo), điểm đón / trả và chuyến đúng giờ cho sản phẩm bus / xe ghép.
+   * Dùng chung cho đơn website và đơn OTA (email). Không được thì trả lý do.
+   */
+  async shuttleFor(
+    ends: NonNullable<ReturnType<typeof routeEnds>>,
+    product: string,
+    iso: string,
+    unitPrice: number,
+    origin: string,
+    ctx?: { routes: Awaited<ReturnType<WebsiteService['shuttleRoutes']>>; types: { id: number; code: string }[]; matches?: { r: Awaited<ReturnType<WebsiteService['shuttleRoutes']>>[number] }[] },
+  ) {
+    const routes = ctx?.routes ?? (await this.shuttleRoutes());
+    const types = ctx?.types ?? (await this.prisma.vehicleType.findMany({ where: { isActive: true }, select: { id: true, code: true } }));
+    const matches = ctx?.matches ?? matchRoutes(routes, ends);
+    let route = matches[0]?.r;
+    if (!route) {
+      const made = await this.createRouteFor(ends, product, unitPrice, origin, types);
+      if (made) {
+        routes.push(made);
+        route = made;
+      }
+    }
+    const pick = route?.stops.find((x) => x.canPickup);
+    const drop = route && pick ? [...route.stops].reverse().find((x) => x.canDropoff && x.seq > pick.seq) : undefined;
+    if (!route || !pick || !drop) return `không tìm / tạo được tuyến xe ghép ${ends.from.label} – ${ends.to.label}`;
+    const runId = await this.runFor(route.id, iso, `Tạo thêm theo ${origin}`);
+    if (!runId) return `không tạo được chuyến xe ghép ${iso.slice(11, 16)}`;
+    return { route, pick, drop, runId };
+  }
+
+  shuttleRoutes() {
+    return this.prisma.shuttleRoute.findMany({ where: { isActive: true }, include: { stops: { where: { isActive: true }, orderBy: { seq: 'asc' } } }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] });
   }
 
   /**
@@ -504,7 +549,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
     const skipped: string[] = [];
     const others: string[] = [];
     const [routes, types, services] = await Promise.all([
-      this.prisma.shuttleRoute.findMany({ where: { isActive: true }, include: { stops: { where: { isActive: true }, orderBy: { seq: 'asc' } } }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),
+      this.shuttleRoutes(),
       this.prisma.vehicleType.findMany({ where: { isActive: true }, select: { id: true, code: true } }),
       this.prisma.service.findMany({ where: { isActive: true }, select: { code: true } }),
     ]);
@@ -536,30 +581,13 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       const ends = isBusProduct(name) ? routeEnds(name) : null;
       if (ends && hasService('XE_GHEP')) {
         // Tuyến cùng điểm đi – điểm đến (cùng loại xe nếu tên có Limousine / VIP / Sleeper); chưa có thì tự tạo tuyến
-        const matches = routes
-          .map((r) => ({ r, e: routeEnds(r.name) }))
-          .filter(({ e }) => e && sameKey(e.from.key, ends.from.key) && sameKey(e.to.key, ends.to.key))
-          .map(({ r, e }) => ({ r, score: ends.hints.filter((h) => e!.hints.includes(h)).length - e!.hints.filter((h) => !ends.hints.includes(h)).length * 0.1 }))
-          .sort((a, b) => b.score - a.score);
-        let route = matches[0]?.r;
-        if (!route) {
-          const made = await this.createRouteFor(ends, short, Math.round(total / qty), o.number, types);
-          if (made) {
-            routes.push(made);
-            route = made;
-          }
-        }
-        const pick = route?.stops.find((x) => x.canPickup);
-        const drop = route && pick ? [...route.stops].reverse().find((x) => x.canDropoff && x.seq > pick.seq) : undefined;
-        if (!route || !pick || !drop) {
-          skipped.push(`${short} (không tìm / tạo được tuyến xe ghép ${ends.from.label} – ${ends.to.label})`);
+        const matches = matchRoutes(routes, ends);
+        const found = await this.shuttleFor(ends, short, iso, Math.round(total / qty), `đơn website #${o.number}`, { routes, types, matches });
+        if (typeof found === 'string') {
+          skipped.push(`${short} (${found})`);
           continue;
         }
-        const runId = await this.runFor(route.id, iso);
-        if (!runId) {
-          skipped.push(`${short} (không tạo được chuyến xe ghép ${iso.slice(11, 16)})`);
-          continue;
-        }
+        const { route, pick, drop, runId } = found;
         const key = `${runId}`;
         const g = shuttleGroups.get(key);
         if (g) {
@@ -787,7 +815,7 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
       .join('\n');
   }
 
-  private async botUser(): Promise<AuthUser> {
+  async botUser(): Promise<AuthUser> {
     const u = await this.prisma.user.upsert({
       where: { username: BOT_USERNAME },
       create: { username: BOT_USERNAME, fullName: 'Website công ty', roles: [], isActive: false, passwordHash: await bcrypt.hash(randomBytes(24).toString('hex'), 10) },

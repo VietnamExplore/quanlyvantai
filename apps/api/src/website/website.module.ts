@@ -8,5 +8,6 @@ import { WebsiteService } from './website.service';
   imports: [BookingsModule, ShuttleModule],
   controllers: [WebsiteController],
   providers: [WebsiteService],
+  exports: [WebsiteService],
 })
 export class WebsiteModule {}

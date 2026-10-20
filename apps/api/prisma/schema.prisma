@@ -454,6 +454,7 @@ model Booking {
   signFileType    String? // image/png, image/jpeg, image/webp, application/pdf
   /// Đơn đặt hàng trên website công ty (nếu booking đến từ website)
   websiteOrder    WebsiteOrder?
+  otaEmails       OtaEmail[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 }
@@ -1085,4 +1086,31 @@ model TollTransaction {
 
   @@index([passedAt])
   @@index([vehicleId, passedAt])
+}
+
+/// Email booking từ các kênh OTA (GetYourGuide, Klook…) đã quét trong hộp thư nhận booking
+model OtaEmail {
+  id         Int      @id @default(autoincrement())
+  /// Message-ID của email (không xử lý lại)
+  messageId  String   @unique
+  /// Kênh: GYG, KLOOK, KKDAY…
+  channel    String
+  /// BOOKING | CHANGE | CANCEL | OTHER
+  kind       String
+  /// Mã đặt chỗ trên kênh OTA
+  ref        String?
+  subject    String
+  sender     String
+  receivedAt DateTime
+  /// CREATED | DUPLICATE | SKIPPED | NOTIFIED | UNPARSED | ERROR
+  status     String
+  note       String?
+  /// Thông tin đọc được từ email
+  data       Json?
+  bookingId  Int?
+  booking    Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([ref])
+  @@index([createdAt])
 }

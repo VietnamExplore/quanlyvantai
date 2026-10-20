@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { api, apiBlob } from '../api';
 import { ResponsiveTable } from '../components/ResponsiveTable';
 import { GdriveCard, type GdriveStatus } from '../components/GdriveCard';
+import { OtaMailCard } from '../components/OtaMailCard';
 import { WebsiteCard } from '../components/WebsiteCard';
 
 interface MaintenanceConfig {
@@ -191,6 +192,8 @@ export default function SystemPage() {
       </Card>
 
       <WebsiteCard />
+
+      <OtaMailCard />
 
       <GdriveCard<Status> status={data?.gdrive} onStatus={(st) => queryClient.setQueryData(['/system/maintenance'], st)} />
 
