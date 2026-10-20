@@ -7,7 +7,7 @@ import { nationalityFromPhone } from '../common/nationality';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { ShuttleService } from '../shuttle/shuttle.service';
-import { isBusProduct, routeEnds, WebsiteService } from '../website/website.service';
+import { isBusProduct, isKnownPlace, routeEnds, WebsiteService } from '../website/website.service';
 import { htmlToText, isOtaTransport, type OtaChannel, type OtaMailBooking, parseOtaMail, type ParsedMail } from './ota-mail-parse';
 import { otaSalesUserId } from './ota-sales';
 
@@ -366,11 +366,18 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
     if (!b.pickupTime) skipped.push('không đọc được ngày / giờ đi');
     else {
       // Xe ghép / bus: tuyến theo email (Vé xe rẻ: "thuộc tuyến Đà Nẵng - Hội An") hoặc theo tên sản phẩm
-      const ends = (b.busRoute ? routeEnds(b.busRoute) : null) ?? (isBusProduct(product) ? routeEnds(product) : null);
+      // ("shuttle bus kèm vé cáp treo" vẫn là xe ghép)
+      const shared = isBusProduct(product) || (/\bbus\b|shuttle|shared/i.test(product) && !/private/i.test(product));
+      const ends = (b.busRoute ? routeEnds(b.busRoute) : null) ?? (shared ? routeEnds(product) : null);
       const services = await this.prisma.service.findMany({ where: { isActive: true }, select: { code: true } });
       const has = (c: string) => services.some((s) => s.code === c);
       if (ends && has('XE_GHEP')) {
-        const found = await this.website.shuttleFor(ends, product, b.pickupTime, pax ? Math.round(vndPrice / pax) : vndPrice, origin);
+        // Chỉ tự tạo tuyến mới khi 2 đầu là địa danh rõ ràng (12Go chỉ ghi địa chỉ đường phố)
+        const found = await this.website.shuttleFor(ends, product, b.pickupTime, pax ? Math.round(vndPrice / pax) : vndPrice, origin, {
+          routes: await this.website.shuttleRoutes(),
+          types: await this.prisma.vehicleType.findMany({ where: { isActive: true }, select: { id: true, code: true } }),
+          noCreate: !isKnownPlace(ends.from) || !isKnownPlace(ends.to),
+        });
         if (typeof found === 'string') skipped.push(found);
         else {
           // Điểm đón / trả trên tuyến khớp địa chỉ khách (vd "Bảo tàng Điêu khắc Chăm Đà Nẵng" → điểm "Bảo tàng Chăm")

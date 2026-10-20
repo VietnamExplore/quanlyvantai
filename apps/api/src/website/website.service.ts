@@ -75,6 +75,8 @@ export interface Place {
   key: string;
   label: string;
 }
+/** Địa danh có trong danh mục (không phải tên đường / khách sạn đoán ra) */
+export const isKnownPlace = (p: Place) => PLACES.some(([key]) => key === p.key);
 const titleCase = (v: string) => v.replace(/\b\w/g, (c) => c.toUpperCase());
 function placeOf(seg: string): Place | null {
   const s = seg.replace(NOISE, ' ').replace(/\s+/g, ' ').trim();
@@ -515,13 +517,19 @@ export class WebsiteService implements OnModuleInit, OnModuleDestroy {
     iso: string,
     unitPrice: number,
     origin: string,
-    ctx?: { routes: Awaited<ReturnType<WebsiteService['shuttleRoutes']>>; types: { id: number; code: string }[]; matches?: { r: Awaited<ReturnType<WebsiteService['shuttleRoutes']>>[number] }[] },
+    ctx?: {
+      /** Chưa có tuyến: không tự tạo (vd điểm đi / đến chỉ là địa chỉ, không rõ địa danh) */
+      noCreate?: boolean;
+      routes: Awaited<ReturnType<WebsiteService['shuttleRoutes']>>;
+      types: { id: number; code: string }[];
+      matches?: { r: Awaited<ReturnType<WebsiteService['shuttleRoutes']>>[number] }[];
+    },
   ) {
     const routes = ctx?.routes ?? (await this.shuttleRoutes());
     const types = ctx?.types ?? (await this.prisma.vehicleType.findMany({ where: { isActive: true }, select: { id: true, code: true } }));
     const matches = ctx?.matches ?? matchRoutes(routes, ends);
     let route = matches[0]?.r;
-    if (!route) {
+    if (!route && !ctx?.noCreate) {
       const made = await this.createRouteFor(ends, product, unitPrice, origin, types);
       if (made) {
         routes.push(made);
