@@ -17,3 +17,7 @@ apps/driver/credentials/
 apps/driver/android/
 apps/driver/ios/
 apps/driver/dist-web/
+# Cấu hình Firebase của app Android (build trên máy văn phòng)
+apps/driver/google-services.json
+# Khóa tài khoản dịch vụ Firebase (bí mật)
+*firebase-adminsdk*.json
