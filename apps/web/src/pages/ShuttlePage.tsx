@@ -1,6 +1,6 @@
 import { CheckCircleFilled, CopyOutlined, DownOutlined, FileExcelOutlined, FileProtectOutlined, LeftOutlined, PlusOutlined, RightOutlined, UpOutlined, WarningFilled } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Flex, Form, Grid, Input, InputNumber, Modal, Popconfirm, Progress, Radio, Row, Segmented, Select, Space, Spin, Tabs, Tag, Typography } from 'antd';
+import { Alert, App, Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Flex, Form, Grid, Input, InputNumber, Modal, Popconfirm, Progress, Radio, Row, Segmented, Select, Space, Spin, Tag, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -36,19 +36,23 @@ export default function ShuttlePage() {
   const [creating, setCreating] = useState(false);
 
   const { data: runs = [], isFetching } = useQuery({ queryKey: ['/shuttle/runs', { date: ymd }], queryFn: () => api<ShuttleRun[]>('/shuttle/runs', { query: { date: ymd } }) });
+  const { data: routes = [] } = useQuery({ queryKey: ['/shuttle/routes'], queryFn: () => api<ShuttleRoute[]>('/shuttle/routes') });
+  // Đủ mọi tuyến đang chạy (cả tuyến không có chuyến trong ngày), theo thứ tự danh mục; tuyến đã ngừng mà còn chuyến thì thêm cuối
   const byRoute = useMemo(() => {
     const m = new Map<number, { id: number; name: string; runs: ShuttleRun[] }>();
+    for (const rt of routes) m.set(rt.id, { id: rt.id, name: rt.name, runs: [] });
     for (const r of runs) {
       const g = m.get(r.routeId) ?? { id: r.routeId, name: r.route.name, runs: [] };
       g.runs.push(r);
       m.set(r.routeId, g);
     }
     return [...m.values()];
-  }, [runs]);
+  }, [runs, routes]);
   const total = runs.filter((r) => r.status !== 'HUY').reduce((s, r) => ({ sold: s.sold + r.seatsConfirmed + r.seatsHeld, cap: s.cap + r.capacity }), { sold: 0, cap: 0 });
   const pendingAll = runs.filter(needDispatch).length;
   // Tab tuyến đang mở: theo địa chỉ trang, mặc định tuyến đầu tiên còn chuyến chưa điều xe
-  const routeKey = params.get('route') ?? String((byRoute.find((g) => g.runs.some(needDispatch)) ?? byRoute[0])?.id ?? '');
+  const routeKey = params.get('route') ?? String((byRoute.find((g) => g.runs.some(needDispatch)) ?? byRoute.find((g) => g.runs.some(hasGuests)) ?? byRoute.find((g) => g.runs.length) ?? byRoute[0])?.id ?? '');
+  const current = byRoute.find((g) => String(g.id) === routeKey);
 
   return (
     <Flex vertical gap={16}>
@@ -83,33 +87,47 @@ export default function ShuttlePage() {
         </Flex>
       </Flex>
 
-      {isFetching && !runs.length ? (
+      {isFetching && !runs.length && !byRoute.length ? (
         <Flex justify="center" style={{ padding: 48 }}>
           <Spin />
         </Flex>
-      ) : !runs.length ? (
+      ) : !byRoute.length ? (
         <Card>
           <Empty description={<>Không có chuyến xe ghép ngày {date.format('DD/MM/YYYY')}. Khai báo tuyến và giờ chạy ở <Link to="/shuttle-routes">Danh mục → Tuyến xe ghép</Link>.</>} />
         </Card>
       ) : (
         <Card size="small">
-          <Tabs
-            activeKey={routeKey}
-            onChange={(k) => setParam('route', k)}
-            items={byRoute.map((g) => {
+          {/* Tất cả tuyến hiện đủ, tự xuống dòng (không ẩn tuyến vào nút "…") */}
+          <div className="shuttle-route-grid">
+            {byRoute.map((g) => {
+              const live = g.runs.filter((r) => r.status !== 'HUY');
               const pending = g.runs.filter(needDispatch).length;
-              return {
-                key: String(g.id),
-                label: (
-                  <Space size={6}>
-                    {g.name}
-                    {pending > 0 ? <Badge count={pending} title={`${pending} chuyến có khách chưa điều xe`} /> : g.runs.some((r) => r.seatsConfirmed > 0) ? <CheckCircleFilled style={{ color: '#16a34a' }} title="Đã điều xe đủ" /> : null}
-                  </Space>
-                ),
-                children: <RouteRuns runs={g.runs} onOpen={(id) => setParam('run', String(id))} />,
-              };
+              const guests = live.reduce((n, r) => n + r.seatsConfirmed + r.seatsHeld, 0);
+              const active = String(g.id) === routeKey;
+              return (
+                <button key={g.id} type="button" className={`shuttle-route-chip${active ? ' active' : ''}${live.length ? '' : ' empty'}`} onClick={() => setParam('route', String(g.id))}>
+                  <span className="name">{g.name}</span>
+                  <span className="meta">
+                    {live.length ? `${live.length} chuyến · ${guests} khách` : 'Không có chuyến'}
+                    {pending > 0 ? (
+                      <Badge count={pending} size="small" title={`${pending} chuyến có khách chưa điều xe`} />
+                    ) : live.some((r) => r.seatsConfirmed > 0) ? (
+                      <CheckCircleFilled style={{ color: '#16a34a' }} title="Đã điều xe đủ" />
+                    ) : null}
+                  </span>
+                </button>
+              );
             })}
-          />
+          </div>
+          {current && (
+            <div style={{ marginTop: 12 }}>
+              {current.runs.length ? (
+                <RouteRuns key={current.id} runs={current.runs} onOpen={(id) => setParam('run', String(id))} />
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`Tuyến ${current.name} không có chuyến ngày ${date.format('DD/MM/YYYY')}`} />
+              )}
+            </div>
+          )}
         </Card>
       )}
 
