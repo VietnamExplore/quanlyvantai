@@ -478,7 +478,7 @@ export class TotoService {
                   vehicleTypeId: t.typeId!,
                   unitPrice: netOf(t.gross, inv.vat),
                   itinerary: String(r.programName ?? '').trim() || null,
-                  notes: [`TOTO #${p.reservationId} · ${paxNote}`, r.additionalOption?.trim() || null, td?.requestMemo ? `Yêu cầu của khách: ${td.requestMemo}` : null].filter(Boolean).join(' · '),
+                  notes: [paxNote, r.additionalOption?.trim() || null, td?.requestMemo ? `Yêu cầu của khách: ${td.requestMemo}` : null].filter(Boolean).join(' · '),
                 };
               }),
             } as unknown as Parameters<BookingsService['create']>[0],

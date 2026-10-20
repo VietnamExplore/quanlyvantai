@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import { CONTACT_APP, guessContactApp } from './contact-apps';
 import { fmtTime, routeText } from './booking-utils';
 import type { DispatchTrip, TripStatus } from './types';
+import { partnerSafe } from './partner-safe';
 
 /** Thứ tự tiến trình của chuyến sau khi điều xe */
 export const TRIP_FLOW: TripStatus[] = ['DA_GAN', 'TAI_XE_NHAN', 'DANG_DEN_DON', 'DA_DON_KHACH', 'HOAN_THANH'];
@@ -35,7 +36,7 @@ export const assignmentText = (t: DispatchTrip) =>
 /** Nội dung lệnh điều xe gửi tài xế / nhà xe qua Zalo */
 export function buildDispatchText(t: DispatchTrip) {
   const lines = [
-    `LỆNH ĐIỀU XE – ${t.booking.code}${t.booking.customerRef ? ` (mã khách: ${t.booking.customerRef})` : ''}`,
+    `LỆNH ĐIỀU XE – ${t.booking.code}`,
     `Dịch vụ: ${t.service?.name ?? t.serviceType}`,
     `Giờ đón: ${fmtTime(t.pickupTime)} (dự kiến xong ${dayjs(t.endTime).format('HH:mm DD/MM')})`,
     `Điểm đón: ${t.pickupAddress}`,
@@ -43,9 +44,10 @@ export function buildDispatchText(t: DispatchTrip) {
   if (t.dropoffAddress) lines.push(`Điểm trả: ${t.dropoffAddress}`);
   if (t.flightNumber) lines.push(`Chuyến bay đón: ${t.flightNumber}`);
   if (t.departureFlight) lines.push(`Chuyến bay tiễn: ${t.departureFlight}`);
-  // Khách: ưu tiên hành khách đầu tiên trong danh sách hành khách; không có thì lấy tên khách hàng / người liên hệ
+  // Khách: ưu tiên hành khách đầu tiên trong danh sách hành khách; không có thì người liên hệ
+  // (không ghi tên khách hàng / đại lý, kênh bán, mã đặt chỗ – lệnh điều xe gửi cả nhà xe đối tác)
   const guest = t.booking.passengers?.[0];
-  const guestName = guest?.fullName || t.booking.customer?.name || t.booking.contactName;
+  const guestName = guest?.fullName || t.booking.contactName;
   const guestPhone = guest?.phone || t.booking.contactPhone;
   lines.push(`Khách: ${guestName} – ${guestPhone} (${t.passengers} khách)`);
   const pax = t.booking.passengers ?? [];
@@ -66,9 +68,13 @@ export function buildDispatchText(t: DispatchTrip) {
     if (t.partnerDriverName || t.partnerDriverPhone) lines.push(`Tài xế: ${[t.partnerDriverName, t.partnerDriverPhone].filter(Boolean).join(' – ')}`);
   }
   if (t.days > 1) lines.push(`Số ngày: ${t.days}`);
-  if (t.itinerary) lines.push(`Lịch trình:\n${t.itinerary}`);
-  if (t.notes) lines.push(`Ghi chú: ${t.notes}`);
-  if (t.dispatchNote) lines.push(`Lưu ý điều hành: ${t.dispatchNote}`);
+  const hide = [t.booking.customerRef, t.booking.customer?.name];
+  const itinerary = partnerSafe(t.itinerary, hide);
+  const notes = partnerSafe(t.notes, hide);
+  const dispatchNote = partnerSafe(t.dispatchNote, hide);
+  if (itinerary) lines.push(`Lịch trình:\n${itinerary}`);
+  if (notes) lines.push(`Ghi chú: ${notes}`);
+  if (dispatchNote) lines.push(`Lưu ý điều hành: ${dispatchNote}`);
   return lines.join('\n');
 }
 

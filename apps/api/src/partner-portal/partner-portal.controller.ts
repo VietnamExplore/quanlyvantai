@@ -9,6 +9,7 @@ import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { partnerPayable } from '../finance/cost.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
+import { partnerSafe } from '../common/partner-safe';
 
 /** Bước kế tiếp hợp lệ nhà xe được bấm (giống app lái xe) */
 const NEXT: Partial<Record<TripStatus, TripStatus>> = {
@@ -95,6 +96,8 @@ const tripSelect = {
       // Tên trên bảng đón khi chưa nhập dòng chính: tên khách hàng / người liên hệ
       customer: { select: { name: true } },
       contactName: true,
+      // Chỉ để lọc khỏi ghi chú gửi nhà xe (không trả về)
+      customerRef: true,
     },
   },
 } satisfies Prisma.BookingTripSelect;
@@ -106,8 +109,16 @@ type RawTrip = Prisma.BookingTripGetPayload<{ select: typeof tripSelect }>;
  * Bảng đón chưa nhập dòng chính: dùng tên trưởng đoàn / HDV, không thì tên khách đầu tiên (không dùng tên khách hàng / đại lý).
  */
 function clean(t: RawTrip) {
-  const { customer: _c, contactName: _n, ...booking } = t.booking;
-  return { ...t, booking: { ...booking, signTitle: booking.signTitle || booking.leaderName || booking.passengers[0]?.fullName || null } };
+  const { customer: _c, contactName: _n, customerRef: _r, ...booking } = t.booking;
+  // Ghi chú / lịch trình: bỏ đoạn có tên kênh bán (GetYourGuide, Vé xe rẻ…), mã đặt chỗ, tên khách hàng
+  const hide = [t.booking.customerRef, t.booking.customer?.name];
+  return {
+    ...t,
+    itinerary: partnerSafe(t.itinerary, hide),
+    notes: partnerSafe(t.notes, hide),
+    dispatchNote: partnerSafe(t.dispatchNote, hide),
+    booking: { ...booking, signTitle: booking.signTitle || booking.leaderName || booking.passengers[0]?.fullName || null },
+  };
 }
 
 const fmt = (d: Date) => {

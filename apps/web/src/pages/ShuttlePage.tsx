@@ -13,8 +13,11 @@ import { SendOrderModal, type SendTarget } from '../components/SendOrderModal';
 import { TRIP_STATUS } from '../labels';
 import { RUN_PROGRESS, RUN_STATUS, type ShuttleRoute, type ShuttleRun, type ShuttleRunDetail, type ShuttleRunTrip } from '../shuttle-types';
 import type { Vehicle } from '../types';
+import { partnerSafe } from '../partner-safe';
 
 const hm = (d: string) => dayjs(d).format('HH:mm');
+/** Ghi chú gửi lái xe / nhà xe: bỏ tên kênh bán, mã đặt chỗ, tên khách hàng */
+const safeNote = (t: ShuttleRunTrip) => partnerSafe(t.notes, [t.booking.customerRef, t.booking.customer?.name]);
 const contactOf = (t: ShuttleRunTrip) => ({ name: t.booking.leaderName || t.booking.contactName, phone: t.booking.leaderPhone || t.booking.contactPhone });
 const paxText = (t: { passengers: number; childCount: number }) => `${t.passengers} khách${t.childCount ? ` (${t.childCount} trẻ em)` : ''}`;
 
@@ -414,7 +417,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
       `CHUYẾN XE GHÉP – ${run.route.name}`,
       `Xuất bến: ${dayjs(run.departAt).format('HH:mm DD/MM/YYYY')} · ${active.reduce((s, t) => s + t.passengers, 0)} khách / ${active.length} lượt`,
       run.vehicle ? `Xe: ${run.vehicle.plateNumber}${run.driver ? ` – ${run.driver.fullName} ${run.driver.phone}` : ''}` : run.partner ? `Nhà xe: ${run.partner.name}${run.partnerPlate ? ` – ${run.partnerPlate}` : ''}${run.partnerDriverName ? ` – ${run.partnerDriverName} ${run.partnerDriverPhone ?? ''}` : ''}` : '',
-      run.dispatchNote ? `Lưu ý: ${run.dispatchNote}` : '',
+      partnerSafe(run.dispatchNote) ? `Lưu ý: ${partnerSafe(run.dispatchNote)}` : '',
     ].filter(Boolean);
     for (const g of groups) {
       lines.push('', `📍 ${g.time} – ${g.stop}`);
@@ -424,7 +427,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
           `${i + 1}. ${c.name} – ${c.phone} · ${paxText(t)}`,
           `   Đón: ${t.pickupAddress}${t.dropoffAddress ? ` → Trả: ${t.dropoffAddress}` : ''}${t.flightNumber ? ` · ✈ ${t.flightNumber}` : ''}${t.departureFlight ? ` · ✈ ${t.departureFlight}` : ''}`,
           ...(t.collectAmount ? [`   Thu khách: ${formatVnd(t.collectAmount)}đ`] : []),
-          ...(t.notes ? [`   Ghi chú: ${t.notes}`] : []),
+          ...(safeNote(t) ? [`   Ghi chú: ${safeNote(t)}`] : []),
         );
       });
     }
@@ -444,7 +447,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
         rows: groups.flatMap((g) =>
           g.trips.map((t) => {
             const c = contactOf(t);
-            return [hm(t.pickupTime), g.stop, t.pickupAddress, t.shuttleDropoffStop?.name ?? t.dropoffAddress, t.booking.code, c.name, c.phone, t.passengers, t.childCount, [t.flightNumber, t.departureFlight].filter(Boolean).join(' / '), t.collectAmount ? Number(t.collectAmount) : null, t.notes, TRIP_STATUS[t.status].label];
+            return [hm(t.pickupTime), g.stop, t.pickupAddress, t.shuttleDropoffStop?.name ?? t.dropoffAddress, t.booking.code, c.name, c.phone, t.passengers, t.childCount, [t.flightNumber, t.departureFlight].filter(Boolean).join(' / '), t.collectAmount ? Number(t.collectAmount) : null, safeNote(t), TRIP_STATUS[t.status].label];
           }),
         ),
       },

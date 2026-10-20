@@ -434,7 +434,7 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
         if (byStops) {
           // Giờ trên email là giờ đón tại điểm đón (12Go): giờ xuất bến = giờ đón − thời gian từ đầu tuyến đến điểm đón
           const depart = b.atPickupStop && byStops.pick.offsetMinutes ? new Date(new Date(b.pickupTime).getTime() - byStops.pick.offsetMinutes * 60_000) : new Date(b.pickupTime);
-          const runId = await this.website.runFor(byStops.route.id, depart.toISOString(), `Tạo thêm theo ${origin}`);
+          const runId = await this.website.runFor(byStops.route.id, depart.toISOString(), 'Tạo thêm theo đơn OTA');
           found = runId ? { ...byStops, runId } : `không tạo được chuyến xe ghép ${when(b.pickupTime)}`;
         } else {
           // 2. Tuyến theo điểm đi – điểm đến; chỉ tự tạo tuyến mới khi 2 đầu là địa danh rõ ràng
@@ -461,7 +461,7 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
             shuttleRunId: found.runId,
             shuttlePickupStopId: pick.id,
             shuttleDropoffStopId: drop.id,
-            notes: [`${origin}: ${product}${b.pickup ? ` · khách đón tại ${b.pickup}` : ''}`, b.review].filter(Boolean).join(' · '),
+            notes: [b.pickup ? `Khách đón tại ${b.pickup}` : null, b.review].filter(Boolean).join(' · ') || null,
           };
         }
       } else if (b.busRoute) {
@@ -481,7 +481,7 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
             vehicleTypeId: type.id,
             unitPrice: vndPrice,
             itinerary: product,
-            notes: `${origin} · loại xe tự chọn theo số khách, kiểm tra lại`,
+            notes: 'Loại xe tự chọn theo số khách, kiểm tra lại',
           };
       }
     }
