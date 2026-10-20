@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { storage } from './storage';
+
+/** Máy chủ phần mềm điều xe của công ty: app luôn kết nối máy chủ này (lái xe chỉ cần tên đăng nhập + mật khẩu) */
+export const COMPANY_SERVER = 'https://dieuxe.vietnamexplore.vn';
 
 const SERVER_KEY = 'server_url';
 const TOKEN_KEY = 'access_token';
@@ -25,13 +29,14 @@ export function normalizeServer(input: string) {
 }
 
 export async function loadSession() {
-  serverUrl = await storage.get(SERVER_KEY);
+  // Điện thoại: luôn máy chủ công ty (bản cài cũ lưu địa chỉ khác cũng tự chuyển). Bản web xem thử trên máy văn phòng: cho đặt máy chủ thử nghiệm
+  serverUrl = Platform.OS === 'web' ? ((await storage.get(SERVER_KEY)) ?? COMPANY_SERVER) : COMPANY_SERVER;
   token = await storage.get(TOKEN_KEY);
   return { serverUrl, token };
 }
 
 export async function setServer(url: string) {
-  serverUrl = normalizeServer(url);
+  serverUrl = Platform.OS === 'web' ? normalizeServer(url) : COMPANY_SERVER;
   await storage.set(SERVER_KEY, serverUrl);
   return serverUrl;
 }

@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api, getServer } from '../api';
+import { api } from '../api';
 import { keyboardScroll } from '../platform';
 import { BRAND, colors, fmtDate } from '../theme';
 import type { AuthUser, DriverProfile } from '../types';
@@ -104,7 +104,7 @@ export function ProfileScreen({ user, onLogout }: { user: AuthUser; onLogout: ()
         }
       />
       <Text style={{ textAlign: 'center', color: colors.muted, fontSize: 12, marginTop: 16 }}>
-        {BRAND.appName} · Máy chủ: {getServer()} · Phiên bản {Constants.expoConfig?.version}
+        {BRAND.appName} · Phiên bản {Constants.expoConfig?.version}
       </Text>
     </ScrollView>
   );

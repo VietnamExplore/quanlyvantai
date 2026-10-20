@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api, getServer, setServer, setToken } from '../api';
+import { api, COMPANY_SERVER, getServer, setServer, setToken } from '../api';
 import { BRAND, colors } from '../theme';
 import type { AuthUser } from '../types';
 import { Icon } from '../icons';
@@ -10,7 +10,6 @@ import { Icon } from '../icons';
 const LOGO = require('../../assets/logo.png');
 
 /** Địa chỉ phần mềm của công ty */
-const DEFAULT_SERVER = 'dieuxe.vietnamexplore.vn';
 
 /** Ô nhập có biểu tượng bên trái, viền sáng khi đang nhập */
 function Field({
@@ -35,25 +34,19 @@ function Field({
 }
 
 export function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: AuthUser) => void }) {
-  // Máy chủ mặc định của công ty (vẫn sửa được nếu văn phòng đổi địa chỉ)
-  const [server, setServerInput] = useState(getServer() ?? DEFAULT_SERVER);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showServer, setShowServer] = useState(false);
 
   async function submit() {
     setError(null);
     if (!username.trim() || !password) return setError('Nhập tên đăng nhập và mật khẩu');
-    if (!server.trim()) {
-      setShowServer(true);
-      return setError('Nhập địa chỉ máy chủ (văn phòng cung cấp)');
-    }
     setLoading(true);
     try {
-      await setServer(server);
+      // Máy chủ công ty (bản web xem thử: máy chủ đã đặt)
+      await setServer(getServer() ?? COMPANY_SERVER);
       const res = await api<{ accessToken: string; user: AuthUser }>('/auth/login', {
         method: 'POST',
         body: { username: username.trim(), password },
@@ -108,17 +101,6 @@ export function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: AuthUser) => vo
                 </Pressable>
               }
             />
-
-            {showServer ? (
-              <Field icon="globe-outline" value={server} onChangeText={setServerInput} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="Địa chỉ máy chủ, vd: vantai.congty.vn" />
-            ) : (
-              <Pressable onPress={() => setShowServer(true)} style={s.serverRow} hitSlop={6}>
-                <Text style={s.serverText} numberOfLines={1}>
-                  🌐 Máy chủ: {server.replace(/^https?:\/\//, '')}
-                </Text>
-                <Text style={s.serverChange}>Đổi</Text>
-              </Pressable>
-            )}
 
             {error && (
               <View style={s.errorBox}>
@@ -191,9 +173,6 @@ const s = StyleSheet.create({
   fieldIcon: { fontSize: 18, width: 30 },
   fieldInput: { flex: 1, fontSize: 16, color: colors.text, paddingVertical: 12 },
   eye: { color: colors.primary, fontWeight: '700', fontSize: 14 },
-  serverRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 },
-  serverText: { flex: 1, fontSize: 13, color: colors.muted },
-  serverChange: { fontSize: 13, color: colors.primary, fontWeight: '700', marginLeft: 8 },
   errorBox: { backgroundColor: '#fff1f0', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#ffccc7' },
   errorText: { color: colors.danger, fontSize: 14 },
   btnWrap: {
