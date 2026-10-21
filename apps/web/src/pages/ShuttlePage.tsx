@@ -438,7 +438,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
     if (!run) return '';
     const lines = [
       `CHUYẾN XE GHÉP – ${run.route.name}`,
-      `Xuất bến: ${dayjs(run.departAt).format('HH:mm DD/MM/YYYY')} · ${active.reduce((s, t) => s + t.passengers, 0)} khách / ${active.length} lượt`,
+      `Khởi hành: ${dayjs(run.departAt).format('HH:mm DD/MM/YYYY')} · ${active.reduce((s, t) => s + t.passengers, 0)} khách / ${active.length} lượt`,
       run.vehicle ? `Xe: ${run.vehicle.plateNumber}${run.driver ? ` – ${run.driver.fullName} ${run.driver.phone}` : ''}` : run.partner ? `Nhà xe: ${run.partner.name}${run.partnerPlate ? ` – ${run.partnerPlate}` : ''}${run.partnerDriverName ? ` – ${run.partnerDriverName} ${run.partnerDriverPhone ?? ''}` : ''}` : '',
       partnerSafe(run.dispatchNote) ? `Lưu ý: ${partnerSafe(run.dispatchNote)}` : '',
     ].filter(Boolean);
@@ -446,9 +446,13 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
       lines.push('', `📍 ${g.time} – ${g.stop}`);
       g.trips.forEach((t, i) => {
         const c = contactOf(t);
+        const list = t.booking.passengers ?? [];
         lines.push(
           `${i + 1}. ${t.booking.code} · ${c.name} – ${c.phone} · ${paxText(t)}`,
           `   Đón: ${t.pickupAddress}${t.dropoffAddress ? ` → Trả: ${t.dropoffAddress}` : ''}${t.flightNumber ? ` · ✈ ${t.flightNumber}` : ''}${t.departureFlight ? ` · ✈ ${t.departureFlight}` : ''}`,
+          // Danh sách khách đi: tên, giới tính, năm sinh, quốc tịch, SĐT
+          ...list.map((p, k) => `   ${k + 1}) ${paxLine(p)}`),
+          ...(list.length && list.length < t.passengers ? [`   (+${t.passengers - list.length} khách chưa có tên)`] : []),
           ...(t.collectAmount ? [`   Thu khách: ${formatVnd(t.collectAmount)}đ`] : []),
           ...(safeNote(t) ? [`   Ghi chú: ${safeNote(t)}`] : []),
         );
