@@ -16,7 +16,8 @@ export function buildPartnerDispatchText(t: PartnerTrip) {
     `Giờ đón: ${dayjs(t.pickupTime).format('HH:mm DD/MM/YYYY')}${t.endTime ? ` (dự kiến xong ${dayjs(t.endTime).format('HH:mm DD/MM')})` : ''}`,
     `Điểm đón: ${t.pickupAddress}`,
   ];
-  if (t.dropoffAddress) lines.push(`Điểm trả: ${t.dropoffAddress}`);
+  const dropoff = t.dropoffAddress || t.shuttleDropoffStop?.name;
+  if (dropoff) lines.push(`Điểm trả: ${dropoff}`);
   if (t.flightNumber) lines.push(`Chuyến bay đón: ${t.flightNumber}`);
   if (t.departureFlight) lines.push(`Chuyến bay tiễn: ${t.departureFlight}`);
   lines.push(`Số khách: ${t.passengers} · Loại xe: ${t.vehicleType.name}`);

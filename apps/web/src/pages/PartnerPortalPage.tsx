@@ -416,10 +416,10 @@ function TripRow({ trip: t, onOpen }: { trip: PartnerTrip; onOpen: () => void })
           <span className="pt-route-dot" style={{ background: '#1677ff' }} />
           {t.pickupAddress}
         </div>
-        {t.dropoffAddress && (
+        {(t.dropoffAddress || t.shuttleDropoffStop) && (
           <div>
             <span className="pt-route-dot" style={{ background: '#e3262b' }} />
-            {t.dropoffAddress}
+            {t.dropoffAddress || t.shuttleDropoffStop?.name}
           </div>
         )}
       </div>

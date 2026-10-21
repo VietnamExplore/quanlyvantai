@@ -72,6 +72,8 @@ export function PartnerTripDetail({
   const closed = t.status === 'HOAN_THANH' || t.status === 'HUY';
   // Liên hệ đón khách: trưởng đoàn / HDV; không có thì khách đi (máy chủ chọn sẵn, không lộ công ty / đại lý đặt)
   const phone = b.leaderPhone || b.guestContact?.phone || null;
+  // Điểm trả: địa chỉ khách ghi, xe ghép không ghi thì lấy điểm trả của tuyến
+  const dropoff = t.dropoffAddress || t.shuttleDropoffStop?.name || null;
   const contactName = b.leaderName || b.guestContact?.name || null;
   const app: ContactApp = (b.leaderApp as ContactApp | null) ?? guessApp(phone);
   const st = STATUS[t.status] ?? { label: t.status, color: 'default' };
@@ -206,13 +208,13 @@ export function PartnerTripDetail({
             </div>
           </div>
         )}
-        {t.dropoffAddress && (
+        {dropoff && (
           <div className="pt-stop">
             <span className="pt-dot" style={{ background: '#e3262b' }} />
             <div style={{ flex: 1 }}>
               <div className="pt-label">ĐIỂM TRẢ</div>
-              <div className="pt-address">{t.dropoffAddress}</div>
-              <Button size="small" href={mapUrl(t.dropoffAddress)} target="_blank" icon={<AimOutlined />} style={{ marginTop: 6 }}>
+              <div className="pt-address">{dropoff}</div>
+              <Button size="small" href={mapUrl(dropoff)} target="_blank" icon={<AimOutlined />} style={{ marginTop: 6 }}>
                 Chỉ đường
               </Button>
             </div>
@@ -249,6 +251,9 @@ export function PartnerTripDetail({
         {t.shuttleRun && (
           <div style={{ background: '#eef4ff', border: '1px solid #c7d8fb', borderRadius: 12, padding: 10, marginBottom: 10 }}>
             <div style={{ fontWeight: 700 }}>🚌 Xe ghép · {t.shuttleRun.route.name}</div>
+            <div>
+              Mã booking <b>{b.code}</b> · Hành trình: {t.pickupAddress || t.shuttlePickupStop?.name} → {dropoff ?? '—'}
+            </div>
             <div>
               Khởi hành <b>{dayjs(t.shuttleRun.departAt).format('HH:mm DD/MM/YYYY')}</b>
               {t.shuttlePickupStop ? ` · đón tại ${t.shuttlePickupStop.name}` : ''}
