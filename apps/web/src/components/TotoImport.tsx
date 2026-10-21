@@ -125,6 +125,14 @@ async function readTotoFile(file: File): Promise<TotoRow[]> {
     }
     if (String(o.reservationId ?? '').trim()) rows.push(o as unknown as TotoRow);
   }
+  // TOTO đôi khi xuất file lỗi: trống Loại xe, Ngày ghi sai (mã đặt chỗ), không có giá → không tạo được booking
+  const hasDate = (r: TotoRow) => /\d{4}-\d{2}-\d{2}/.test(`${r.meetingTime ?? ''} ${r.checkInDate ?? ''}`);
+  if (rows.length && rows.every((r) => !String(r.carType ?? '').trim() || !hasDate(r))) {
+    throw new Error(
+      'File Booking List TOTO xuất ra bị thiếu dữ liệu (trống Loại xe / ngày đón không đúng / không có giá). ' +
+        'Hãy xuất lại file trên trang nhà cung cấp TOTO, hoặc mở từng đặt chỗ, In → Lưu thành PDF rồi kéo các file PDF vào đây.',
+    );
+  }
   return rows;
 }
 

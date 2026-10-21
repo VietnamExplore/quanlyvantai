@@ -157,7 +157,10 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
   }
 
   private client(c: Awaited<ReturnType<OtaMailService['get']>>) {
-    return new ImapFlow({ host: c.host, port: 993, secure: true, auth: { user: c.user, pass: c.pass }, logger: false, socketTimeout: 60_000 });
+    const imap = new ImapFlow({ host: c.host, port: 993, secure: true, auth: { user: c.user, pass: c.pass }, logger: false, socketTimeout: 60_000 });
+    // Mất kết nối hộp thư: ImapFlow phát sự kiện 'error' – không bắt thì cả API bị sập. Lỗi vẫn báo qua lệnh đang chạy (connect / fetch).
+    imap.on('error', (e: Error) => this.logger.warn(`Hộp thư booking OTA mất kết nối: ${e.message}`));
+    return imap;
   }
 
   private static imapError(e: unknown) {
