@@ -482,9 +482,14 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
         ...g.trips.flatMap((t) => {
           const c = guestOf(t);
           const list = t.booking.passengers ?? [];
+          const hide = [t.booking.customerRef, t.booking.customer?.name];
+          // Hành trình của khách: địa chỉ đón → địa chỉ trả (không có thì lấy điểm dừng của tuyến)
+          const from = partnerSafe(t.pickupAddress, hide) || t.shuttlePickupStop?.name || '—';
+          const to = partnerSafe(t.dropoffAddress, hide) || t.shuttleDropoffStop?.name || '—';
           // Liên hệ đón (trưởng đoàn / khách có SĐT) + từng khách đi: tên, giới tính, năm sinh, quốc tịch, SĐT
           return [
             `   ▸ ${[c.name, c.phone].filter(Boolean).join(' – ')} · ${paxText(t)}${t.flightNumber ? ` · ✈ ${t.flightNumber}` : ''}`,
+            `      Hành trình: ${from} → ${to}${t.departureFlight ? ` · ✈ ${t.departureFlight}` : ''}`,
             ...list.map((p, i) => `      ${i + 1}. ${paxLine(p)}`),
             ...(list.length && list.length < t.passengers ? [`      (+${t.passengers - list.length} khách chưa có tên)`] : []),
           ];
