@@ -516,7 +516,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
       {
         name: 'Danh sách khách',
         title: `CHUYẾN XE GHÉP – ${run.route.name.toUpperCase()}`,
-        info: [`Xuất bến ${dayjs(run.departAt).format('HH:mm DD/MM/YYYY')} · ${run.capacity} ghế`, run.vehicle ? `Xe ${run.vehicle.plateNumber}${run.driver ? ` – ${run.driver.fullName}` : ''}` : run.partner ? `Nhà xe ${run.partner.name}` : 'Chưa điều xe'],
+        info: [`Khởi hành ${dayjs(run.departAt).format('HH:mm DD/MM/YYYY')} · ${run.capacity} ghế`, run.vehicle ? `Xe ${run.vehicle.plateNumber}${run.driver ? ` – ${run.driver.fullName}` : ''}` : run.partner ? `Nhà xe ${run.partner.name}` : 'Chưa điều xe'],
         headers: ['Giờ đón', 'Điểm đón', 'Địa chỉ đón', 'Điểm trả', 'Booking', 'Khách / trưởng đoàn', 'SĐT', 'Số khách', 'Trẻ em', 'Chuyến bay', 'Thu khách', 'Ghi chú', 'Trạng thái'],
         sumColumns: [7, 8, 10],
         totalLabel: 'Tổng cộng',
