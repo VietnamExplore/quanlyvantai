@@ -36,6 +36,7 @@ import { Clamp, EnumTag, paged, byText } from "../components/common";
 import { MonthGrid, WeekGrid, YearGrid } from "../components/ScheduleViews";
 import { TripDispatchDrawer } from "../components/TripDispatchDrawer";
 import { ShuttlePendingNote } from "../components/ShuttlePendingNote";
+import { ShuttleWeekCard } from "../components/ShuttleWeekCard";
 import { assignmentText, BLOCK_COLOR } from "../dispatch-utils";
 import { TRIP_STATUS, toOptions } from "../labels";
 import type { Booking, DispatchTrip, Schedule, TripStatus } from "../types";
@@ -706,6 +707,8 @@ export default function DispatchPage() {
                 </Flex>
               )}
             </Card>
+            {/* Xe ghép có khách trong 7 ngày tới: đã / chưa điều xe */}
+            <ShuttleWeekCard style={{ marginTop: 16 }} />
           </Col>
           <Col xs={24} xl={wide ? 24 : 17} xxl={wide ? 24 : 18} style={{ order: wide ? 1 : 2 }}>
             <Card
