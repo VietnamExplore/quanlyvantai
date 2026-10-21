@@ -322,6 +322,8 @@ export class ShuttleService {
             customerRef: true,
             leaderName: true,
             leaderPhone: true,
+            // Khách đi (tên, giới tính, năm sinh, quốc tịch, SĐT) cho lệnh gửi nhà xe cung cấp
+            passengers: { select: { seq: true, fullName: true, gender: true, birthYear: true, nationality: true, phone: true }, orderBy: { seq: 'asc' } },
             customer: { select: { name: true, type: true } },
             payments: { select: { amount: true } },
             trips: { select: { amount: true, status: true } },

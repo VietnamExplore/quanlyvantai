@@ -23,6 +23,12 @@ export function buildPartnerDispatchText(t: PartnerTrip) {
   if (t.partnerPlate || t.partnerDriverName || t.partnerDriverPhone) {
     lines.push(`Xe: ${[t.partnerPlate, t.partnerDriverName, t.partnerDriverPhone].filter(Boolean).join(' – ')}`);
   }
+  if (t.shuttleRun) {
+    lines.push(`Xe ghép: ${t.shuttleRun.route.name} · khởi hành ${dayjs(t.shuttleRun.departAt).format('HH:mm DD/MM')}${t.shuttlePickupStop ? ` · đón tại ${t.shuttlePickupStop.name}` : ''}`);
+  }
+  if (!b.leaderName && !b.leaderPhone && b.guestContact) {
+    lines.push(`Khách: ${[b.guestContact.name, b.guestContact.phone].filter(Boolean).join(' – ')} (liên hệ qua ${APP_LABEL[guessApp(b.guestContact.phone)]})`);
+  }
   if (b.leaderName || b.leaderPhone) {
     const app: ContactApp = (b.leaderApp as ContactApp | null) ?? guessApp(b.leaderPhone);
     const via = b.leaderPhone || b.leaderAppId ? ` (liên hệ qua ${APP_LABEL[app]}${b.leaderAppId ? ` ID: ${b.leaderAppId}` : ''})` : '';
@@ -31,7 +37,8 @@ export function buildPartnerDispatchText(t: PartnerTrip) {
   if (b.signTitle) lines.push(`Bảng đón: ${b.signTitle}${b.signSubtitle ? ` – ${b.signSubtitle}` : ''}`);
   if (b.passengers.length) {
     lines.push(`Danh sách khách (${b.passengers.length}):`);
-    b.passengers.forEach((p, i) => lines.push(`${i + 1}. ${p.fullName}`));
+    // Tên, giới tính, năm sinh, quốc tịch, SĐT
+    b.passengers.forEach((p, i) => lines.push(`${i + 1}. ${[p.fullName, p.gender === 'NAM' ? 'Nam' : p.gender === 'NU' ? 'Nữ' : null, p.birthYear, p.nationality, p.phone].filter(Boolean).join(' · ')}`));
   }
   if (t.itinerary) lines.push(`Lịch trình:\n${t.itinerary}`);
   if (t.notes) lines.push(`Ghi chú: ${t.notes}`);

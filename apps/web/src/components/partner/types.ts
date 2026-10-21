@@ -35,6 +35,10 @@ export interface PartnerTrip {
   partnerExtraStatus: string | null;
   partnerExtraReviewNote: string | null;
   vehicleType: { name: string; seats: number };
+  /** Xe ghép: tuyến, giờ khởi hành, giá mỗi khách (giao theo đầu khách) */
+  shuttleRun?: { departAt: string; partnerPricePerPax: string | null; route: { name: string } } | null;
+  shuttlePickupStop?: { name: string } | null;
+  shuttleDropoffStop?: { name: string } | null;
   service: { name: string } | null;
   booking: {
     code: string;
@@ -47,7 +51,9 @@ export interface PartnerTrip {
     docLanguage: string | null;
     signSubtitle: string | null;
     signFileType: string | null;
-    passengers: { seq: number; fullName: string; gender: string | null; nationality: string | null }[];
+    passengers: { seq: number; fullName: string; gender: string | null; birthYear?: number | null; nationality: string | null; phone?: string | null }[];
+    /** Khách để gọi đón: trưởng đoàn / khách đi có SĐT / người đặt là khách đi */
+    guestContact?: { name: string | null; phone: string } | null;
     /** Hợp đồng vận chuyển điện tử: lái xe xuất trình khi kiểm tra */
     contract?: { number: string; token: string } | null;
   };

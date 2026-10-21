@@ -103,6 +103,8 @@ export interface ShuttleRunTrip {
     customerRef: string | null;
     leaderName: string | null;
     leaderPhone: string | null;
+    /** Khách đi */
+    passengers?: { seq: number; fullName: string; gender: string | null; birthYear: number | null; nationality: string | null; phone: string | null }[];
     customer: { name: string; type: string } | null;
     notes: string | null;
     balance: number;

@@ -70,17 +70,20 @@ export function PartnerTripDetail({
   const b = t.booking;
   const next = NEXT_STEP[t.status];
   const closed = t.status === 'HOAN_THANH' || t.status === 'HUY';
-  const app: ContactApp = (b.leaderApp as ContactApp | null) ?? guessApp(b.leaderPhone);
+  // Liên hệ đón khách: trưởng đoàn / HDV; không có thì khách đi (máy chủ chọn sẵn, không lộ công ty / đại lý đặt)
+  const phone = b.leaderPhone || b.guestContact?.phone || null;
+  const contactName = b.leaderName || b.guestContact?.name || null;
+  const app: ContactApp = (b.leaderApp as ContactApp | null) ?? guessApp(phone);
   const st = STATUS[t.status] ?? { label: t.status, color: 'default' };
 
   async function chat() {
-    const url = chatUrl(app, b.leaderPhone, b.leaderAppId);
+    const url = chatUrl(app, phone, b.leaderAppId);
     if (url) {
       window.open(url, '_blank');
       return;
     }
     // KakaoTalk / WeChat / LINE chưa có ID: chép ID hoặc số để tìm bạn trong ứng dụng
-    const value = b.leaderAppId?.trim() || b.leaderPhone || '';
+    const value = b.leaderAppId?.trim() || phone || '';
     if (await copyText(value)) message.info(`Đã chép "${value}". Mở ${APP_LABEL[app]}, vào tìm bạn rồi dán để nhắn cho khách.`, 6);
     else message.info(`Tìm khách trên ${APP_LABEL[app]} bằng: ${value}`, 8);
   }
@@ -148,8 +151,8 @@ export function PartnerTripDetail({
           </span>
           Chỉ đường
         </a>
-        {b.leaderPhone ? (
-          <a href={`tel:${b.leaderPhone}`}>
+        {phone ? (
+          <a href={`tel:${phone}`}>
             <span className="pt-quick-icon" style={{ background: '#fff3e2' }}>
               <PhoneOutlined />
             </span>
@@ -218,18 +221,18 @@ export function PartnerTripDetail({
       </div>
 
       {/* Liên hệ đón khách: trưởng đoàn / hướng dẫn viên */}
-      {(b.leaderName || b.leaderPhone || b.leaderAppId) && (
+      {(contactName || phone || b.leaderAppId) && (
         <div className="pt-card">
           <div className="pt-section">📞 Liên hệ đón khách</div>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>{b.leaderName ?? 'Người liên hệ'}</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{contactName ?? 'Khách'}</div>
           <Typography.Text type="secondary">
-            {LEADER[b.leaderRole ?? ''] ?? 'Người liên hệ trong đoàn'}
-            {b.leaderPhone ? ` · ${b.leaderPhone}` : ''}
+            {b.leaderName || b.leaderPhone ? (LEADER[b.leaderRole ?? ''] ?? 'Người liên hệ trong đoàn') : 'Khách đi'}
+            {phone ? ` · ${phone}` : ''}
             {b.leaderAppId ? ` · ${APP_LABEL[app]} ID: ${b.leaderAppId}` : ''}
           </Typography.Text>
           <Flex gap={8} style={{ marginTop: 10 }}>
-            {b.leaderPhone && (
-              <Button icon={<PhoneOutlined />} href={`tel:${b.leaderPhone}`} style={{ flex: 1 }}>
+            {phone && (
+              <Button icon={<PhoneOutlined />} href={`tel:${phone}`} style={{ flex: 1 }}>
                 Gọi
               </Button>
             )}
@@ -243,6 +246,21 @@ export function PartnerTripDetail({
       {/* Thông tin chuyến */}
       <div className="pt-card">
         <div className="pt-section">ℹ️ Thông tin chuyến</div>
+        {t.shuttleRun && (
+          <div style={{ background: '#eef4ff', border: '1px solid #c7d8fb', borderRadius: 12, padding: 10, marginBottom: 10 }}>
+            <div style={{ fontWeight: 700 }}>🚌 Xe ghép · {t.shuttleRun.route.name}</div>
+            <div>
+              Khởi hành <b>{dayjs(t.shuttleRun.departAt).format('HH:mm DD/MM/YYYY')}</b>
+              {t.shuttlePickupStop ? ` · đón tại ${t.shuttlePickupStop.name}` : ''}
+              {t.shuttleDropoffStop ? ` · trả tại ${t.shuttleDropoffStop.name}` : ''}
+            </div>
+            {t.shuttleRun.partnerPricePerPax != null && (
+              <div>
+                Giá: <b>{formatVnd(t.shuttleRun.partnerPricePerPax)}đ/khách</b> × {t.passengers} khách = <b>{formatVnd(Number(t.shuttleRun.partnerPricePerPax) * t.passengers)}đ</b>
+              </div>
+            )}
+          </div>
+        )}
         <Flex gap={6} wrap>
           <Tag>👥 {t.passengers} khách</Tag>
           <Tag>🚐 {t.vehicleType.name}</Tag>
@@ -396,15 +414,23 @@ export function PartnerTripDetail({
         </div>
       )}
 
-      {/* Đoàn khách: chỉ họ tên, quốc tịch */}
+      {/* Đoàn khách: họ tên, giới tính, năm sinh, quốc tịch, SĐT */}
       {b.passengers.length > 0 && (
         <div className="pt-card">
           <div className="pt-section">👥 Đoàn khách · {b.passengers.length} người</div>
           {(allPax ? b.passengers : b.passengers.slice(0, PAX_PREVIEW)).map((p) => (
             <div key={p.seq} className="pt-pax">
               <span className="pt-pax-seq">{p.seq}</span>
-              <span style={{ flex: 1, fontWeight: 600 }}>{p.fullName}</span>
-              <Typography.Text type="secondary">{[p.gender && GENDER[p.gender], p.nationality].filter(Boolean).join(' · ')}</Typography.Text>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 600 }}>{p.fullName}</span>
+                <br />
+                <Typography.Text type="secondary">{[p.gender && GENDER[p.gender], p.birthYear, p.nationality].filter(Boolean).join(' · ') || '—'}</Typography.Text>
+              </span>
+              {p.phone && (
+                <a href={`tel:${p.phone}`} style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
+                  <PhoneOutlined /> {p.phone}
+                </a>
+              )}
             </div>
           ))}
           {b.passengers.length > PAX_PREVIEW && (

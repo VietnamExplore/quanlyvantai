@@ -18,6 +18,22 @@ import { partnerSafe } from '../partner-safe';
 const hm = (d: string) => dayjs(d).format('HH:mm');
 /** Ghi chú gửi lái xe / nhà xe: bỏ tên kênh bán, mã đặt chỗ, tên khách hàng */
 const safeNote = (t: ShuttleRunTrip) => partnerSafe(t.notes, [t.booking.customerRef, t.booking.customer?.name]);
+/**
+ * Khách để nhà xe cung cấp gọi đón: trưởng đoàn / HDV → khách đi có SĐT → người đặt nếu là khách đi.
+ * Booking của công ty / đại lý mà không có SĐT khách đi: không ghi tên / SĐT đại lý (nhà xe liên hệ văn phòng).
+ */
+const GENDER_VI: Record<string, string> = { NAM: 'Nam', NU: 'Nữ' };
+/** "Kim Minsu · Nam · 1990 · Hàn Quốc · +8210…" */
+const paxLine = (p: NonNullable<ShuttleRunTrip['booking']['passengers']>[number]) =>
+  [p.fullName, p.gender && GENDER_VI[p.gender], p.birthYear, p.nationality, p.phone].filter(Boolean).join(' · ');
+const guestOf = (t: ShuttleRunTrip) => {
+  const b = t.booking;
+  if (b.leaderPhone) return { name: b.leaderName, phone: b.leaderPhone };
+  const pax = b.passengers?.find((x) => x.phone);
+  if (pax) return { name: pax.fullName, phone: pax.phone };
+  if (!b.customer) return { name: b.contactName, phone: b.contactPhone };
+  return { name: b.leaderName ?? 'Khách', phone: 'liên hệ văn phòng' };
+};
 const contactOf = (t: ShuttleRunTrip) => ({ name: t.booking.leaderName || t.booking.contactName, phone: t.booking.leaderPhone || t.booking.contactPhone });
 const paxText = (t: { passengers: number; childCount: number }) => `${t.passengers} khách${t.childCount ? ` (${t.childCount} trẻ em)` : ''}`;
 
@@ -442,8 +458,8 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
   };
 
   /**
-   * Lệnh gửi nhà xe cung cấp (xe ghép giao nhà xe): chỉ tuyến, giờ, số khách theo điểm đón / trả, giá mỗi khách và tổng tiền –
-   * không có tên, SĐT, booking của khách.
+   * Lệnh gửi nhà xe cung cấp (xe ghép giao nhà xe): tuyến, giờ khởi hành, khách theo điểm đón (tên + SĐT để gọi đón),
+   * điểm trả, giá mỗi khách và tổng tiền – không có mã booking, công ty / đại lý đặt, kênh bán.
    */
   const supplierText = () => {
     if (!run) return '';
@@ -457,11 +473,23 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
     };
     const lines = [
       `GIAO KHÁCH XE GHÉP – ${run.route.name}`,
-      `Xuất bến: ${dayjs(run.departAt).format('HH:mm DD/MM/YYYY')}`,
+      `Khởi hành: ${dayjs(run.departAt).format('HH:mm DD/MM/YYYY')}`,
       `Số khách: ${pax}${kids ? ` (trong đó ${kids} trẻ em)` : ''}`,
       '',
       'Đón:',
-      ...groups.map((g) => `• ${g.time} – ${g.stop}: ${g.trips.reduce((s, t) => s + t.passengers, 0)} khách`),
+      ...groups.flatMap((g) => [
+        `• ${g.time} – ${g.stop}: ${g.trips.reduce((s, t) => s + t.passengers, 0)} khách`,
+        ...g.trips.flatMap((t) => {
+          const c = guestOf(t);
+          const list = t.booking.passengers ?? [];
+          // Liên hệ đón (trưởng đoàn / khách có SĐT) + từng khách đi: tên, giới tính, năm sinh, quốc tịch, SĐT
+          return [
+            `   ▸ ${[c.name, c.phone].filter(Boolean).join(' – ')} · ${paxText(t)}${t.flightNumber ? ` · ✈ ${t.flightNumber}` : ''}`,
+            ...list.map((p, i) => `      ${i + 1}. ${paxLine(p)}`),
+            ...(list.length && list.length < t.passengers ? [`      (+${t.passengers - list.length} khách chưa có tên)`] : []),
+          ];
+        }),
+      ]),
       'Trả:',
       ...count(active, (t) => t.shuttleDropoffStop?.name ?? '—').map(([stop, n]) => `• ${stop}: ${n} khách`),
       '',
@@ -505,7 +533,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
         run && (
           <Space wrap>
             {toPartner && (
-              <Button icon={<CopyOutlined />} disabled={!active.length} onClick={() => copy(supplierText(), 'Đã sao chép lệnh gửi nhà xe (chỉ số khách và giá). Dán vào Zalo của nhà xe.')}>
+              <Button icon={<CopyOutlined />} disabled={!active.length} onClick={() => copy(supplierText(), 'Đã sao chép lệnh gửi nhà xe (khách, SĐT, giá). Dán vào Zalo của nhà xe.')}>
                 Chép gửi nhà xe
               </Button>
             )}

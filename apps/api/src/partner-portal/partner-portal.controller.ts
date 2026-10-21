@@ -75,6 +75,10 @@ const tripSelect = {
   assignedAt: true,
   vehicleType: { select: { name: true, seats: true } },
   service: { select: { name: true } },
+  // Xe ghép: tuyến, giờ khởi hành, giá mỗi khách khi giao theo đầu khách; điểm đón / trả trên tuyến
+  shuttleRun: { select: { departAt: true, partnerPricePerPax: true, route: { select: { name: true } } } },
+  shuttlePickupStop: { select: { name: true } },
+  shuttleDropoffStop: { select: { name: true } },
   booking: {
     select: {
       code: true,
@@ -91,11 +95,12 @@ const tripSelect = {
       docLanguage: true,
       signSubtitle: true,
       signFileType: true,
-      // Đoàn khách: chỉ họ tên, quốc tịch (không SĐT, giấy tờ của từng khách)
-      passengers: { select: { seq: true, fullName: true, gender: true, nationality: true }, orderBy: { seq: 'asc' } },
+      // Đoàn khách: họ tên, giới tính, năm sinh, quốc tịch, SĐT để nhà xe đón khách (không giấy tờ tùy thân)
+      passengers: { select: { seq: true, fullName: true, gender: true, birthYear: true, nationality: true, phone: true }, orderBy: { seq: 'asc' } },
       // Tên trên bảng đón khi chưa nhập dòng chính: tên khách hàng / người liên hệ
       customer: { select: { name: true } },
       contactName: true,
+      contactPhone: true,
       // Chỉ để lọc khỏi ghi chú gửi nhà xe (không trả về)
       customerRef: true,
     },
@@ -109,7 +114,18 @@ type RawTrip = Prisma.BookingTripGetPayload<{ select: typeof tripSelect }>;
  * Bảng đón chưa nhập dòng chính: dùng tên trưởng đoàn / HDV, không thì tên khách đầu tiên (không dùng tên khách hàng / đại lý).
  */
 function clean(t: RawTrip) {
-  const { customer: _c, contactName: _n, customerRef: _r, ...booking } = t.booking;
+  const { customer: _c, contactName: _n, contactPhone: _p, customerRef: _r, passengers: pax, ...rest } = t.booking;
+  // Khách để nhà xe gọi đón: trưởng đoàn / HDV → khách đầu tiên có SĐT → người đặt (khi đó là khách đi, không phải công ty / đại lý)
+  const firstWithPhone = pax.find((p) => p.phone);
+  const ownerIsCustomer = !!t.booking.customer && t.booking.contactName.trim().toLowerCase() === t.booking.customer.name.trim().toLowerCase();
+  const guestContact = t.booking.leaderPhone
+    ? { name: t.booking.leaderName, phone: t.booking.leaderPhone }
+    : firstWithPhone
+      ? { name: firstWithPhone.fullName, phone: firstWithPhone.phone }
+      : !ownerIsCustomer && t.booking.contactPhone
+        ? { name: t.booking.contactName, phone: t.booking.contactPhone }
+        : null;
+  const booking = { ...rest, passengers: pax, guestContact };
   // Ghi chú / lịch trình: bỏ đoạn có tên kênh bán (GetYourGuide, Vé xe rẻ…), mã đặt chỗ, tên khách hàng
   const hide = [t.booking.customerRef, t.booking.customer?.name];
   return {
