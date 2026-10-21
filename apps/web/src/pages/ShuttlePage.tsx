@@ -447,7 +447,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
       g.trips.forEach((t, i) => {
         const c = contactOf(t);
         lines.push(
-          `${i + 1}. ${c.name} – ${c.phone} · ${paxText(t)}`,
+          `${i + 1}. ${t.booking.code} · ${c.name} – ${c.phone} · ${paxText(t)}`,
           `   Đón: ${t.pickupAddress}${t.dropoffAddress ? ` → Trả: ${t.dropoffAddress}` : ''}${t.flightNumber ? ` · ✈ ${t.flightNumber}` : ''}${t.departureFlight ? ` · ✈ ${t.departureFlight}` : ''}`,
           ...(t.collectAmount ? [`   Thu khách: ${formatVnd(t.collectAmount)}đ`] : []),
           ...(safeNote(t) ? [`   Ghi chú: ${safeNote(t)}`] : []),
