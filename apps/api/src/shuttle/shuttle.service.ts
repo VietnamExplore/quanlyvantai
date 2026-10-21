@@ -428,6 +428,7 @@ export class ShuttleService {
         estimatedCost: dto.estimatedCost ?? null,
         partnerId: null,
         partnerCost: null,
+        partnerPricePerPax: null,
         partnerPlate: null,
         partnerDriverName: null,
         partnerDriverPhone: null,
@@ -436,7 +437,9 @@ export class ShuttleService {
       if (!dto.partnerId) throw new BadRequestException('Chưa chọn nhà xe');
       data = {
         partnerId: dto.partnerId,
-        partnerCost: dto.partnerCost ?? null,
+        // Theo đầu khách: tổng chuyến tính lại ở syncRun theo số khách thực tế
+        partnerPricePerPax: dto.partnerPricePerPax ?? null,
+        partnerCost: dto.partnerPricePerPax != null ? null : (dto.partnerCost ?? null),
         partnerPlate: dto.partnerPlate?.trim().toUpperCase() || null,
         partnerDriverName: dto.partnerDriverName?.trim() || null,
         partnerDriverPhone: dto.partnerDriverPhone?.trim() || null,
@@ -457,7 +460,10 @@ export class ShuttleService {
       await this.push.notifyPartner(after.partnerId, {
         type: 'PARTNER_TRIP_NEW',
         title: `Chuyến xe ghép ${run.route.name} – chờ nhà xe nhận`,
-        body: `${when} · ${count.trips} lượt, ${count.pax} khách${after.partnerCost ? ` · giá thuê cả chuyến ${Number(after.partnerCost).toLocaleString('vi-VN')}đ` : ''}`,
+        body:
+          after.partnerPricePerPax != null
+            ? `${when} · ${count.pax} khách × ${Number(after.partnerPricePerPax).toLocaleString('vi-VN')}đ/khách = ${(count.pax * Number(after.partnerPricePerPax)).toLocaleString('vi-VN')}đ`
+            : `${when} · ${count.trips} lượt, ${count.pax} khách${after.partnerCost ? ` · giá thuê cả chuyến ${Number(after.partnerCost).toLocaleString('vi-VN')}đ` : ''}`,
       });
     }
     return this.getRun(id);
@@ -472,7 +478,7 @@ export class ShuttleService {
     await this.prisma.$transaction([
       this.prisma.shuttleRun.update({
         where: { id },
-        data: { vehicleId: null, driverId: null, partnerId: null, partnerCost: null, partnerPlate: null, partnerDriverName: null, partnerDriverPhone: null, estimatedCost: null, assignedAt: null },
+        data: { vehicleId: null, driverId: null, partnerId: null, partnerCost: null, partnerPricePerPax: null, partnerPlate: null, partnerDriverName: null, partnerDriverPhone: null, estimatedCost: null, assignedAt: null },
       }),
       this.prisma.bookingTrip.updateMany({
         where: { id: { in: trips.map((t) => t.id) } },
@@ -521,13 +527,15 @@ export class ShuttleService {
     const pax = trips.reduce((s, t) => s + t.passengers, 0);
     const assigned = !!(run.vehicleId || run.partnerId);
     if (!assigned) return { trips: trips.length, pax };
-    const total = Number((run.partnerId ? run.partnerCost : run.estimatedCost) ?? 0);
-    const hasCost = (run.partnerId ? run.partnerCost : run.estimatedCost) !== null;
+    // Nhà xe tính theo đầu khách: mỗi lượt = số khách × giá; tổng chuyến cập nhật theo số khách thực tế
+    const perPax = run.partnerId && run.partnerPricePerPax != null ? Number(run.partnerPricePerPax) : null;
+    const total = perPax != null ? perPax * pax : Number((run.partnerId ? run.partnerCost : run.estimatedCost) ?? 0);
+    const hasCost = perPax != null || (run.partnerId ? run.partnerCost : run.estimatedCost) !== null;
     let given = 0;
     const ops: Prisma.PrismaPromise<unknown>[] = [];
     trips.forEach((t, i) => {
       // Lượt cuối nhận phần lẻ để tổng đúng bằng chi phí cả chuyến
-      const share = !hasCost ? null : i === trips.length - 1 ? total - given : Math.round((total * t.passengers) / Math.max(1, pax));
+      const share = !hasCost ? null : perPax != null ? perPax * t.passengers : i === trips.length - 1 ? total - given : Math.round((total * t.passengers) / Math.max(1, pax));
       if (share !== null) given += share;
       // Chỉ điều các lượt của booking đã xác nhận; booking nháp / báo giá giữ ghế nhưng chưa giao xe
       const dispatchable = t.booking.status === BookingStatus.XAC_NHAN || t.booking.status === BookingStatus.HOAN_THANH;
@@ -543,6 +551,7 @@ export class ShuttleService {
       );
       if (toAssign) ops.push(this.prisma.tripEvent.create({ data: { tripId: t.id, status: TripStatus.DA_GAN, note: 'Điều xe theo chuyến xe ghép', userId: user?.id ?? null } }));
     });
+    if (perPax != null && Number(run.partnerCost ?? -1) !== total) ops.push(this.prisma.shuttleRun.update({ where: { id }, data: { partnerCost: total } }));
     if (ops.length) await this.prisma.$transaction(ops);
     return { trips: trips.length, pax };
   }

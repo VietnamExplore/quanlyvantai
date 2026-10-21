@@ -1027,6 +1027,8 @@ model ShuttleRun {
   partnerDriverPhone String?
   /// Giá thuê nhà xe cả chuyến (chưa thuế)
   partnerCost        Decimal?         @db.Decimal(15, 0)
+  /// Xe ghép giao nhà xe tính theo đầu khách: giá mỗi khách (chưa thuế); null = giá thuê cả chuyến (partnerCost)
+  partnerPricePerPax Decimal?         @db.Decimal(15, 0)
   /// Chi phí dự kiến cả chuyến khi chạy xe công ty
   estimatedCost      Decimal?         @db.Decimal(15, 0)
   dispatchNote       String?

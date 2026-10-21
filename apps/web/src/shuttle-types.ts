@@ -65,6 +65,8 @@ export interface ShuttleRun {
   partnerDriverName: string | null;
   partnerDriverPhone: string | null;
   partnerCost: string | null;
+  /** Giao nhà xe theo đầu khách: giá mỗi khách */
+  partnerPricePerPax: string | null;
   estimatedCost: string | null;
   dispatchNote: string | null;
   seatsConfirmed: number;

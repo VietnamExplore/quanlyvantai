@@ -325,6 +325,8 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
   const [busy, setBusy] = useState<string | null>(null);
   const [editAssign, setEditAssign] = useState(false);
   const mode: 'COMPANY' | 'PARTNER' = Form.useWatch('mode', form) ?? 'COMPANY';
+  const pricing: 'PAX' | 'RUN' = Form.useWatch('partnerPricing', form) ?? 'PAX';
+  const perPax: number | null = Form.useWatch('partnerPricePerPax', form) ?? null;
   const driverOptions = useCompanyDriverOptions();
   const partnerOptions = usePartnerOptions();
   const { data: vehicles = [] } = useQuery({ queryKey: ['/vehicles', { ownership: 'CONG_TY' }], queryFn: () => api<Vehicle[]>('/vehicles', { query: { ownership: 'CONG_TY' } }), enabled: !!runId && canDispatch });
@@ -334,6 +336,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
   const active = (run?.trips ?? []).filter((t) => t.status !== 'HUY' && t.booking.status !== 'HUY');
   const started = active.some((t) => ['DANG_DEN_DON', 'DA_DON_KHACH', 'HOAN_THANH'].includes(t.status));
   const done = active.length > 0 && active.every((t) => t.status === 'HOAN_THANH');
+  const activePax = active.reduce((s, t) => s + t.passengers, 0);
 
   const refresh = (r?: ShuttleRunDetail) => {
     if (r) queryClient.setQueryData(['/shuttle/runs', runId], r);
@@ -384,14 +387,18 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
   const startAssign = () => {
     form.setFieldsValue(
       run?.partner
-        ? { mode: 'PARTNER', partnerId: run.partner.id, partnerCost: run.partnerCost ? Number(run.partnerCost) : null, partnerPlate: run.partnerPlate, partnerDriverName: run.partnerDriverName, partnerDriverPhone: run.partnerDriverPhone, dispatchNote: run.dispatchNote }
+        ? { mode: 'PARTNER', partnerPricing: run.partnerPricePerPax != null ? 'PAX' : 'RUN', partnerPricePerPax: run.partnerPricePerPax != null ? Number(run.partnerPricePerPax) : null, partnerCost: run.partnerCost ? Number(run.partnerCost) : null, partnerPlate: run.partnerPlate, partnerDriverName: run.partnerDriverName, partnerDriverPhone: run.partnerDriverPhone, dispatchNote: run.dispatchNote }
         : { mode: 'COMPANY', vehicleId: run?.vehicle?.id, driverId: run?.driver?.id, estimatedCost: run?.estimatedCost ? Number(run.estimatedCost) : null, dispatchNote: run?.dispatchNote },
     );
     setEditAssign(true);
   };
 
   const submitAssign = async () => {
-    const v = await form.validateFields();
+    const { partnerPricing, ...v } = await form.validateFields();
+    if (v.mode === 'PARTNER') {
+      if (partnerPricing === 'PAX') v.partnerCost = null;
+      else v.partnerPricePerPax = null;
+    }
     const ok = await call('assign', `/shuttle/runs/${runId}/assign`, 'POST', v, 'Đã điều xe cho cả chuyến');
     if (ok) {
       setEditAssign(false);
@@ -434,6 +441,37 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
     return lines.join('\n');
   };
 
+  /**
+   * Lệnh gửi nhà xe cung cấp (xe ghép giao nhà xe): chỉ tuyến, giờ, số khách theo điểm đón / trả, giá mỗi khách và tổng tiền –
+   * không có tên, SĐT, booking của khách.
+   */
+  const supplierText = () => {
+    if (!run) return '';
+    const pax = active.reduce((s, t) => s + t.passengers, 0);
+    const kids = active.reduce((s, t) => s + t.childCount, 0);
+    const per = run.partnerPricePerPax != null ? Number(run.partnerPricePerPax) : null;
+    const count = (list: ShuttleRunTrip[], key: (t: ShuttleRunTrip) => string) => {
+      const m = new Map<string, number>();
+      for (const t of list) m.set(key(t), (m.get(key(t)) ?? 0) + t.passengers);
+      return [...m.entries()];
+    };
+    const lines = [
+      `GIAO KHÁCH XE GHÉP – ${run.route.name}`,
+      `Xuất bến: ${dayjs(run.departAt).format('HH:mm DD/MM/YYYY')}`,
+      `Số khách: ${pax}${kids ? ` (trong đó ${kids} trẻ em)` : ''}`,
+      '',
+      'Đón:',
+      ...groups.map((g) => `• ${g.time} – ${g.stop}: ${g.trips.reduce((s, t) => s + t.passengers, 0)} khách`),
+      'Trả:',
+      ...count(active, (t) => t.shuttleDropoffStop?.name ?? '—').map(([stop, n]) => `• ${stop}: ${n} khách`),
+      '',
+      per != null ? `Giá: ${formatVnd(per)}đ/khách × ${pax} khách = ${formatVnd(per * pax)}đ` : run.partnerCost ? `Giá cả chuyến: ${formatVnd(run.partnerCost)}đ` : '',
+      partnerSafe(run.dispatchNote) ? `Lưu ý: ${partnerSafe(run.dispatchNote)}` : '',
+    ];
+    return lines.filter((x, i) => x !== '' || lines[i - 1] !== '').join('\n').trim();
+  };
+  const toPartner = !!run?.partner;
+
   const exportExcel = () =>
     run &&
     downloadExcel(`xe-ghep_${run.route.name.replace(/[^\p{L}\p{N}]+/gu, '-')}_${dayjs(run.departAt).format('YYYYMMDD-HHmm')}.xlsx`, [
@@ -466,6 +504,11 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
       extra={
         run && (
           <Space wrap>
+            {toPartner && (
+              <Button icon={<CopyOutlined />} disabled={!active.length} onClick={() => copy(supplierText(), 'Đã sao chép lệnh gửi nhà xe (chỉ số khách và giá). Dán vào Zalo của nhà xe.')}>
+                Chép gửi nhà xe
+              </Button>
+            )}
             <Button icon={<CopyOutlined />} disabled={!active.length} onClick={() => copy(manifestText(), 'Đã sao chép danh sách khách. Dán vào Zalo của lái xe / nhà xe.')}>
               Chép danh sách
             </Button>
@@ -508,7 +551,14 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
                   🤝 {run.partner.name}
                   {run.partnerPlate ? ` · ${run.partnerPlate}` : ''}
                   {run.partnerDriverName ? ` · ${run.partnerDriverName} ${run.partnerDriverPhone ?? ''}` : ''}
-                  {run.partnerCost ? <Typography.Text type="secondary"> · giá thuê cả chuyến {formatVnd(run.partnerCost)}đ</Typography.Text> : null}
+                  {run.partnerPricePerPax != null ? (
+                    <Typography.Text type="secondary">
+                      {' '}
+                      · {formatVnd(run.partnerPricePerPax)}đ/khách × {active.reduce((s, t) => s + t.passengers, 0)} khách = {formatVnd(Number(run.partnerPricePerPax) * active.reduce((s, t) => s + t.passengers, 0))}đ
+                    </Typography.Text>
+                  ) : run.partnerCost ? (
+                    <Typography.Text type="secondary"> · giá thuê cả chuyến {formatVnd(run.partnerCost)}đ</Typography.Text>
+                  ) : null}
                 </>
               ) : (
                 <Typography.Text type="warning">Chưa điều xe · {run.vehicleType.name}</Typography.Text>
@@ -591,9 +641,26 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={12}>
-                      <Form.Item name="partnerCost" label="Giá thuê cả chuyến (chưa thuế)" tooltip="Chia cho từng lượt khách theo số khách; công nợ nhà xe cộng đủ cả chuyến">
-                        <MoneyInput />
+                      <Form.Item name="partnerPricing" label="Tính tiền nhà xe" initialValue="PAX">
+                        <Radio.Group optionType="button" options={[{ value: 'PAX', label: 'Theo đầu khách' }, { value: 'RUN', label: 'Cả chuyến' }]} />
                       </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      {pricing === 'RUN' ? (
+                        <Form.Item name="partnerCost" label="Giá thuê cả chuyến (chưa thuế)" tooltip="Chia cho từng lượt khách theo số khách; công nợ nhà xe cộng đủ cả chuyến">
+                          <MoneyInput />
+                        </Form.Item>
+                      ) : (
+                        <Form.Item
+                          name="partnerPricePerPax"
+                          label="Giá mỗi khách (chưa thuế)"
+                          tooltip="Tiền trả nhà xe = số khách × giá mỗi khách, tự tính lại khi khách thêm / bớt"
+                          extra={perPax ? `${activePax} khách × ${formatVnd(perPax)}đ = ${formatVnd(activePax * Number(perPax))}đ` : undefined}
+                          rules={[{ required: true, message: 'Nhập giá mỗi khách' }]}
+                        >
+                          <MoneyInput />
+                        </Form.Item>
+                      )}
                     </Col>
                     <Col xs={8}>
                       <Form.Item name="partnerPlate" label="Biển số">
@@ -666,7 +733,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
           ))}
         </Flex>
       )}
-      <SendOrderModal open={sendOpen} text={sendOpen ? manifestText() : ''} targets={sendTargets} onClose={() => setSendOpen(false)} />
+      <SendOrderModal open={sendOpen} text={sendOpen ? (toPartner ? supplierText() : manifestText()) : ''} targets={sendTargets} onClose={() => setSendOpen(false)} />
     </Drawer>
   );
 }

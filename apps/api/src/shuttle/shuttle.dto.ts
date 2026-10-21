@@ -70,6 +70,8 @@ export class AssignRunDto {
   @IsOptional() @IsInt() partnerId?: number;
   /** Giá thuê nhà xe cả chuyến, chưa thuế */
   @IsOptional() @IsNumber() @Min(0) partnerCost?: number | null;
+  /** Giao nhà xe theo đầu khách: giá mỗi khách (chưa thuế); có giá này thì tiền nhà xe = số khách × giá, tự tính lại khi khách thay đổi */
+  @IsOptional() @IsNumber() @Min(0) partnerPricePerPax?: number | null;
   @IsOptional() @IsString() partnerPlate?: string | null;
   @IsOptional() @IsString() partnerDriverName?: string | null;
   @IsOptional() @IsString() partnerDriverPhone?: string | null;
