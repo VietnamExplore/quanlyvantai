@@ -117,25 +117,45 @@ export class PushService {
     const tripId = typeof data.tripId === 'number' ? data.tripId : null;
     await this.notifyUsers([driver.user.id], { type, title, body, tripId });
     if (driver.user.isActive) await this.webPush(driver.user.id, { title, body, tripId, type }).catch((e) => this.logger.warn(`Web Push: ${(e as Error).message}`));
-    const token = driver.user.isActive ? driver.user.pushToken : null;
-    if (!token) return;
+    if (driver.user.isActive && driver.user.pushToken) await this.expoPush(driver.user.id, driver.user.pushToken, { title, body, data });
+  }
+
+  /**
+   * Thông báo đẩy tới app Android (Expo Push → Firebase). Trả kết quả: 'ok' hoặc lý do lỗi.
+   * Máy đã gỡ app / đổi máy (DeviceNotRegistered): bỏ mã nhận thông báo cũ (app mở lại sẽ tự đăng ký mã mới).
+   */
+  async expoPush(userId: number, token: string, n: { title: string; body: string; data?: Record<string, unknown> }): Promise<string> {
     try {
       const res = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ to: token, title, body, data, sound: 'default', priority: 'high', channelId: 'trips' }),
+        body: JSON.stringify({ to: token, title: n.title, body: n.body, data: n.data ?? {}, sound: 'default', priority: 'high', channelId: 'trips' }),
       });
-      if (!res.ok) this.logger.warn(`Gửi thông báo thất bại: HTTP ${res.status}`);
-      else {
-        // Máy đã gỡ app / đổi máy: bỏ mã nhận thông báo cũ (app mở lại sẽ tự đăng ký mã mới)
-        const out = (await res.json().catch(() => null)) as { data?: { status?: string; message?: string; details?: { error?: string } } } | null;
-        if (out?.data?.status === 'error') {
-          this.logger.warn(`Gửi thông báo thất bại: ${out.data.details?.error ?? out.data.message}`);
-          if (out.data.details?.error === 'DeviceNotRegistered') await this.prisma.user.update({ where: { id: driver.user.id }, data: { pushToken: null } });
-        }
+      if (!res.ok) {
+        this.logger.warn(`Gửi thông báo thất bại: HTTP ${res.status}`);
+        return `HTTP ${res.status}`;
       }
+      const out = (await res.json().catch(() => null)) as { data?: { status?: string; message?: string; details?: { error?: string } } } | null;
+      if (out?.data?.status === 'error') {
+        const why = out.data.details?.error ?? out.data.message ?? 'lỗi';
+        this.logger.warn(`Gửi thông báo thất bại: ${why}`);
+        if (out.data.details?.error === 'DeviceNotRegistered') await this.prisma.user.update({ where: { id: userId }, data: { pushToken: null } });
+        return why;
+      }
+      return 'ok';
     } catch (e) {
       this.logger.warn(`Gửi thông báo thất bại: ${(e as Error).message}`);
+      return (e as Error).message;
     }
+  }
+
+  /** Gửi thử 1 thông báo đẩy tới các máy của chính người dùng (nút "Gửi thông báo thử" trong app lái xe) */
+  async testPush(userId: number) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { pushToken: true } });
+    const msg = { title: '🔔 Thông báo thử', body: 'Máy này đã nhận được thông báo đẩy từ phần mềm điều xe.' };
+    const android = u?.pushToken ? await this.expoPush(userId, u.pushToken, msg) : null;
+    const web = await this.prisma.webPushSubscription.count({ where: { userId } });
+    if (web) await this.webPush(userId, { ...msg, type: 'TEST' });
+    return { android, web };
   }
 }

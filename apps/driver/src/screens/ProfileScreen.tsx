@@ -1,12 +1,32 @@
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
 import { keyboardScroll } from '../platform';
 import { BRAND, colors, fmtDate } from '../theme';
 import type { AuthUser, DriverProfile } from '../types';
+import { setupNotifications } from '../notify';
 import { Button, Card, Row, Section, styles as ui } from '../ui';
+import { syncWebPush, webPushState } from '../webpush';
+
+/**
+ * Gửi thử thông báo đẩy tới máy này: đăng ký lại (nếu cần) rồi nhờ máy chủ gửi 1 thông báo.
+ * Dùng để kiểm tra máy lái xe đã nhận được thông báo chuyến mới chưa.
+ */
+async function testPush() {
+  try {
+    if (Platform.OS === 'web') {
+      if (webPushState() !== 'on') return Alert.alert('Chưa bật thông báo', 'Mở trang Chuyến, bấm "Bật thông báo" (iPhone: cần thêm app vào Màn hình chính trước).');
+      await syncWebPush();
+    } else await setupNotifications();
+    const r = await api<{ android: string | null; web: number }>('/driver/push/test', { method: 'POST' });
+    if (r.android === 'ok' || (Platform.OS === 'web' && r.web > 0)) Alert.alert('Đã gửi thông báo thử', 'Thông báo sẽ hiện trên máy trong vài giây. Nếu không thấy: kiểm tra Cài đặt → Thông báo của app, tắt chế độ Không làm phiền / tiết kiệm pin cho app.');
+    else Alert.alert('Máy này chưa nhận được thông báo đẩy', r.android ? `Lỗi: ${r.android}` : 'App chưa đăng ký nhận thông báo: mở Cài đặt → Ứng dụng → Vietnam Explore Driver → Thông báo → Cho phép, rồi mở lại app.');
+  } catch (e) {
+    Alert.alert('Không gửi được', (e as Error).message);
+  }
+}
 
 /** Hạn giấy tờ: hết hạn → đỏ, còn ≤ 30 ngày → cam */
 function Expiry({ iso }: { iso: string | null }) {
@@ -90,6 +110,12 @@ export function ProfileScreen({ user, onLogout }: { user: AuthUser; onLogout: ()
         <TextInput placeholderTextColor={colors.muted} style={ui.input} secureTextEntry placeholder="Mật khẩu hiện tại" value={current} onChangeText={setCurrent} />
         <TextInput placeholderTextColor={colors.muted} style={ui.input} secureTextEntry placeholder="Mật khẩu mới (ít nhất 6 ký tự)" value={next} onChangeText={setNext} />
         <Button title="Đổi mật khẩu" variant="soft" size="sm" onPress={changePassword} loading={busy} />
+      </Card>
+
+      <Card>
+        <Section icon="notifications-outline" title="Thông báo" />
+        <Text style={{ color: colors.text2, fontSize: 14, marginBottom: 10 }}>Kiểm tra máy này có nhận được thông báo chuyến mới, đổi giờ, hủy chuyến khi không mở app.</Text>
+        <Button title="Gửi thông báo thử" icon="notifications" variant="soft" size="sm" onPress={testPush} />
       </Card>
 
       <Button

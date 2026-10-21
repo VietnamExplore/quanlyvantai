@@ -738,6 +738,13 @@ export class DriverAppController {
     return { ok: true };
   }
 
+  /** Gửi thử thông báo đẩy tới máy của mình (Android: Firebase; iPhone: Web Push) */
+  @Post('push/test')
+  @HttpCode(200)
+  pushTest(@CurrentUser() user: AuthUser) {
+    return this.push.testPush(user.id);
+  }
+
   @Post('push-token')
   @HttpCode(200)
   async pushToken(@CurrentUser() user: AuthUser, @Body() dto: PushTokenDto) {

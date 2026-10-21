@@ -148,6 +148,7 @@ export const AUDIT_RULES: AuditRule[] = [
   { method: 'POST', path: '/driver/webpush/subscribe', action: '', skip: true },
   { method: 'POST', path: '/driver/webpush/unsubscribe', action: '', skip: true },
   { method: 'POST', path: '/driver/webpush/test', action: '', skip: true },
+  { method: 'POST', path: '/driver/push/test', action: '', skip: true },
   { method: 'POST', path: '/notifications/:id/read', action: '', skip: true },
   { method: 'POST', path: '/notifications/read-all', action: '', skip: true },
   { method: 'POST', path: '/pricing/calculate', action: '', skip: true },
