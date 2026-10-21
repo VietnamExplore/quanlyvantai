@@ -459,7 +459,8 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
 
   /**
    * Lệnh gửi nhà xe cung cấp (xe ghép giao nhà xe): tuyến, giờ khởi hành, khách theo điểm đón (tên + SĐT để gọi đón),
-   * điểm trả, giá mỗi khách và tổng tiền – không có mã booking, công ty / đại lý đặt, kênh bán.
+   * hành trình, điểm trả, giá mỗi khách và tổng tiền; có mã booking của công ty (như lệnh điều xe),
+   * không có mã / tên kênh bán, công ty / đại lý đặt.
    */
   const supplierText = () => {
     if (!run) return '';
@@ -488,7 +489,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
           const to = partnerSafe(t.dropoffAddress, hide) || t.shuttleDropoffStop?.name || '—';
           // Liên hệ đón (trưởng đoàn / khách có SĐT) + từng khách đi: tên, giới tính, năm sinh, quốc tịch, SĐT
           return [
-            `   ▸ ${[c.name, c.phone].filter(Boolean).join(' – ')} · ${paxText(t)}${t.flightNumber ? ` · ✈ ${t.flightNumber}` : ''}`,
+            `   ▸ ${t.booking.code} · ${[c.name, c.phone].filter(Boolean).join(' – ')} · ${paxText(t)}${t.flightNumber ? ` · ✈ ${t.flightNumber}` : ''}`,
             `      Hành trình: ${from} → ${to}${t.departureFlight ? ` · ✈ ${t.departureFlight}` : ''}`,
             ...list.map((p, i) => `      ${i + 1}. ${paxLine(p)}`),
             ...(list.length && list.length < t.passengers ? [`      (+${t.passengers - list.length} khách chưa có tên)`] : []),
