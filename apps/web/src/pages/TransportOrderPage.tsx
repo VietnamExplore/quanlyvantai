@@ -215,7 +215,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
               </td>
               <td>Đi: {v.start}</td>
               <td>
-                Xuất bến {hm(v.from)} ngày {dm(v.from)}
+                Khởi hành {hm(v.from)} ngày {dm(v.from)}
               </td>
               <td rowSpan={2} className="c">
                 {v.passengers}
@@ -233,7 +233,7 @@ export default function TransportOrderPage({ publicOrder }: { publicOrder?: { ki
                 <b>Lượt về</b>
               </td>
               <td>Đi: </td>
-              <td>Xuất bến ……giờ ngày ……</td>
+              <td>Khởi hành ……giờ ngày ……</td>
               <td rowSpan={2} />
               <td rowSpan={2} />
             </tr>
