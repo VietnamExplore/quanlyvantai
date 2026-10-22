@@ -48,6 +48,10 @@ interface ReportTrip {
     salesUser: { id: number; fullName: string } | null;
   };
   revenue: number;
+  /** Giá điều xe công ty (null: chưa nhập) */
+  companyPrice: number | null;
+  /** Doanh số của xe / lái xe công ty: giá điều xe, chưa nhập thì bằng doanh thu */
+  dispatchRevenue: number;
   cost: number;
   profit: number;
   costKnown: boolean;
@@ -189,7 +193,11 @@ function tripDays(t: ReportTrip, from: string, to: string) {
   return out;
 }
 
-function groupTrips(trips: ReportTrip[], keyOf: (t: ReportTrip) => { key: string; name: string; sub?: string } | null, from: string, to: string, seed: { key: string; name: string; sub?: string }[] = []) {
+/** Doanh số xe / lái xe công ty theo giá điều xe */
+const byDispatchPrice = (t: ReportTrip) => t.dispatchRevenue;
+
+/** rev: doanh thu tính cho nhóm (xe / lái xe công ty: giá điều xe), mặc định doanh thu booking */
+function groupTrips(trips: ReportTrip[], keyOf: (t: ReportTrip) => { key: string; name: string; sub?: string } | null, from: string, to: string, seed: { key: string; name: string; sub?: string }[] = [], rev: (t: ReportTrip) => number = (t) => t.revenue) {
   const map = new Map<string, Group & { _bookings: Set<number>; _days: Set<string> }>();
   const make = (k: { key: string; name: string; sub?: string }) => ({
     ...k,
@@ -215,9 +223,9 @@ function groupTrips(trips: ReportTrip[], keyOf: (t: ReportTrip) => { key: string
     g.trips += 1;
     g.passengers += t.passengers;
     g.hours += tripHours(t);
-    g.revenue += t.revenue;
+    g.revenue += rev(t);
     g.cost += t.cost;
-    g.profit += t.profit;
+    g.profit += rev(t) - t.cost;
     g.partnerCost += t.partnerCost ?? 0;
     g.driverCosts += t.driverCosts;
     g._bookings.add(t.booking.id);
@@ -487,6 +495,7 @@ export default function ReportsPage() {
       from,
       to,
       isFiltered ? [] : (data?.vehicles ?? []).map((v) => ({ key: `v${v.id}`, name: v.plateNumber, sub: v.vehicleType.name })),
+      byDispatchPrice,
     );
     const vehicleInfo = new Map((data?.vehicles ?? []).map((v) => [`v${v.id}`, v]));
     vehicles.forEach((g) => (g.sub = g.sub ?? vehicleInfo.get(g.key)?.vehicleType.name));
@@ -498,6 +507,7 @@ export default function ReportsPage() {
         from,
         to,
         isFiltered ? [] : (data?.drivers ?? []).filter((d) => d.status !== 'NGHI_VIEC').map((d) => ({ key: `d${d.id}`, name: d.fullName, sub: d.phone })),
+        byDispatchPrice,
       ),
       partners: groupTrips(trips, (t) => (t.partner ? { key: `p${t.partner.id}`, name: t.partner.name } : null), from, to),
       customers: groupTrips(trips, (t) => ({ key: t.booking.customer ? `c${t.booking.customer.id}` : `le-${t.booking.contactName}`, name: customerName(t) }), from, to),
@@ -541,7 +551,10 @@ export default function ReportsPage() {
   /** Xuất Excel đối chiếu chuyến của một xe / lái xe / nhà xe (dòng trong các tab gom nhóm) */
   async function exportOne(kind: 'vehicle' | 'driver' | 'partner', g: Group) {
     const id = Number(g.key.slice(1));
-    const list = trips.filter((t) => (kind === 'vehicle' ? t.vehicle?.id === id : kind === 'driver' ? t.driver?.id === id && !t.partnerId : t.partner?.id === id));
+    const list = trips
+      .filter((t) => (kind === 'vehicle' ? t.vehicle?.id === id : kind === 'driver' ? t.driver?.id === id && !t.partnerId : t.partner?.id === id))
+      // Xe / lái xe công ty: doanh thu theo giá điều xe
+      .map((t) => (kind === 'partner' ? t : { ...t, revenue: t.dispatchRevenue, profit: t.dispatchRevenue - t.cost }));
     if (!list.length) {
       message.info(`${g.name} không có chuyến trong kỳ`);
       return;

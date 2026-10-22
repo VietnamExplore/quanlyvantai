@@ -37,7 +37,8 @@ const subtotal = (trips: { amount: Prisma.Decimal; status: TripStatus }[]) =>
  *   tính riêng từng loại BHXH / BHYT / BHTN: lái xe đóng (mặc định 8 / 1,5 / 1%) – trừ vào lương; công ty đóng (17,5 / 3 / 1%) – chi phí công ty.
  *   Kỳ không trọn tháng thì tính theo số ngày như lương cứng.
  * - Lương cứng tính theo tháng; kỳ không trọn tháng thì tính theo số ngày (lương × số ngày / số ngày của tháng).
- * - Doanh số = doanh thu (đã phân bổ giảm giá, chưa VAT) các chuyến lái xe đã HOÀN THÀNH
+ * - Doanh số = giá điều xe công ty của các chuyến lái xe đã HOÀN THÀNH; chuyến chưa nhập giá điều xe
+ *   thì lấy doanh thu booking (đã phân bổ giảm giá, chưa VAT)
  *   (xe công ty, booking đã xác nhận / hoàn thành), theo ngày đón.
  * - Chuyến đã qua giờ đón nhưng chưa bấm hoàn thành: chưa tính, trả về để cảnh báo.
  * - Hoàn ứng = chi phí lái xe tự nhập trên app (byDriver) của các chuyến lái xe chạy trong kỳ
@@ -71,6 +72,7 @@ export class PayrollService {
           id: true,
           driverId: true,
           amount: true,
+          companyPrice: true,
           pickupTime: true,
           pickupAddress: true,
           dropoffAddress: true,
@@ -141,8 +143,9 @@ export class PayrollService {
     const rateFor = (dId: number, month: string) => salaries.find((s) => s.driverId === dId && s.effectiveFrom.toISOString().slice(0, 7) <= month) ?? null;
     const monthOf = (d: Date) => vnDate(d).slice(0, 7);
 
-    // Doanh thu từng chuyến hoàn thành (đã phân bổ giảm giá của booking)
+    // Doanh số từng chuyến hoàn thành: giá điều xe; chưa có thì doanh thu booking (đã phân bổ giảm giá)
     const tripRevenue = trips.map((t) => {
+      if (t.companyPrice !== null) return { t, revenue: Number(t.companyPrice) };
       const sub = subtotal(t.booking.trips);
       const factor = sub > 0 ? Math.max(0, sub - Number(t.booking.discountAmount)) / sub : 0;
       return { t, revenue: Number(t.amount) * factor };

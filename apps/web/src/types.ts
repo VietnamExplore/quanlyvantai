@@ -327,6 +327,8 @@ export interface BookingTrip extends Ref {
   surcharges: PriceLine[];
   amount: string;
   estimatedCost: string | null;
+  /** Giá điều xe công ty: doanh số của xe và lái xe */
+  companyPrice?: string | null;
   itinerary: string | null;
   notes: string | null;
   status: TripStatus;

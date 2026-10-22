@@ -208,6 +208,7 @@ export class ReportsController {
           days: true,
           amount: true,
           estimatedCost: true,
+          companyPrice: true,
           fuelCost: true,
           startKm: true,
           endKm: true,
@@ -257,7 +258,7 @@ export class ReportsController {
           }),
     ]);
 
-    const trips = rows.map(({ costs, booking, amount, estimatedCost, partnerCost, ...t }) => {
+    const trips = rows.map(({ costs, booking, amount, estimatedCost, partnerCost, companyPrice, ...t }) => {
       const subtotal = this.subtotal(booking.trips);
       const factor = subtotal > 0 ? Math.max(0, subtotal - Number(booking.discountAmount)) / subtotal : 0;
       const { cost, known, actual } = tripCost({ partnerId: t.partnerId, partnerCost, partnerExtraUp: t.partnerExtraUp, partnerExtraDown: t.partnerExtraDown, partnerExtraStatus: t.partnerExtraStatus, estimatedCost, costs, fuelCost: t.fuelCost });
@@ -268,6 +269,9 @@ export class ReportsController {
         ...t,
         booking: b,
         revenue,
+        // Doanh số xe / lái xe công ty: giá điều xe; chưa nhập thì bằng doanh thu booking
+        companyPrice: companyPrice === null ? null : Number(companyPrice),
+        dispatchRevenue: t.vehicle && companyPrice !== null ? Number(companyPrice) : revenue,
         cost: Math.round(cost * 100) / 100,
         profit: Math.round((revenue - cost) * 100) / 100,
         costKnown: known,

@@ -312,13 +312,14 @@ export class DispatchService {
       data = {
         vehicleId: dto.vehicleId,
         driverId: dto.driverId ?? null,
+        companyPrice: dto.companyPrice ?? null,
         partnerId: null,
         partnerPlate: null,
         partnerDriverName: null,
         partnerDriverPhone: null,
         partnerCost: null,
       };
-      note = `Gán xe ${vehicle.plateNumber}${driver ? `, lái xe ${driver.fullName}` : ' (chưa có lái xe)'}`;
+      note = `Gán xe ${vehicle.plateNumber}${driver ? `, lái xe ${driver.fullName}` : ' (chưa có lái xe)'}${dto.companyPrice != null ? `, giá điều xe ${dto.companyPrice.toLocaleString('vi-VN')}đ` : ''}`;
       if (warnings.length) note += ` · Đã bỏ qua cảnh báo: ${warnings.join('; ')}`;
     } else {
       if (!dto.partnerId) throw new BadRequestException('Chưa chọn nhà xe đối tác');
@@ -335,6 +336,7 @@ export class DispatchService {
       data = {
         vehicleId: null,
         driverId: null,
+        companyPrice: null,
         partnerId: partner.id,
         partnerPlate: dto.partnerPlate || null,
         partnerDriverName: dto.partnerDriverName || null,

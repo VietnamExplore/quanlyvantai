@@ -489,6 +489,7 @@ model BookingTrip {
   surcharges        Json        @default("[]") // [{ name, amount }]
   amount            Decimal     @db.Decimal(15, 0) // = unitPrice + tổng phụ thu
   estimatedCost     Decimal?    @db.Decimal(15, 0) // Chi phí dự kiến (giá thuê đối tác / chi phí xe công ty), dùng tính lợi nhuận
+  companyPrice      Decimal?    @db.Decimal(15, 0) // Giá điều xe công ty: doanh số của xe và lái xe công ty (thay giá trong booking)
   itinerary         String? // Lịch trình chi tiết
   notes             String?
   status            TripStatus  @default(CHO_DIEU)

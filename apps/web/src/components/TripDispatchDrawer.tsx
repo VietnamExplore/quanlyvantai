@@ -114,6 +114,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
     if (!trip || !showAssignForm) return;
     if (trip.partnerId) {
       setTab('PARTNER');
+      companyForm.setFieldsValue({ companyPrice: Number(trip.amount) });
       partnerForm.setFieldsValue({
         partnerId: trip.partnerId,
         partnerPlate: trip.partnerPlate,
@@ -127,7 +128,8 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       });
     } else {
       setTab('COMPANY');
-      companyForm.setFieldsValue({ vehicleId: trip.vehicleId ?? undefined, driverId: trip.driverId ?? undefined, dispatchNote: trip.dispatchNote });
+      // Giá điều xe: mặc định bằng giá bán của chuyến trong booking
+      companyForm.setFieldsValue({ vehicleId: trip.vehicleId ?? undefined, driverId: trip.driverId ?? undefined, companyPrice: trip.companyPrice != null ? Number(trip.companyPrice) : Number(trip.amount), dispatchNote: trip.dispatchNote });
       if (trip.vehicleId) runCheck(trip.vehicleId, trip.driverId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,7 +240,7 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
         const v = companyForm.getFieldsValue();
         runCheck(v.vehicleId, v.driverId);
       }}
-      onFinish={(v) => assign({ mode: 'COMPANY', vehicleId: v.vehicleId, driverId: v.driverId ?? null, dispatchNote: v.dispatchNote || null })}
+      onFinish={(v) => assign({ mode: 'COMPANY', vehicleId: v.vehicleId, driverId: v.driverId ?? null, companyPrice: v.companyPrice ?? null, dispatchNote: v.dispatchNote || null })}
     >
       <Form.Item name="vehicleId" label="Xe công ty" rules={[{ required: true, message: 'Chọn xe' }]}>
         <QuickSelect
@@ -293,6 +295,9 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
       {check?.errors.map((e) => <Alert key={e} type="error" showIcon title={e} style={{ marginBottom: 8 }} />)}
       {check?.warnings.map((w) => <Alert key={w} type="warning" showIcon title={w} style={{ marginBottom: 8 }} />)}
       {check && !check.errors.length && !check.warnings.length && <Alert type="success" showIcon title="Xe và lái xe phù hợp, không trùng lịch" style={{ marginBottom: 8 }} />}
+      <Form.Item name="companyPrice" label="Giá điều xe" extra="Tính doanh số cho xe và lái xe công ty (thay giá trong booking). Mặc định bằng giá bán của chuyến.">
+        <MoneyInput />
+      </Form.Item>
       <Form.Item name="dispatchNote" label="Ghi chú cho lái xe">
         <Input.TextArea rows={2} placeholder="Ví dụ: có mặt trước 15 phút, mang bảng tên đón khách" />
       </Form.Item>
@@ -518,6 +523,9 @@ export function TripDispatchDrawer({ tripId, onClose }: Props) {
                     <b>{trip.vehicle.plateNumber}</b> ({trip.vehicle.vehicleType.name})
                   </Descriptions.Item>
                   <Descriptions.Item label="Lái xe">{trip.driver ? `${trip.driver.fullName} – ${trip.driver.phone}` : <Typography.Text type="warning">Chưa có</Typography.Text>}</Descriptions.Item>
+                  <Descriptions.Item label="Giá điều xe">
+                    {trip.companyPrice != null ? <Money value={trip.companyPrice} strong /> : <Typography.Text type="secondary">chưa nhập – doanh số tính theo giá booking</Typography.Text>}
+                  </Descriptions.Item>
                 </Descriptions>
               ) : (
                 <Descriptions column={1} size="small">

@@ -17,6 +17,8 @@ export class AssignDto {
   // Xe công ty
   @IsOptional() @IsInt() vehicleId?: number;
   @IsOptional() @IsInt() driverId?: number | null;
+  /** Giá điều xe công ty: doanh số của xe và lái xe (thay giá trong booking) */
+  @IsOptional() @IsNumber() @Min(0) companyPrice?: number | null;
 
   // Nhà xe đối tác
   @IsOptional() @IsInt() partnerId?: number;
@@ -41,6 +43,8 @@ export class AssignDto {
 export class CheckDto {
   @IsInt() vehicleId: number;
   @IsOptional() @IsInt() driverId?: number | null;
+  /** Giá điều xe công ty: doanh số của xe và lái xe (thay giá trong booking) */
+  @IsOptional() @IsNumber() @Min(0) companyPrice?: number | null;
 }
 
 /** Trạng thái Điều hành được cập nhật tay (thay lái xe / cho chuyến đối tác) */
