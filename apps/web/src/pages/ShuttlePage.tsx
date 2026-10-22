@@ -410,7 +410,6 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
             mode: 'COMPANY',
             vehicleId: run?.vehicle?.id,
             driverId: run?.driver?.id,
-            estimatedCost: run?.estimatedCost ? Number(run.estimatedCost) : null,
             companyPricing: run?.companyPrice != null && run.companyPricePerPax == null ? 'RUN' : 'PAX',
             companyPricePerPax: run?.companyPricePerPax != null ? Number(run.companyPricePerPax) : null,
             companyPrice: run?.companyPrice != null ? Number(run.companyPrice) : null,
@@ -594,7 +593,6 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
                 <>
                   🚐 {run.vehicle.plateNumber}
                   {run.driver ? ` · ${run.driver.fullName} (${run.driver.phone})` : ' · chưa chọn lái xe'}
-                  {run.estimatedCost ? <Typography.Text type="secondary"> · chi phí {formatVnd(run.estimatedCost)}đ</Typography.Text> : null}
                   {run.companyPricePerPax != null ? (
                     <Typography.Text type="secondary"> · giá điều xe {formatVnd(run.companyPricePerPax)}đ/khách = {formatVnd(run.companyPrice ?? 0)}đ</Typography.Text>
                   ) : run.companyPrice != null ? (
@@ -664,7 +662,7 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
                 </Form.Item>
                 {mode === 'COMPANY' ? (
                   <Row gutter={12}>
-                    <Col xs={24} md={8}>
+                    <Col xs={24} md={12}>
                       <Form.Item name="vehicleId" label="Xe" rules={[{ required: true, message: 'Chọn xe' }]}>
                         <Select
                           showSearch
@@ -677,14 +675,9 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
                         />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} md={8}>
+                    <Col xs={24} md={12}>
                       <Form.Item name="driverId" label="Lái xe">
                         <Select allowClear showSearch optionFilterProp="label" options={driverOptions} />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                      <Form.Item name="estimatedCost" label="Chi phí dự kiến cả chuyến" tooltip="Xăng, cầu đường, tiền chuyến lái xe… chia cho từng lượt khách theo số khách để tính lợi nhuận">
-                        <MoneyInput />
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={12}>
