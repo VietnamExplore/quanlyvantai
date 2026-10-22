@@ -389,12 +389,19 @@ export class OtaMailService implements OnModuleInit, OnModuleDestroy {
     return best && best.score > 2 ? best : null;
   }
 
-  /** Booking văn phòng đã nhập tay (không có mã đặt chỗ): cùng ngày đi, cùng SĐT hoặc cùng tên khách */
+  /**
+   * Booking văn phòng đã nhập tay (không có mã đặt chỗ): cùng ngày đi, cùng SĐT hoặc cùng tên khách.
+   * Booking đã có mã đặt chỗ (khác mã email) là booking khác – khách đặt nhiều lần trùng tên vẫn tạo riêng.
+   */
   private async manualTwin(b: Partial<OtaMailBooking>) {
     if (!b.pickupTime) return null;
     const day = new Date(`${b.pickupTime.slice(0, 10)}T00:00:00+07:00`);
     const list = await this.prisma.booking.findMany({
-      where: { status: { not: BookingStatus.HUY }, trips: { some: { pickupTime: { gte: day, lt: new Date(day.getTime() + 86_400_000) } } } },
+      where: {
+        status: { not: BookingStatus.HUY },
+        OR: [{ customerRef: null }, { customerRef: '' }],
+        trips: { some: { pickupTime: { gte: day, lt: new Date(day.getTime() + 86_400_000) } } },
+      },
       select: { id: true, code: true, contactName: true, contactPhone: true, passengers: { select: { fullName: true, phone: true } } },
     });
     const phone = (b.phone ?? '').replace(/\D/g, '').slice(-9);
