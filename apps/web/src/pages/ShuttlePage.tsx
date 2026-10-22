@@ -342,6 +342,8 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
   const [editAssign, setEditAssign] = useState(false);
   const mode: 'COMPANY' | 'PARTNER' = Form.useWatch('mode', form) ?? 'COMPANY';
   const pricing: 'PAX' | 'RUN' = Form.useWatch('partnerPricing', form) ?? 'PAX';
+  const companyPricing: 'PAX' | 'RUN' = Form.useWatch('companyPricing', form) ?? 'PAX';
+  const companyPerPax: number | null = Form.useWatch('companyPricePerPax', form) ?? null;
   const perPax: number | null = Form.useWatch('partnerPricePerPax', form) ?? null;
   const driverOptions = useCompanyDriverOptions();
   const partnerOptions = usePartnerOptions();
@@ -404,17 +406,27 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
     form.setFieldsValue(
       run?.partner
         ? { mode: 'PARTNER', partnerPricing: run.partnerPricePerPax != null ? 'PAX' : 'RUN', partnerPricePerPax: run.partnerPricePerPax != null ? Number(run.partnerPricePerPax) : null, partnerCost: run.partnerCost ? Number(run.partnerCost) : null, partnerPlate: run.partnerPlate, partnerDriverName: run.partnerDriverName, partnerDriverPhone: run.partnerDriverPhone, dispatchNote: run.dispatchNote }
-        : { mode: 'COMPANY', vehicleId: run?.vehicle?.id, driverId: run?.driver?.id, estimatedCost: run?.estimatedCost ? Number(run.estimatedCost) : null, dispatchNote: run?.dispatchNote },
+        : {
+            mode: 'COMPANY',
+            vehicleId: run?.vehicle?.id,
+            driverId: run?.driver?.id,
+            estimatedCost: run?.estimatedCost ? Number(run.estimatedCost) : null,
+            companyPricing: run?.companyPrice != null && run.companyPricePerPax == null ? 'RUN' : 'PAX',
+            companyPricePerPax: run?.companyPricePerPax != null ? Number(run.companyPricePerPax) : null,
+            companyPrice: run?.companyPrice != null ? Number(run.companyPrice) : null,
+            dispatchNote: run?.dispatchNote,
+          },
     );
     setEditAssign(true);
   };
 
   const submitAssign = async () => {
-    const { partnerPricing, ...v } = await form.validateFields();
+    const { partnerPricing, companyPricing, ...v } = await form.validateFields();
     if (v.mode === 'PARTNER') {
       if (partnerPricing === 'PAX') v.partnerCost = null;
       else v.partnerPricePerPax = null;
-    }
+    } else if (companyPricing === 'PAX') v.companyPrice = null;
+    else v.companyPricePerPax = null;
     const ok = await call('assign', `/shuttle/runs/${runId}/assign`, 'POST', v, 'Đã điều xe cho cả chuyến');
     if (ok) {
       setEditAssign(false);
@@ -583,6 +595,11 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
                   🚐 {run.vehicle.plateNumber}
                   {run.driver ? ` · ${run.driver.fullName} (${run.driver.phone})` : ' · chưa chọn lái xe'}
                   {run.estimatedCost ? <Typography.Text type="secondary"> · chi phí {formatVnd(run.estimatedCost)}đ</Typography.Text> : null}
+                  {run.companyPricePerPax != null ? (
+                    <Typography.Text type="secondary"> · giá điều xe {formatVnd(run.companyPricePerPax)}đ/khách = {formatVnd(run.companyPrice ?? 0)}đ</Typography.Text>
+                  ) : run.companyPrice != null ? (
+                    <Typography.Text type="secondary"> · giá điều xe cả chuyến {formatVnd(run.companyPrice)}đ</Typography.Text>
+                  ) : null}
                 </>
               ) : run.partner ? (
                 <>
@@ -669,6 +686,27 @@ function RunDrawer({ runId, canDispatch, onClose }: { runId: number | null; canD
                       <Form.Item name="estimatedCost" label="Chi phí dự kiến cả chuyến" tooltip="Xăng, cầu đường, tiền chuyến lái xe… chia cho từng lượt khách theo số khách để tính lợi nhuận">
                         <MoneyInput />
                       </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="companyPricing" label="Giá điều xe (doanh số xe & lái xe)" initialValue="PAX" tooltip="Tính doanh số cho xe và lái xe công ty thay giá trong booking; để trống thì tính theo giá booking">
+                        <Radio.Group optionType="button" options={[{ value: 'PAX', label: 'Theo đầu khách' }, { value: 'RUN', label: 'Cả chuyến' }]} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      {companyPricing === 'RUN' ? (
+                        <Form.Item name="companyPrice" label="Giá điều xe cả chuyến" tooltip="Chia cho từng lượt khách theo số khách">
+                          <MoneyInput />
+                        </Form.Item>
+                      ) : (
+                        <Form.Item
+                          name="companyPricePerPax"
+                          label="Giá điều xe mỗi khách"
+                          tooltip="Doanh số = số khách × giá mỗi khách, tự tính lại khi khách thêm / bớt"
+                          extra={companyPerPax ? `${activePax} khách × ${formatVnd(companyPerPax)}đ = ${formatVnd(activePax * Number(companyPerPax))}đ` : undefined}
+                        >
+                          <MoneyInput />
+                        </Form.Item>
+                      )}
                     </Col>
                   </Row>
                 ) : (

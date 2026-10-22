@@ -68,6 +68,10 @@ export interface ShuttleRun {
   /** Giao nhà xe theo đầu khách: giá mỗi khách */
   partnerPricePerPax: string | null;
   estimatedCost: string | null;
+  /** Xe công ty: giá điều xe cả chuyến (doanh số xe / lái xe) */
+  companyPrice?: string | null;
+  /** Xe công ty: giá điều xe mỗi khách */
+  companyPricePerPax?: string | null;
   dispatchNote: string | null;
   seatsConfirmed: number;
   seatsHeld: number;

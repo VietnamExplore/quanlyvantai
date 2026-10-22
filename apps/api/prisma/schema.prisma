@@ -1030,6 +1030,10 @@ model ShuttleRun {
   partnerCost        Decimal?         @db.Decimal(15, 0)
   /// Xe ghép giao nhà xe tính theo đầu khách: giá mỗi khách (chưa thuế); null = giá thuê cả chuyến (partnerCost)
   partnerPricePerPax Decimal?         @db.Decimal(15, 0)
+  /// Xe công ty: giá điều xe cả chuyến (doanh số xe / lái xe, chia cho từng lượt khách); theo đầu khách thì tự tính = số khách × giá
+  companyPrice       Decimal?         @db.Decimal(15, 0)
+  /// Xe công ty tính giá điều xe theo đầu khách: giá mỗi khách
+  companyPricePerPax Decimal?         @db.Decimal(15, 0)
   /// Chi phí dự kiến cả chuyến khi chạy xe công ty
   estimatedCost      Decimal?         @db.Decimal(15, 0)
   dispatchNote       String?

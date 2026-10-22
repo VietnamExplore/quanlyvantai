@@ -67,6 +67,10 @@ export class AssignRunDto {
   @IsOptional() @IsInt() driverId?: number | null;
   /** Chi phí dự kiến cả chuyến khi chạy xe công ty (chia cho từng lượt khách) */
   @IsOptional() @IsNumber() @Min(0) estimatedCost?: number | null;
+  /** Xe công ty: giá điều xe cả chuyến (doanh số xe / lái xe) */
+  @IsOptional() @IsNumber() @Min(0) companyPrice?: number | null;
+  /** Xe công ty: giá điều xe mỗi khách; có giá này thì giá cả chuyến = số khách × giá, tự tính lại khi khách thay đổi */
+  @IsOptional() @IsNumber() @Min(0) companyPricePerPax?: number | null;
   @IsOptional() @IsInt() partnerId?: number;
   /** Giá thuê nhà xe cả chuyến, chưa thuế */
   @IsOptional() @IsNumber() @Min(0) partnerCost?: number | null;
