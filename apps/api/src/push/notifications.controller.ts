@@ -1,6 +1,8 @@
-import { Controller, Get, HttpCode, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { AuthUser, CurrentUser } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from './push.service';
+import { WebPushSubscribeDto } from './webpush.dto';
 
 /** Giữ thông báo trong 90 ngày */
 const KEEP_DAYS = 90;
@@ -8,7 +10,10 @@ const KEEP_DAYS = 90;
 /** Chuông thông báo: mọi người dùng đã đăng nhập (văn phòng và lái xe) chỉ thấy thông báo của mình */
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
+  ) {}
 
   @Get()
   async list(@CurrentUser() user: AuthUser, @Query('limit') limitQ?: string) {
@@ -36,6 +41,35 @@ export class NotificationsController {
   @HttpCode(200)
   async readAll(@CurrentUser() user: AuthUser) {
     await this.prisma.notification.updateMany({ where: { userId: user.id, readAt: null }, data: { readAt: new Date() } });
+    return { ok: true };
+  }
+
+  // ───── Thông báo đẩy trên web văn phòng / cổng nhà xe (máy tính, Android, iPhone đã thêm vào Màn hình chính) ─────
+
+  @Get('webpush/key')
+  async webPushKey() {
+    return { publicKey: (await this.push.vapid()).publicKey };
+  }
+
+  @Post('webpush/subscribe')
+  @HttpCode(200)
+  async webPushSubscribe(@CurrentUser() user: AuthUser, @Body() dto: WebPushSubscribeDto, @Headers('user-agent') ua?: string) {
+    const data = { userId: user.id, p256dh: dto.keys.p256dh, auth: dto.keys.auth, userAgent: ua?.slice(0, 300) ?? null };
+    await this.prisma.webPushSubscription.upsert({ where: { endpoint: dto.endpoint }, create: { endpoint: dto.endpoint, ...data }, update: data });
+    return { ok: true };
+  }
+
+  @Post('webpush/unsubscribe')
+  @HttpCode(200)
+  async webPushUnsubscribe(@CurrentUser() user: AuthUser, @Body() dto: { endpoint?: string }) {
+    if (dto?.endpoint) await this.prisma.webPushSubscription.deleteMany({ where: { endpoint: dto.endpoint, userId: user.id } });
+    return { ok: true };
+  }
+
+  @Post('webpush/test')
+  @HttpCode(200)
+  async webPushTest(@CurrentUser() user: AuthUser) {
+    await this.push.webPush(user.id, { title: '🔔 Thông báo đã bật', body: 'Máy này sẽ nhận thông báo booking, điều xe, nhà xe… kể cả khi đóng phần mềm.', type: 'TEST', link: null });
     return { ok: true };
   }
 

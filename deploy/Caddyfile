@@ -50,7 +50,7 @@
 
 {$PARTNER_DOMAIN} {
 	# Tên miền nhà xe chỉ dùng cổng nhà xe (và các trang công khai: hợp đồng / lệnh vận chuyển điện tử)
-	@office not path /partner /partner/* /api/* /assets/* /e/* /favicon* /*.png /*.svg /*.ico /*.webmanifest
+	@office not path /partner /partner/* /api/* /assets/* /e/* /favicon* /*.png /*.svg /*.ico /*.webmanifest /sw.js
 	redir @office /partner 302
 	import app
 }

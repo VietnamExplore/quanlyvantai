@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Button, Result } from 'antd';
 import { api, ApiError, currentArea, tokenStore } from './api';
 import type { AuthUser, Role } from './types';
+import { disableWebPush } from './webpush';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -103,7 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Máy này thôi nhận thông báo đẩy của tài khoản (gọi trước khi xóa phiên đăng nhập)
+    await disableWebPush();
     tokenStore.clear();
     setUser(null);
   }, []);

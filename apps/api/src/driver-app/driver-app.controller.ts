@@ -21,8 +21,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { existsSync } from 'fs';
 import { BookingStatus, PaymentMethod, Prisma, Role, TripStatus, VoucherType } from '@prisma/client';
-import { Type } from 'class-transformer';
-import { IsBoolean, IsDateString, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, Matches, MaxLength, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
 import { AdvancesService } from '../advances/advances.service';
 import { AuthUser, CurrentUser, Roles } from '../auth/auth.decorators';
 import { CreateTripCostDto } from '../finance/finance.dto';
@@ -33,6 +32,7 @@ import { SIGN_DIR, signImage } from '../bookings/sign-file.controller';
 import { PayrollService, vnDate } from '../reports/payroll.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
+import { WebPushSubscribeDto } from '../push/webpush.dto';
 
 /** Bước kế tiếp hợp lệ mà lái xe được bấm */
 const NEXT: Partial<Record<TripStatus, TripStatus>> = {
@@ -104,17 +104,6 @@ class FuelDto {
 }
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
-
-class WebPushKeysDto {
-  @IsString() @IsNotEmpty() @MaxLength(200) p256dh: string;
-  @IsString() @IsNotEmpty() @MaxLength(100) auth: string;
-}
-
-/** Đăng ký nhận thông báo của trình duyệt (PushSubscription.toJSON()) */
-class WebPushSubscribeDto {
-  @IsUrl({ protocols: ['https'], require_tld: true }, { message: 'Địa chỉ nhận thông báo không hợp lệ' }) @MaxLength(1000) endpoint: string;
-  @ValidateNested() @Type(() => WebPushKeysDto) keys: WebPushKeysDto;
-}
 
 class PushTokenDto {
   @IsOptional()

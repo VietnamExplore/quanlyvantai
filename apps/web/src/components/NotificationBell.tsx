@@ -1,12 +1,13 @@
 import { BellOutlined, CheckOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { App, Badge, Button, Empty, Flex, Popover, Spin, Typography } from 'antd';
+import { Alert, App, Badge, Button, Empty, Flex, Popover, Spin, Typography } from 'antd';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { enableWebPush, isIOS, setBadge, syncWebPush, webPushState, type WebPushState } from '../webpush';
 
 dayjs.extend(relativeTime);
 
@@ -51,8 +52,10 @@ const POLL_MS = 30_000;
 export function NotificationBell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { notification } = App.useApp();
+  const { notification, message } = App.useApp();
   const [open, setOpen] = useState(false);
+  const [push, setPush] = useState<WebPushState>(() => webPushState());
+  const [pushBusy, setPushBusy] = useState(false);
   const { data: count } = useQuery({
     queryKey: ['/notifications', 'count'],
     queryFn: () => api<{ unread: number; latestId: number }>('/notifications/unread-count'),
@@ -89,6 +92,37 @@ export function NotificationBell() {
       .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count?.latestId]);
+
+  // Thông báo đẩy: máy đã cho phép thì gắn đăng ký với tài khoản đang đăng nhập; bấm thông báo → mở trang liên quan
+  useEffect(() => {
+    if (webPushState() === 'on') syncWebPush().catch(() => undefined);
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type !== 'open-link') return;
+      refresh();
+      if (e.data.link) navigate(e.data.link);
+    };
+    navigator.serviceWorker?.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Số đỏ trên biểu tượng app (đã cài lên màn hình chính) = số chưa đọc
+  useEffect(() => {
+    if (count) setBadge(count.unread);
+  }, [count?.unread]);
+
+  async function turnOnPush() {
+    setPushBusy(true);
+    try {
+      const s = await enableWebPush();
+      setPush(s);
+      if (s === 'on') message.success('Đã bật thông báo trên máy này – vừa gửi 1 thông báo thử');
+      else if (s === 'denied') message.warning('Thông báo đang bị chặn: mở cài đặt trình duyệt / điện thoại để cho phép');
+    } catch (e) {
+      message.error(`Không bật được thông báo: ${(e as Error).message}`);
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['/notifications'] });
 
@@ -139,6 +173,31 @@ export function NotificationBell() {
           ))}
         </div>
       )}
+      {/* Thông báo đẩy trên máy này (nhận cả khi đã đóng phần mềm) */}
+      <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 8, paddingTop: 8 }}>
+        {push === 'ask' && (
+          <Button block type="primary" ghost icon={<BellOutlined />} loading={pushBusy} onClick={turnOnPush}>
+            Bật thông báo đẩy trên máy này
+          </Button>
+        )}
+        {push === 'install' && (
+          <Alert
+            type="info"
+            showIcon
+            title={isIOS() ? 'iPhone / iPad: nhận thông báo như app' : 'Cài phần mềm lên màn hình chính'}
+            description="Mở bằng Safari → bấm Chia sẻ (ô vuông có mũi tên) → Thêm vào MH chính. Mở phần mềm từ biểu tượng mới, vào chuông 🔔 và bấm Bật thông báo."
+          />
+        )}
+        {push === 'denied' && <Typography.Text type="warning">Thông báo đang bị chặn trên máy này – mở cài đặt trình duyệt / điện thoại để cho phép.</Typography.Text>}
+        {push === 'on' && (
+          <Flex justify="space-between" align="center">
+            <Typography.Text type="success">✓ Máy này đang nhận thông báo đẩy</Typography.Text>
+            <Button size="small" type="link" onClick={() => api('/notifications/webpush/test', { method: 'POST' }).then(() => message.success('Đã gửi thông báo thử'))}>
+              Gửi thử
+            </Button>
+          </Flex>
+        )}
+      </div>
     </div>
   );
 

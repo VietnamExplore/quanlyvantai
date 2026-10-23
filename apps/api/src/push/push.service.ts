@@ -48,12 +48,12 @@ export class PushService {
    * Thông báo đẩy Web Push tới app lái xe bản web (iPhone: đã thêm vào Màn hình chính, iOS 16.4+).
    * Kèm số thông báo chưa đọc để hiện số đỏ trên biểu tượng app. Đăng ký hết hạn (404 / 410) thì xóa.
    */
-  async webPush(userId: number, n: { title: string; body: string; tripId?: number | null; type?: string }) {
+  async webPush(userId: number, n: { title: string; body: string; tripId?: number | null; type?: string; link?: string | null }) {
     const subs = await this.prisma.webPushSubscription.findMany({ where: { userId } });
     if (!subs.length) return;
     const keys = await this.vapid();
     const badge = await this.prisma.notification.count({ where: { userId, readAt: null } });
-    const payload = JSON.stringify({ title: n.title, body: n.body, tripId: n.tripId ?? null, type: n.type ?? null, badge });
+    const payload = JSON.stringify({ title: n.title, body: n.body, tripId: n.tripId ?? null, type: n.type ?? null, link: n.link ?? null, badge });
     for (const sub of subs) {
       try {
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload, {
@@ -79,6 +79,8 @@ export class PushService {
       await this.prisma.notification.createMany({
         data: active.map((u) => ({ userId: u.id, type: n.type, title: n.title, body: n.body, link: n.link ?? null, tripId: n.tripId ?? null })),
       });
+      // Đẩy tới máy đã bật thông báo (không chờ, không làm chậm thao tác đang chạy)
+      for (const u of active) void this.webPush(u.id, n).catch((e) => this.logger.warn(`Web Push: ${(e as Error).message}`));
     } catch (e) {
       this.logger.warn(`Không lưu được thông báo: ${(e as Error).message}`);
     }
@@ -115,8 +117,8 @@ export class PushService {
     const driver = await this.prisma.driver.findUnique({ where: { id: driverId }, include: { user: { select: { id: true, pushToken: true, isActive: true } } } });
     if (!driver?.user) return;
     const tripId = typeof data.tripId === 'number' ? data.tripId : null;
+    // Lưu vào chuông + Web Push (app lái xe bản web) trong notifyUsers
     await this.notifyUsers([driver.user.id], { type, title, body, tripId });
-    if (driver.user.isActive) await this.webPush(driver.user.id, { title, body, tripId, type }).catch((e) => this.logger.warn(`Web Push: ${(e as Error).message}`));
     if (driver.user.isActive && driver.user.pushToken) await this.expoPush(driver.user.id, driver.user.pushToken, { title, body, data });
   }
 
