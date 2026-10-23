@@ -38,6 +38,8 @@ services:
       # Sao lưu tự động hằng ngày (giờ chạy, số bản giữ lại cài ở trang Sao lưu & dọn dẹp)
       BACKUP_DIR: /data/backups
       BACKUP_DIR_LABEL: /opt/transfer/deploy/backups
+      # Link cổng nhà xe trong email gửi nhà xe đối tác
+      PARTNER_URL: https://${PARTNER_DOMAIN}
     volumes:
       - uploads:/data/uploads
       - ./backups:/data/backups

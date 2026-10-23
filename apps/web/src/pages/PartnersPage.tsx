@@ -24,6 +24,7 @@ export default function PartnersPage() {
         { title: 'Người liên hệ', dataIndex: 'contactName' },
         { title: 'SĐT', dataIndex: 'phone' },
         { title: 'Zalo', dataIndex: 'zalo' },
+        { title: 'Email', dataIndex: 'email' },
         { title: 'Loại xe cung cấp', dataIndex: 'vehicleTypeCodes', render: (codes: string[]) => codes.map((c) => <Tag key={c}>{c}</Tag>) },
         { title: 'Đánh giá', dataIndex: 'rating', render: (v) => (v ? <Rate disabled value={v} style={{ fontSize: 14 }} /> : null) },
         { title: 'Xe / Lái xe', render: (_, r) => `${r._count?.vehicles ?? 0} / ${r._count?.drivers ?? 0}` },
@@ -54,6 +55,16 @@ export default function PartnersPage() {
           <Col xs={24} md={8}>
             <Form.Item name="taxCode" label="Mã số thuế">
               <Input />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              name="email"
+              label="Email nhận lệnh điều xe"
+              extra="Phần mềm tự gửi email khi giao chuyến, thay đổi, hủy chuyến (bật ở trang Hệ thống). Nhiều email cách nhau dấu phẩy."
+              rules={[{ pattern: /^$|^\s*[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+(\s*[,;]\s*[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+)*\s*$/, message: 'Email không hợp lệ' }]}
+            >
+              <Input placeholder="dieuxe@nhaxe.vn, ketoan@nhaxe.vn" />
             </Form.Item>
           </Col>
           <Col span={24}>

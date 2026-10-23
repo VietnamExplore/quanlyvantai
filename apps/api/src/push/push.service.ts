@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import * as webpush from 'web-push';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { partnerRunText, partnerTripText } from './partner-mail';
 
 /** Khóa VAPID của Web Push (tự tạo lần đầu, lưu trong cài đặt hệ thống – không trả về trang Thông tin công ty) */
 const VAPID_KEY = 'sys.webpush.vapid';
@@ -25,7 +27,10 @@ export interface NotifyPayload {
 export class PushService {
   private readonly logger = new Logger(PushService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   private vapidKeys?: { publicKey: string; privateKey: string };
 
@@ -97,18 +102,50 @@ export class PushService {
     }
   }
 
-  /** Thông báo cho mọi tài khoản của một nhà xe đối tác (chuông trên web nhà xe) */
-  async notifyPartner(partnerId: number | null | undefined, n: NotifyPayload) {
+  /**
+   * Thông báo cho mọi tài khoản của một nhà xe đối tác (chuông trên web nhà xe) + email tới nhà xe (nếu có email và đã bật email gửi đi).
+   * Giao chuyến / thay đổi chuyến: email kèm lệnh điều xe đầy đủ; runId: giao khách xe ghép cả chuyến.
+   */
+  async notifyPartner(partnerId: number | null | undefined, n: NotifyPayload, opts: { runId?: number } = {}) {
     if (!partnerId) return;
+    const link = n.link ?? (n.tripId ? `/partner?trip=${n.tripId}` : '/partner');
     try {
       const users = await this.prisma.user.findMany({ where: { partnerId, isActive: true, deletedAt: null }, select: { id: true } });
       await this.notifyUsers(
         users.map((u) => u.id),
-        { ...n, link: n.link ?? (n.tripId ? `/partner?trip=${n.tripId}` : '/partner') },
+        { ...n, link },
       );
     } catch (e) {
       this.logger.warn(`Không gửi được thông báo nhà xe: ${(e as Error).message}`);
     }
+    // Email: không chờ (SMTP chậm không làm chậm điều xe)
+    void this.emailPartner(partnerId, n, link, opts).catch((e) => this.logger.warn(`Email nhà xe: ${(e as Error).message}`));
+  }
+
+  private async emailPartner(partnerId: number, n: NotifyPayload, link: string, opts: { runId?: number }) {
+    const partner = await this.prisma.partner.findUnique({ where: { id: partnerId }, select: { name: true, email: true } });
+    const to = (partner?.email ?? '').split(/[,;\s]+/).filter((x) => x.includes('@'));
+    if (!partner || !to.length) return;
+    const detail = opts.runId ? await partnerRunText(this.prisma, opts.runId) : n.tripId && (n.type === 'PARTNER_TRIP_NEW' || n.type === 'PARTNER_TRIP_CHANGED') ? await partnerTripText(this.prisma, n.tripId) : '';
+    const portal = process.env.PARTNER_URL?.replace(/\/+$/, '');
+    const text = [
+      `Kính gửi ${partner.name},`,
+      '',
+      n.body,
+      ...(detail ? ['', detail] : []),
+      '',
+      ...(portal ? [`Xem chi tiết và nhận chuyến trên cổng nhà xe: ${portal}${link}`] : []),
+      'Email gửi tự động từ phần mềm điều hành Vietnam Explore – cần trao đổi vui lòng liên hệ văn phòng điều hành.',
+    ].join('\n');
+    const r = await this.mail.send({ to, subject: n.title, text });
+    if ('off' in r && r.off) return;
+    // Ghi lịch sử chuyến: đã gửi / gửi lỗi
+    const tripIds = n.tripId ? [n.tripId] : opts.runId ? (await this.prisma.bookingTrip.findMany({ where: { shuttleRunId: opts.runId, partnerId }, select: { id: true } })).map((t) => t.id) : [];
+    if (!tripIds.length) return;
+    const trips = await this.prisma.bookingTrip.findMany({ where: { id: { in: tripIds } }, select: { id: true, status: true } });
+    await this.prisma.tripEvent.createMany({
+      data: trips.map((t) => ({ tripId: t.id, status: t.status, note: r.ok ? `📧 Đã gửi email cho nhà xe ${partner.name} (${to.join(', ')}): ${n.title}` : `📧 Gửi email cho nhà xe ${partner.name} thất bại: ${r.reason}` })),
+    });
   }
 
   /** Thông báo cho lái xe: lưu vào chuông trên app + đẩy tới điện thoại (nếu app đã đăng ký) */

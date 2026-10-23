@@ -79,6 +79,8 @@ export interface Partner extends Ref {
   name: string;
   contactName: string | null;
   phone: string | null;
+  /** Email nhận lệnh điều xe (nhiều địa chỉ cách nhau dấu phẩy) */
+  email?: string | null;
   zalo: string | null;
   taxCode: string | null;
   address: string | null;

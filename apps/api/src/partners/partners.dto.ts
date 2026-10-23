@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 
 export class CreatePartnerDto {
   @IsString()
@@ -8,6 +8,10 @@ export class CreatePartnerDto {
 
   @IsOptional() @IsString() contactName?: string;
   @IsOptional() @IsString() phone?: string;
+  /** Email nhận lệnh điều xe; nhiều địa chỉ cách nhau dấu phẩy */
+  @IsOptional()
+  @Matches(/^$|^\s*[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+(\s*[,;]\s*[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+)*\s*$/, { message: 'Email nhà xe không hợp lệ (nhiều địa chỉ cách nhau dấu phẩy)' })
+  email?: string;
   @IsOptional() @IsString() zalo?: string;
   @IsOptional() @IsString() taxCode?: string;
   @IsOptional() @IsString() address?: string;

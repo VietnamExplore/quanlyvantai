@@ -470,7 +470,7 @@ export class ShuttleService {
           after.partnerPricePerPax != null
             ? `${when} · ${count.pax} khách × ${Number(after.partnerPricePerPax).toLocaleString('vi-VN')}đ/khách = ${(count.pax * Number(after.partnerPricePerPax)).toLocaleString('vi-VN')}đ`
             : `${when} · ${count.trips} lượt, ${count.pax} khách${after.partnerCost ? ` · giá thuê cả chuyến ${Number(after.partnerCost).toLocaleString('vi-VN')}đ` : ''}`,
-      });
+      }, { runId: id });
     }
     return this.getRun(id);
   }

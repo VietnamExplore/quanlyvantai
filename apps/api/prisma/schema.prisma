@@ -182,6 +182,8 @@ model Partner {
   name             String
   contactName      String?
   phone            String?
+  /// Email nhận lệnh điều xe / thay đổi / hủy chuyến (nhiều địa chỉ cách nhau dấu phẩy)
+  email            String?
   zalo             String?
   taxCode          String?
   address          String?
