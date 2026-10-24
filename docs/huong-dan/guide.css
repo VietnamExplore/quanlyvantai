@@ -1,0 +1,58 @@
+/* Kiểu chung cho các tài liệu hướng dẫn (in A4 → PDF bằng Edge / Chrome) */
+@page { size: A4; margin: 14mm 15mm 15mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+h1 { font-size: 24pt; margin: 0 0 6px; color: #0f3d7a; }
+h2 { font-size: 15pt; color: #0f3d7a; border-bottom: 2px solid #1668dc; padding-bottom: 4px; margin: 20px 0 10px; break-after: avoid; }
+h3 { font-size: 11.5pt; margin: 12px 0 5px; color: #111827; break-after: avoid; }
+p { margin: 5px 0; }
+ul, ol { margin: 5px 0; padding-left: 22px; }
+li { margin: 2px 0; }
+.cover { height: 255mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; break-after: page; }
+.cover img { width: 150px; margin-bottom: 24px; }
+.cover .sub { font-size: 13pt; color: #475569; margin-bottom: 28px; }
+.cover .box { border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px 26px; font-size: 11pt; background: #f8fafc; line-height: 1.8; }
+.cover .box b { color: #1668dc; font-size: 13pt; }
+.cover .foot { margin-top: 50px; color: #64748b; font-size: 9.5pt; }
+.btn { display: inline-block; padding: 0 8px; border-radius: 6px; font-weight: 600; font-size: 9.5pt; border: 1px solid #1668dc; color: #fff; background: #1668dc; white-space: nowrap; }
+.btn.o { background: #fff; color: #1f2937; border-color: #cbd5e1; }
+.btn.r { background: #dc2626; border-color: #dc2626; }
+.btn.g { background: #16a34a; border-color: #16a34a; }
+.menu { display: inline-block; padding: 0 6px; border-radius: 5px; background: #eef3fa; color: #0f3d7a; font-weight: 600; font-size: 9.5pt; white-space: nowrap; }
+.tag { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 9pt; border: 1px solid; white-space: nowrap; }
+.t-gray { color: #475569; background: #f8fafc; border-color: #cbd5e1; }
+.t-gold { color: #a16207; background: #fefce8; border-color: #fde047; }
+.t-blue { color: #1d4ed8; background: #eff6ff; border-color: #93c5fd; }
+.t-orange { color: #c2410c; background: #fff7ed; border-color: #fdba74; }
+.t-cyan { color: #0e7490; background: #ecfeff; border-color: #67e8f9; }
+.t-purple { color: #7e22ce; background: #faf5ff; border-color: #d8b4fe; }
+.t-green { color: #15803d; background: #f0fdf4; border-color: #86efac; }
+.t-red { color: #b91c1c; background: #fef2f2; border-color: #fca5a5; }
+.note { border-left: 4px solid #f59e0b; background: #fffbeb; padding: 7px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
+.tip { border-left: 4px solid #10b981; background: #ecfdf5; padding: 7px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
+.warn { border-left: 4px solid #dc2626; background: #fef2f2; padding: 7px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
+.new { display: inline-block; padding: 0 5px; border-radius: 4px; background: #dc2626; color: #fff; font-size: 7.5pt; font-weight: 700; vertical-align: 2px; margin-left: 4px; }
+table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9.5pt; }
+tr { break-inside: avoid; }
+th, td { border: 1px solid #d1d5db; padding: 4px 7px; text-align: left; vertical-align: top; }
+th { background: #eef3fa; }
+td.c, th.c { text-align: center; }
+.flow { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 8px 0; font-size: 9.5pt; break-inside: avoid; }
+.flow .ar { color: #64748b; }
+.toc { columns: 2; column-gap: 30px; }
+.toc li { margin: 2px 0; }
+.page-break { break-before: page; }
+.small { font-size: 9pt; color: #475569; }
+.steps { counter-reset: s; list-style: none; padding-left: 0; }
+.steps > li { counter-increment: s; position: relative; padding-left: 30px; margin: 5px 0; }
+.steps > li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; background: #1668dc; color: #fff; font-size: 9pt; font-weight: 700; text-align: center; line-height: 20px; }
+pre.msg { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; font-family: Consolas, 'Courier New', monospace; font-size: 8.5pt; line-height: 1.45; white-space: pre-wrap; break-inside: avoid; margin: 6px 0; }
+figure.shot { margin: 8px auto 12px; break-inside: avoid; text-align: center; }
+figure.shot img { width: auto; max-width: 100%; max-height: 95mm; border: 1px solid #d1d5db; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+figure.shot figcaption { font-size: 8.5pt; color: #64748b; margin-top: 3px; font-style: italic; }
+.phones { display: flex; gap: 10px; justify-content: center; align-items: flex-start; break-inside: avoid; }
+.phones figure.shot { flex: 1; max-width: 58mm; margin: 6px 0 10px; }
+.two { display: flex; gap: 14px; align-items: flex-start; }
+.two > figure.shot { width: 60mm; flex: none; margin: 0; }
+.two > div { flex: 1; min-width: 0; }
+.note-demo { font-size: 8.5pt; color: #64748b; font-style: italic; }

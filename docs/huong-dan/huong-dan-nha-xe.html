@@ -3,85 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <title>Hướng dẫn sử dụng – Cổng nhà xe đối tác</title>
-<style>
-  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
-  * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; font-size: 11pt; line-height: 1.5; margin: 0; }
-  h1 { font-size: 24pt; margin: 0 0 6px; color: #0f3d7a; }
-  h2 { font-size: 15pt; color: #0f3d7a; border-bottom: 2px solid #1668dc; padding-bottom: 4px; margin: 22px 0 10px; break-after: avoid; }
-  h3 { font-size: 12pt; margin: 14px 0 6px; color: #111827; break-after: avoid; }
-  p { margin: 6px 0; }
-  ul, ol { margin: 6px 0; padding-left: 22px; }
-  li { margin: 3px 0; }
-  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; break-after: page; }
-  .cover img { width: 150px; margin-bottom: 24px; }
-  .cover .sub { font-size: 14pt; color: #475569; margin-bottom: 30px; }
-  .cover .box { border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px 28px; font-size: 12pt; background: #f8fafc; }
-  .cover .box b { color: #1668dc; font-size: 15pt; }
-  .cover .foot { margin-top: 60px; color: #64748b; font-size: 10pt; }
-  .btn { display: inline-block; padding: 1px 9px; border-radius: 6px; font-weight: 600; font-size: 10pt; border: 1px solid #1668dc; color: #fff; background: #1668dc; white-space: nowrap; }
-  .btn.o { background: #fff; color: #1f2937; border-color: #cbd5e1; }
-  .btn.r { background: #fff; color: #dc2626; border-color: #dc2626; }
-  .tag { display: inline-block; padding: 0 7px; border-radius: 5px; font-size: 9.5pt; border: 1px solid; white-space: nowrap; }
-  .t-orange { color: #c2410c; background: #fff7ed; border-color: #fdba74; }
-  .t-cyan { color: #0e7490; background: #ecfeff; border-color: #67e8f9; }
-  .t-purple { color: #7e22ce; background: #faf5ff; border-color: #d8b4fe; }
-  .t-green { color: #15803d; background: #f0fdf4; border-color: #86efac; }
-  .t-red { color: #b91c1c; background: #fef2f2; border-color: #fca5a5; }
-  .note { border-left: 4px solid #f59e0b; background: #fffbeb; padding: 8px 12px; margin: 10px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
-  .tip { border-left: 4px solid #10b981; background: #ecfdf5; padding: 8px 12px; margin: 10px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
-  .warn { border-left: 4px solid #dc2626; background: #fef2f2; padding: 8px 12px; margin: 10px 0; border-radius: 0 8px 8px 0; break-inside: avoid; }
-  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10pt; break-inside: avoid; }
-  th, td { border: 1px solid #d1d5db; padding: 5px 8px; text-align: left; vertical-align: top; }
-  th { background: #eef3fa; }
-  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-size: 10pt; break-inside: avoid; }
-  .flow .st { border-radius: 8px; padding: 6px 10px; text-align: center; border: 1px solid; }
-  .flow .ar { color: #64748b; font-size: 9pt; text-align: center; }
-  .two { display: flex; gap: 16px; align-items: flex-start; break-inside: avoid; }
-  .two > div { flex: 1; }
-  /* Mô phỏng màn hình điện thoại */
-  .phone { width: 62mm; border: 3px solid #1f2937; border-radius: 16px; padding: 8px; background: #eef3fa; font-size: 8.5pt; flex: none; break-inside: avoid; }
-  .ph-head { background: #fff; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-  .ph-head small { color: #64748b; display: block; font-size: 7pt; }
-  .seg { display: flex; background: #e2e8f0; border-radius: 6px; padding: 2px; margin-bottom: 6px; }
-  .seg span { flex: 1; text-align: center; padding: 3px 0; border-radius: 5px; font-size: 7.5pt; }
-  .seg .on { background: #fff; font-weight: 700; }
-  .day { font-weight: 700; margin: 6px 2px 4px; display: flex; justify-content: space-between; }
-  .day span { color: #64748b; font-weight: 400; }
-  .card { background: #fff; border-radius: 8px; padding: 7px 8px; margin-bottom: 6px; border: 1px solid #e2e8f0; }
-  .card.new { border-left: 4px solid #f97316; }
-  .time { font-size: 14pt; font-weight: 800; line-height: 1.1; }
-  .svc { color: #64748b; font-size: 7.5pt; }
-  .route div { margin: 2px 0; }
-  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
-  .chips span { display: inline-block; border: 1px solid #e2e8f0; border-radius: 4px; padding: 0 4px; margin: 2px 2px 0 0; font-size: 7pt; background: #fafafa; }
-  .quick { display: flex; justify-content: space-between; background: #fff; border-radius: 8px; padding: 6px 4px; margin-bottom: 6px; }
-  .quick div { text-align: center; font-size: 6.5pt; width: 20%; }
-  .quick i { display: block; width: 22px; height: 22px; border-radius: 7px; margin: 0 auto 2px; font-style: normal; line-height: 22px; font-size: 10pt; }
-  .hero { background: linear-gradient(135deg, #1668dc, #0f3d7a); color: #fff; border-radius: 8px; padding: 8px; margin-bottom: 6px; }
-  .hero .time { font-size: 18pt; }
-  .footbar { display: flex; gap: 4px; margin-top: 6px; }
-  .footbar span { flex: 1; text-align: center; padding: 5px 0; border-radius: 6px; font-weight: 700; font-size: 8pt; }
-  .num { display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: #dc2626; color: #fff; font-size: 8pt; text-align: center; line-height: 18px; font-weight: 700; margin-right: 4px; }
-  .toc li { margin: 2px 0; }
-  .page-break { break-before: page; }
-  .small { font-size: 9.5pt; color: #475569; }
-
-  figure.shot { margin: 8px auto 12px; break-inside: avoid; text-align: center; }
-  figure.shot img { width: 100%; border: 1px solid #d1d5db; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-  figure.shot figcaption { font-size: 8.5pt; color: #64748b; margin-top: 3px; font-style: italic; }
-  .phones { display: flex; gap: 10px; justify-content: center; align-items: flex-start; break-inside: avoid; }
-  .phones figure.shot { flex: 1; max-width: 58mm; margin: 6px 0 10px; }
-  .note-demo { font-size: 8.5pt; color: #64748b; font-style: italic; }
-  .two figure.phone-shot { width: 62mm; flex: none; margin: 0; }
-</style>
+<link rel="stylesheet" href="guide.css" />
 </head>
 <body>
 
 <section class="cover">
   <img src="logo.jpg" alt="Logo" />
   <h1>HƯỚNG DẪN SỬ DỤNG<br />CỔNG NHÀ XE ĐỐI TÁC</h1>
-  <div class="sub">Nhận chuyến · Điều xe · Cập nhật trạng thái · Theo dõi công nợ</div>
+  <div class="sub">Nhận chuyến · Xe ghép · Điều xe · Cập nhật trạng thái · Công nợ</div>
   <div class="box">
     Địa chỉ truy cập<br />
     <b>https://nhaxe.vietnamexplore.vn</b><br />
@@ -90,212 +19,217 @@
   <div class="foot">
     CÔNG TY TNHH DU LỊCH VIETNAM EXPLORE<br />
     09 Bình Thái 2, phường Cẩm Lệ, thành phố Đà Nẵng · Hotline điều hành: +84 941 533 737<br />
-    Phiên bản tháng 10/2026
+    Phiên bản cập nhật 24/10/2026
   </div>
 </section>
 
-
-<p class="note-demo">Ảnh minh họa chụp từ phần mềm với dữ liệu mẫu (tên khách, lái xe, nhà xe, số điện thoại là giả).</p>
 <h2>Mục lục</h2>
 <ol class="toc">
   <li>Giới thiệu</li>
-  <li>Đăng nhập và tài khoản</li>
+  <li>Đăng nhập, cài lên màn hình chính, thông báo</li>
   <li>Màn hình chính</li>
   <li>Nhận chuyến hoặc từ chối chuyến</li>
   <li>Xem chi tiết chuyến</li>
+  <li>Chuyến xe ghép</li>
   <li>Thực hiện chuyến: cập nhật trạng thái</li>
   <li>Hoàn thành chuyến và khai báo phát sinh</li>
   <li>Xuất hóa đơn cho công ty</li>
   <li>Công nợ và thanh toán</li>
-  <li>Thông báo</li>
+  <li>Thông báo và email</li>
   <li>Quy định khi phục vụ khách</li>
   <li>Câu hỏi thường gặp</li>
 </ol>
+<p class="note-demo">Ảnh minh họa chụp từ phần mềm với dữ liệu mẫu (tên khách, tài xế, số điện thoại là giả).</p>
 
 <h2>1. Giới thiệu</h2>
 <p>Cổng nhà xe đối tác là trang web để nhà xe làm việc trực tiếp với văn phòng điều hành Vietnam Explore:</p>
 <ul>
-  <li>Nhận các chuyến xe công ty giao, xem đầy đủ lộ trình, giờ đón, chuyến bay, thông tin liên hệ đoàn khách.</li>
-  <li>Báo xe và tài xế sẽ chạy, gửi lệnh điều xe cho tài xế qua Zalo chỉ bằng một nút bấm.</li>
-  <li>Cập nhật tiến độ chuyến để văn phòng theo dõi, khai báo chi phí phát sinh.</li>
+  <li>Nhận chuyến lẻ và <b>chuyến xe ghép</b> công ty giao; xem lộ trình, giờ đón, chuyến bay, người liên hệ và <b>danh sách khách</b> để đón.</li>
+  <li>Báo xe và tài xế; gửi <b>lệnh điều xe</b> cho tài xế qua Zalo bằng một nút bấm.</li>
+  <li>Cập nhật tiến độ chuyến, khai báo chi phí phát sinh.</li>
   <li>Xem tiền chuyến, số đã được thanh toán và số còn lại.</li>
+  <li>Nhận <b>thông báo</b> trên điện thoại và <b>email</b> khi có chuyến mới, thay đổi, hủy chuyến.</li>
 </ul>
-<p class="small">Nhà xe chỉ thấy các chuyến được giao cho mình. Giá bán cho khách và thông tin hợp đồng với khách không hiển thị trên cổng này.</p>
+<p class="small">Nhà xe chỉ thấy các chuyến được giao cho mình. Giá bán cho khách và thông tin hợp đồng với khách không hiển thị.</p>
 
-<h2>2. Đăng nhập và tài khoản</h2>
-<h3>2.1. Nhận tài khoản</h3>
-<p>Văn phòng điều hành cấp cho nhà xe <b>tên đăng nhập</b> và <b>mật khẩu ban đầu</b>. Một nhà xe có thể có nhiều tài khoản (chủ xe, người điều xe…), tất cả cùng thấy các chuyến của nhà xe.</p>
+<h2>2. Đăng nhập, cài lên màn hình chính, thông báo</h2>
+<h3>2.1. Tài khoản</h3>
+<p>Văn phòng cấp <b>tên đăng nhập</b> và <b>mật khẩu ban đầu</b>. Một nhà xe có thể có nhiều tài khoản (chủ xe, người điều xe…), tất cả cùng thấy các chuyến của nhà xe.</p>
 <h3>2.2. Đăng nhập</h3>
-<ol>
+<ol class="steps">
   <li>Mở trình duyệt (Chrome, Safari, Cốc Cốc…) và vào <b>https://nhaxe.vietnamexplore.vn</b></li>
-  <li>Nhập tên đăng nhập, mật khẩu rồi bấm <span class="btn">Đăng nhập</span>.</li>
-  <li>Màn hình <b>Cổng nhà xe đối tác</b> hiện ra với tên nhà xe ở góc trên bên trái.</li>
+  <li>Nhập tên đăng nhập, mật khẩu → <span class="btn">Đăng nhập</span>.</li>
+  <li><b>Đổi mật khẩu</b> ngay lần đầu: bấm <b>vòng tròn chữ cái</b> ở góc trên bên phải → <b>Đổi mật khẩu</b>.</li>
 </ol>
-<h3>2.3. Đổi mật khẩu (nên làm ngay lần đầu)</h3>
-<p>Bấm vào <b>vòng tròn chữ cái</b> ở góc trên bên phải → <b>Đổi mật khẩu</b> → nhập mật khẩu cũ và mật khẩu mới.</p>
-<h3>2.4. Đưa ra màn hình chính điện thoại</h3>
-<p>Để mở nhanh như một ứng dụng:</p>
-<ul>
-  <li><b>Android (Chrome):</b> bấm dấu <b>⋮</b> → <b>Thêm vào màn hình chính</b>.</li>
-  <li><b>iPhone (Safari):</b> bấm nút <b>Chia sẻ</b> (hình vuông có mũi tên) → <b>Thêm vào MH chính</b>.</li>
-</ul>
-<div class="warn"><b>Bảo mật:</b> không chia sẻ mật khẩu cho người ngoài. Nhân viên nghỉ việc hoặc mất điện thoại → báo ngay văn phòng để khóa tài khoản. Dùng xong trên máy tính dùng chung thì bấm <b>Đăng xuất</b>.</div>
+<h3>2.3. Cài lên màn hình chính và bật thông báo</h3>
+<p>Để mở nhanh như một ứng dụng và <b>nhận thông báo kể cả khi đã đóng trình duyệt</b>:</p>
+<table>
+  <tr><th style="width:24%">Điện thoại</th><th>Cách làm</th></tr>
+  <tr><td><b>iPhone / iPad</b><br /><span class="small">iOS 16.4 trở lên</span></td><td>Mở bằng <b>Safari</b> → bấm <b>Chia sẻ</b> (ô vuông có mũi tên lên) → <b>Thêm vào MH chính</b>. Mở cổng nhà xe <b>từ biểu tượng mới</b> → bấm 🔔 → <span class="btn">Bật thông báo đẩy trên máy này</span> → <b>Cho phép</b>.</td></tr>
+  <tr><td><b>Android</b></td><td>Chrome → dấu <b>⋮</b> → <b>Thêm vào màn hình chính</b>. Bấm 🔔 → <span class="btn">Bật thông báo đẩy trên máy này</span> → <b>Cho phép</b>.</td></tr>
+  <tr><td><b>Máy tính</b></td><td>Bấm 🔔 → <span class="btn">Bật thông báo đẩy trên máy này</span> → <b>Cho phép</b>.</td></tr>
+</table>
+<p>Bật xong, máy nhận ngay 1 thông báo thử; biểu tượng app hiện <b>số đỏ</b> bằng số thông báo chưa đọc.</p>
+<div class="warn"><b>Bảo mật:</b> không chia sẻ mật khẩu. Người nghỉ việc hoặc mất điện thoại → báo ngay văn phòng để khóa tài khoản. Dùng máy chung thì <b>Đăng xuất</b>.</div>
 
 <h2>3. Màn hình chính</h2>
 <div class="two">
-  <figure class="shot phone-shot"><img src="img/p1-danh-sach.jpg" alt="Màn hình chính – thẻ Chờ nhận" /><figcaption>Hình: Màn hình chính – thẻ Chờ nhận</figcaption></figure>
+  <figure class="shot"><img src="img/p1-danh-sach.jpg" alt="Màn hình chính" /><figcaption>Hình: Màn hình chính – thẻ Chờ nhận</figcaption></figure>
   <div>
-    <p>Màn hình chính có 4 thẻ:</p>
     <table>
       <tr><th style="width:28%">Thẻ</th><th>Nội dung</th></tr>
-      <tr><td><b>Chờ nhận</b></td><td>Chuyến văn phòng vừa giao, nhà xe cần <b>nhận</b> hoặc <b>từ chối</b>. Số trong ngoặc là số chuyến đang chờ.</td></tr>
+      <tr><td><b>Chờ nhận</b></td><td>Chuyến vừa giao, cần <b>nhận</b> hoặc <b>từ chối</b>.</td></tr>
       <tr><td><b>Đang chạy</b></td><td>Chuyến đã nhận, chưa hoàn thành.</td></tr>
-      <tr><td><b>Đã xong</b></td><td>Chuyến hoàn thành hoặc đã hủy trong 60 ngày gần nhất.</td></tr>
-      <tr><td><b>Công nợ</b></td><td>Tiền chuyến, số đã thanh toán, số còn lại.</td></tr>
+      <tr><td><b>Đã xong</b></td><td>Chuyến hoàn thành / đã hủy trong 60 ngày.</td></tr>
+      <tr><td><b>Công nợ</b></td><td>Tiền chuyến, đã thanh toán, còn lại.</td></tr>
     </table>
-    <p>Các chuyến được <b>nhóm theo ngày đón</b> (Hôm nay, Ngày mai, …). Mỗi thẻ chuyến cho biết: giờ đón, loại dịch vụ, mã booking, điểm đón (chấm xanh) → điểm trả (chấm đỏ), số khách, loại xe, chuyến bay, yêu cầu xuất hóa đơn, biển số và tài xế đã báo.</p>
-    <p>Danh sách tự cập nhật mỗi phút; bấm <span class="btn o">Tải lại</span> để cập nhật ngay.</p>
-    <p><b>Bấm vào thẻ chuyến</b> để mở chi tiết.</p>
+    <p>Chuyến <b>nhóm theo ngày đón</b>. Mỗi thẻ: giờ đón, dịch vụ, <b>mã booking</b>, điểm đón (chấm xanh) → điểm trả (chấm đỏ), số khách, loại xe, chuyến bay, yêu cầu xuất hóa đơn, xe và tài xế đã báo.</p>
+    <p>Danh sách tự cập nhật mỗi phút; bấm <span class="btn o">Tải lại</span> để cập nhật ngay. <b>Bấm vào thẻ</b> để mở chi tiết.</p>
   </div>
 </div>
 
 <h2>4. Nhận chuyến hoặc từ chối chuyến</h2>
-<p>Khi văn phòng giao chuyến, nhà xe nhận <b>thông báo</b> (biểu tượng 🔔) và chuyến nằm ở thẻ <b>Chờ nhận</b> với nhãn <span class="tag t-orange">Chờ nhận</span>.</p>
 <h3>4.1. Nhận chuyến</h3>
-<ol>
+<ol class="steps">
   <li>Mở chi tiết chuyến, kiểm tra giờ đón, lộ trình, loại xe, giá thuê.</li>
-  <li>Bấm <span class="btn">✓ Nhận chuyến</span> ở cuối màn hình.</li>
-  <li>Nhập <b>Biển số xe</b>, <b>Tên tài xế</b>, <b>SĐT tài xế</b> nếu đã sắp xếp (có thể nhập sau) → bấm <span class="btn">Nhận chuyến</span>.</li>
+  <li>Bấm <span class="btn g">✓ Nhận chuyến</span> ở cuối màn hình.</li>
+  <li>Nhập <b>Biển số xe</b>, <b>Tên tài xế</b>, <b>SĐT tài xế</b> nếu đã sắp xếp (nhập sau cũng được) → <span class="btn">Nhận chuyến</span>.</li>
 </ol>
-<p>Chuyến chuyển sang thẻ <b>Đang chạy</b> với nhãn <span class="tag t-cyan">Đã nhận chuyến</span>; văn phòng được báo ngay.</p>
+<p>Chuyến sang thẻ <b>Đang chạy</b> với nhãn <span class="tag t-cyan">Đã nhận chuyến</span>; văn phòng được báo ngay.</p>
 <h3>4.2. Từ chối chuyến</h3>
-<p>Nếu không có xe phù hợp: bấm <span class="btn r">✕ Từ chối</span>, nhập <b>lý do</b> (bắt buộc, ví dụ "hết xe 16 chỗ ngày này") → <span class="btn r">Từ chối</span>. Văn phòng sẽ điều xe khác.</p>
-<div class="note"><b>Lưu ý:</b> Hãy nhận hoặc từ chối <b>càng sớm càng tốt</b> để văn phòng kịp sắp xếp. Chỉ từ chối được chuyến <b>chưa nhận</b>. Chuyến đã nhận mà không chạy được → <b>gọi ngay văn phòng điều hành</b>.</div>
+<p>Không có xe phù hợp: bấm <span class="btn r">✕ Từ chối</span>, nhập <b>lý do</b> (bắt buộc) → <span class="btn r">Từ chối</span>. Văn phòng sẽ điều xe khác.</p>
+<div class="note">Nhận hoặc từ chối <b>càng sớm càng tốt</b>. Chỉ từ chối được chuyến <b>chưa nhận</b>; chuyến đã nhận mà không chạy được → <b>gọi ngay văn phòng điều hành</b>.</div>
 
 <h2>5. Xem chi tiết chuyến</h2>
 <div class="two">
-  <figure class="shot phone-shot"><img src="img/p2-chi-tiet.jpg" alt="Chi tiết chuyến" /><figcaption>Hình: Chi tiết chuyến</figcaption></figure>
+  <figure class="shot"><img src="img/p2-chi-tiet.jpg" alt="Chi tiết chuyến" /><figcaption>Hình: Chi tiết chuyến</figcaption></figure>
   <div>
     <h3>5.1. Thanh thao tác nhanh</h3>
     <table>
       <tr><th style="width:30%">Nút</th><th>Công dụng</th></tr>
-      <tr><td>🪧 <b>Bảng đón</b></td><td>Hiện bảng tên đón khách toàn màn hình (tự xoay ngang cho chữ to). Có nút <b>In</b> khổ A4 ngang. Nếu khách gửi mẫu bảng đón riêng, bảng đón dùng file đó.</td></tr>
-      <tr><td>📄 <b>Hợp đồng</b></td><td>Hợp đồng vận chuyển điện tử của chuyến – <b>tài xế xuất trình khi lực lượng chức năng kiểm tra</b>.</td></tr>
-      <tr><td>📍 <b>Chỉ đường</b></td><td>Mở Google Maps chỉ đường tới điểm đón.</td></tr>
-      <tr><td>📞 <b>Gọi đoàn</b></td><td>Gọi người liên hệ của đoàn (hướng dẫn viên / trưởng đoàn).</td></tr>
-      <tr><td>📋 <b>Lệnh điều xe</b></td><td>Sao chép toàn bộ thông tin chuyến thành tin nhắn – <b>dán vào Zalo gửi tài xế</b>. Dùng được sau khi đã nhận chuyến.</td></tr>
+      <tr><td>🪧 <b>Bảng đón</b></td><td>Bảng tên đón khách toàn màn hình; nút <b>In</b> A4 ngang.</td></tr>
+      <tr><td>📄 <b>Hợp đồng</b></td><td>Hợp đồng vận chuyển điện tử – <b>tài xế xuất trình khi kiểm tra</b>.</td></tr>
+      <tr><td>📍 <b>Chỉ đường</b></td><td>Google Maps tới điểm đón.</td></tr>
+      <tr><td>📞 <b>Gọi đoàn</b></td><td>Gọi người liên hệ đón khách.</td></tr>
+      <tr><td>📋 <b>Lệnh điều xe</b></td><td>Chép thông tin chuyến thành tin nhắn – <b>dán vào Zalo gửi tài xế</b> (sau khi đã nhận chuyến).</td></tr>
     </table>
-    <h3>5.2. Các phần thông tin</h3>
-    <ul>
-      <li><b>Lộ trình:</b> điểm đón, lịch trình (nếu có), điểm trả, mỗi điểm có nút chỉ đường.</li>
-      <li><b>Liên hệ đón khách:</b> tên, vai trò, số điện thoại; nút <b>Gọi</b> và <b>Nhắn</b> qua Zalo / WhatsApp / KakaoTalk / WeChat / LINE tùy ứng dụng khách dùng.</li>
-      <li><b>Thông tin chuyến:</b> số khách, loại xe, giờ đón, chuyến bay đón / tiễn (bấm <b>Tra giờ hạ cánh</b> để xem giờ bay thực tế), tên trên bảng đón, giờ dự kiến xong, <b>giá thuê</b>, ghi chú chuyến và <b>📌 ghi chú điều xe</b> của văn phòng.</li>
-      <li><b>Yêu cầu xuất hóa đơn</b> (nếu có) – xem mục 8.</li>
-      <li><b>Đoàn khách:</b> họ tên, giới tính, quốc tịch từng khách.</li>
-      <li><b>Xe &amp; tài xế:</b> biển số, tài xế đã báo; bấm <span class="btn o">Sửa</span> để đổi xe / tài xế.</li>
-    </ul>
   </div>
 </div>
+<h3>5.2. Các phần thông tin</h3>
+<ul>
+  <li><b>Lộ trình:</b> điểm đón, lịch trình, <b>điểm trả</b> (chuyến xe ghép không ghi địa chỉ trả thì là điểm trả của tuyến); mỗi điểm có nút chỉ đường.</li>
+  <li><b>Liên hệ đón khách:</b> trưởng đoàn / hướng dẫn viên, hoặc khách đi có SĐT; nút <b>Gọi</b> và <b>Nhắn</b> qua Zalo / WhatsApp / KakaoTalk / WeChat / LINE.</li>
+  <li><b>Thông tin chuyến:</b> số khách, loại xe, giờ đón, chuyến bay đón / tiễn (bấm <b>Tra giờ hạ cánh</b>), bảng đón, giờ dự kiến xong, <b>giá thuê</b>, ghi chú chuyến, <b>📌 ghi chú điều xe</b>.</li>
+  <li><b>Đoàn khách:</b> từng khách với <b>họ tên, giới tính, năm sinh, quốc tịch, số điện thoại</b> (bấm số để gọi) – dùng để đón đúng khách.</li>
+  <li><b>Xe &amp; tài xế:</b> bấm <span class="btn o">Sửa</span> để đổi xe / tài xế.</li>
+</ul>
 <div class="phones">
-<figure class="shot"><img src="img/p2b-chi-tiet-duoi.jpg" alt="Phần dưới chi tiết chuyến: giá thuê, yêu cầu xuất hóa đơn, đoàn khách" /><figcaption>Hình: Phần dưới chi tiết chuyến: giá thuê, yêu cầu xuất hóa đơn, đoàn khách</figcaption></figure>
-
-<figure class="shot"><img src="img/p3-cong-no.jpg" alt="Thẻ Công nợ: chọn kỳ, tiền chuyến, đã thanh toán, còn lại" /><figcaption>Hình: Thẻ Công nợ: chọn kỳ, tiền chuyến, đã thanh toán, còn lại</figcaption></figure>
+  <figure class="shot"><img src="img/p2b-chi-tiet-duoi.jpg" alt="Phần dưới chi tiết chuyến" /><figcaption>Hình: Giá thuê, yêu cầu xuất hóa đơn, đoàn khách</figcaption></figure>
 </div>
-<div class="tip"><b>Mẹo:</b> Đón khách sân bay luôn bấm <b>Tra giờ hạ cánh</b> trước khi xuất phát – chuyến bay trễ hay sớm thì chủ động điều chỉnh giờ ra đón.</div>
+<div class="tip"><b>Mẹo:</b> đón sân bay luôn bấm <b>Tra giờ hạ cánh</b> trước khi xuất phát.</div>
 
-<h2>6. Thực hiện chuyến: cập nhật trạng thái</h2>
-<p>Trong khi chạy, nhà xe (hoặc người điều xe) bấm nút lớn ở cuối màn hình chi tiết để báo tiến độ. Văn phòng thấy ngay trạng thái mới.</p>
+<h2>6. Chuyến xe ghép</h2>
+<p>Văn phòng có thể giao cho nhà xe <b>cả một chuyến xe ghép</b> (bus theo tuyến, nhiều nhóm khách đi chung). Mỗi nhóm khách là một chuyến trên cổng, có khung <b>🚌 Xe ghép</b>:</p>
+<ul>
+  <li>Tên tuyến, giờ <b>Khởi hành</b>, điểm đón / điểm trả của nhóm khách.</li>
+  <li><b>Mã booking</b> và <b>Hành trình</b> (địa chỉ đón → địa chỉ trả) của nhóm.</li>
+  <li><b>Giá:</b> theo đầu khách (giá mỗi khách × số khách – tự tính lại khi khách thêm / bớt) hoặc giá cả chuyến.</li>
+</ul>
+<p>Văn phòng còn gửi kèm <b>tin nhắn / email giao khách</b> cho cả chuyến:</p>
+<pre class="msg">GIAO KHÁCH XE GHÉP – BUS ĐÀ NẴNG - HỘI AN
+Khởi hành: 06:30 22/10/2026
+Số khách: 5
+
+Đón:
+• 06:30 – Hội An: 3 khách
+   ▸ VNECAR261021-0012 · Kim Minsu – +8210… · 3 khách
+      Hành trình: Khách sạn ABC, Hội An → Sân bay Đà Nẵng
+      1. Kim Minsu · Nam · 1990 · Hàn Quốc · +8210…
+Trả:
+• Sân bay Đà Nẵng: 5 khách
+
+Giá: 150.000đ/khách × 5 khách = 750.000đ</pre>
+<p>Nhận chuyến, cập nhật trạng thái, hoàn thành cho từng nhóm khách như chuyến thường.</p>
+
+<h2>7. Thực hiện chuyến: cập nhật trạng thái</h2>
 <div class="flow">
-  <div class="st t-orange">Chờ nhận</div><div class="ar">Nhận chuyến<br />→</div>
-  <div class="st t-cyan">Đã nhận chuyến</div><div class="ar">Bắt đầu đi đón<br />→</div>
-  <div class="st t-purple">Đang đến đón</div><div class="ar">Đã đón khách<br />→</div>
-  <div class="st t-purple">Đang chở khách</div><div class="ar">Hoàn thành chuyến<br />→</div>
-  <div class="st t-green">Hoàn thành</div>
+  <span class="tag t-orange">Chờ nhận</span><span class="ar">Nhận chuyến →</span>
+  <span class="tag t-cyan">Đã nhận chuyến</span><span class="ar">Bắt đầu đi đón →</span>
+  <span class="tag t-purple">Đang đến đón</span><span class="ar">Đã đón khách →</span>
+  <span class="tag t-purple">Đang chở khách</span><span class="ar">Hoàn thành chuyến →</span>
+  <span class="tag t-green">Hoàn thành</span>
 </div>
 <table>
   <tr><th style="width:26%">Bấm nút</th><th style="width:22%">Khi nào</th><th>Ghi chú</th></tr>
-  <tr><td><span class="btn">BẮT ĐẦU ĐI ĐÓN</span></td><td>Xe xuất phát đi đón khách</td><td><b>Bắt buộc đã nhập biển số và tên tài xế</b>, nếu chưa có hệ thống sẽ nhắc nhập.</td></tr>
+  <tr><td><span class="btn">BẮT ĐẦU ĐI ĐÓN</span></td><td>Xe xuất phát đi đón</td><td><b>Phải có biển số và tên tài xế</b> – chưa có thì hệ thống nhắc nhập.</td></tr>
   <tr><td><span class="btn">ĐÃ ĐÓN KHÁCH</span></td><td>Khách đã lên xe</td><td></td></tr>
-  <tr><td><span class="btn">HOÀN THÀNH CHUYẾN</span></td><td>Trả khách xong</td><td>Hiện bảng khai báo phát sinh (mục 7).</td></tr>
+  <tr><td><span class="btn">HOÀN THÀNH CHUYẾN</span></td><td>Trả khách xong</td><td>Hiện bảng khai báo phát sinh (mục 8).</td></tr>
 </table>
-<p>Mỗi bước hệ thống hỏi xác nhận để tránh bấm nhầm. Nếu báo <i>"Trạng thái chuyến đã thay đổi, vui lòng tải lại"</i> → bấm <span class="btn o">Tải lại</span> rồi thao tác lại.</p>
-<div class="note"><b>Văn phòng đổi hoặc hủy chuyến:</b> nhà xe nhận thông báo <i>"Chuyến … thay đổi"</i>, <i>"Chuyến … đã hủy"</i> hoặc <i>"Chuyến … đã được chuyển"</i> (không còn giao cho nhà xe). Luôn mở lại chi tiết chuyến để xem thông tin mới nhất và báo lại cho tài xế.</div>
+<p>Mỗi bước hỏi xác nhận. Báo <i>"Trạng thái chuyến đã thay đổi"</i> → bấm <span class="btn o">Tải lại</span> rồi làm lại.</p>
 
-<h2>7. Hoàn thành chuyến và khai báo phát sinh</h2>
-<p>Khi bấm <span class="btn">HOÀN THÀNH CHUYẾN</span>, bảng <b>Hoàn thành chuyến</b> hiện ra:</p>
+<h2>8. Hoàn thành chuyến và khai báo phát sinh</h2>
 <ul>
-  <li><b>Không có phát sinh:</b> bấm <span class="btn o">Không có phát sinh, hoàn thành</span>.</li>
-  <li><b>Có phát sinh</b> (thêm giờ, thêm điểm, cầu đường, … hoặc giảm giá):
-    <ol>
-      <li>Nhập <b>Phát sinh tăng</b> và/hoặc <b>Phát sinh giảm</b> – số tiền <b>trước thuế</b>.</li>
-      <li>Nhập <b>Lý do phát sinh</b> (bắt buộc), ví dụ "khách yêu cầu thêm 2 giờ, đi thêm điểm Hội An".</li>
-      <li>Kiểm tra bảng tính tự động: Giá thuê + tăng − giảm = thành tiền chưa thuế (+ thuế GTGT nếu chuyến có xuất hóa đơn) = <b>Tổng</b>.</li>
-      <li>Bấm <span class="btn">Lưu phát sinh &amp; hoàn thành</span>.</li>
-    </ol>
-  </li>
+  <li><b>Không có phát sinh:</b> <span class="btn o">Không có phát sinh, hoàn thành</span>.</li>
+  <li><b>Có phát sinh</b> (thêm giờ, thêm điểm… hoặc giảm): nhập <b>Phát sinh tăng / giảm</b> (trước thuế) + <b>Lý do</b> (bắt buộc) → kiểm tra bảng tính → <span class="btn">Lưu phát sinh &amp; hoàn thành</span>.</li>
 </ul>
-<p>Phát sinh cần <b>văn phòng duyệt</b> mới được tính vào công nợ. Trạng thái duyệt hiện cạnh số tiền phát sinh:</p>
 <table>
   <tr><th style="width:28%">Nhãn</th><th>Ý nghĩa</th></tr>
-  <tr><td><span class="tag t-orange">Chờ duyệt</span></td><td>Văn phòng chưa duyệt – chưa tính vào công nợ.</td></tr>
-  <tr><td><span class="tag t-green">Đã duyệt</span></td><td>Đã tính vào tiền chuyến (văn phòng có thể điều chỉnh số tiền, kèm ghi chú).</td></tr>
-  <tr><td><span class="tag t-red">Không duyệt</span></td><td>Không được chấp nhận – xem ghi chú lý do của văn phòng.</td></tr>
+  <tr><td><span class="tag t-orange">Chờ duyệt</span></td><td>Văn phòng chưa duyệt – chưa tính công nợ.</td></tr>
+  <tr><td><span class="tag t-green">Đã duyệt</span></td><td>Đã tính vào tiền chuyến (văn phòng có thể điều chỉnh, kèm ghi chú).</td></tr>
+  <tr><td><span class="tag t-red">Không duyệt</span></td><td>Xem ghi chú lý do của văn phòng.</td></tr>
 </table>
-<p class="small">Nếu văn phòng điều chỉnh giá thuê của chuyến, chi tiết chuyến hiện dòng <i>"⚠ Văn phòng điều chỉnh giá"</i> kèm lý do.</p>
+<p class="small">Văn phòng điều chỉnh giá thuê → chi tiết chuyến hiện <i>"⚠ Văn phòng điều chỉnh giá"</i> kèm lý do; nhà xe cũng nhận thông báo và email.</p>
 
-<h2>8. Xuất hóa đơn cho công ty</h2>
-<p>Chuyến có nhãn <span class="tag t-purple">🧾 Xuất HĐ</span> là chuyến công ty yêu cầu nhà xe <b>xuất hóa đơn GTGT</b>. Trong chi tiết chuyến có phần <b>Yêu cầu xuất hóa đơn</b> gồm: tên đơn vị, mã số thuế, địa chỉ, thuế suất, email nhận hóa đơn và ghi chú.</p>
-<p>Bấm <span class="btn o">Sao chép</span> để chép toàn bộ thông tin (kèm giá chưa thuế và mã chuyến) rồi dán vào phần mềm hóa đơn điện tử của nhà xe. Hóa đơn gửi về đúng email ghi trong phần này.</p>
-<p class="small">Với chuyến có xuất hóa đơn, giá thuê hiển thị là <b>giá chưa thuế</b>, kèm dòng "+ VAT …% = tổng gồm thuế".</p>
+<h2>9. Xuất hóa đơn cho công ty</h2>
+<p>Chuyến có nhãn <span class="tag t-purple">🧾 Xuất HĐ</span>: công ty yêu cầu nhà xe xuất <b>hóa đơn GTGT</b>. Phần <b>Yêu cầu xuất hóa đơn</b> có tên đơn vị, MST, địa chỉ, thuế suất, email nhận hóa đơn. Bấm <span class="btn o">Sao chép</span> rồi dán vào phần mềm hóa đơn điện tử. Giá thuê hiển thị là <b>giá chưa thuế</b> kèm dòng "+ VAT …%".</p>
 
-<h2>9. Công nợ và thanh toán</h2>
-<p>Thẻ <b>Công nợ</b> cho biết tình hình tiền giữa nhà xe và công ty:</p>
-<ul>
-  <li><b>Tiền chuyến</b> (số chuyến): tổng tiền các chuyến đã chạy, gồm phát sinh đã duyệt; nếu có hóa đơn thì ghi rõ phần chưa thuế + thuế.</li>
-  <li><b>Đã được thanh toán:</b> tổng số tiền công ty đã chuyển.</li>
-  <li><b>Còn lại:</b> số công ty còn phải trả nhà xe.</li>
-</ul>
-<p>Bên dưới là hai bảng:</p>
-<ul>
-  <li><b>Các lần thanh toán:</b> ngày, số tiền, hình thức (chuyển khoản / tiền mặt), số chứng từ hoặc ghi chú.</li>
-  <li><b>Chuyến tính tiền:</b> từng chuyến với ngày đón, mã booking, hành trình, xe, trạng thái, phát sinh, tiền chưa thuế, thuế, thành tiền và dòng tổng.</li>
-</ul>
-<div class="tip"><b>Đối chiếu công nợ:</b> trước khi đề nghị thanh toán, xem bảng <b>Chuyến tính tiền</b> để đối chiếu. Thấy sai lệch (thiếu chuyến, sai giá, phát sinh chưa duyệt) → liên hệ văn phòng kèm mã booking.</div>
+<h2>10. Công nợ và thanh toán</h2>
+<div class="two">
+  <figure class="shot"><img src="img/p3-cong-no.jpg" alt="Công nợ" /><figcaption>Hình: Thẻ Công nợ</figcaption></figure>
+  <div>
+    <ul>
+      <li><b>Tiền chuyến:</b> tổng tiền các chuyến đã chạy, gồm phát sinh đã duyệt (phần chưa thuế + thuế nếu có hóa đơn).</li>
+      <li><b>Đã được thanh toán</b> và <b>Còn lại</b>.</li>
+      <li>Bảng <b>Các lần thanh toán</b> và <b>Chuyến tính tiền</b> (ngày đón, mã booking, hành trình, xe, trạng thái, phát sinh, thành tiền).</li>
+    </ul>
+    <div class="tip"><b>Đối chiếu:</b> thấy sai lệch (thiếu chuyến, sai giá, phát sinh chưa duyệt) → liên hệ văn phòng kèm mã booking.</div>
+  </div>
+</div>
 
-<h2>10. Thông báo</h2>
-<p>Biểu tượng 🔔 ở góc trên hiện số thông báo chưa đọc. Bấm vào thông báo để mở thẳng chuyến liên quan. Các thông báo nhà xe nhận:</p>
+<h2>11. Thông báo và email</h2>
+<p>Biểu tượng 🔔 hiện số thông báo chưa đọc; bấm thông báo để mở thẳng chuyến. Nếu nhà xe đã khai <b>email</b> với văn phòng, các nội dung dưới đây còn được <b>gửi email</b> (kèm lệnh điều xe đầy đủ và link mở chuyến trên cổng):</p>
 <table>
-  <tr><th style="width:38%">Thông báo</th><th>Việc cần làm</th></tr>
-  <tr><td>Có chuyến mới được giao</td><td>Mở chuyến → nhận hoặc từ chối.</td></tr>
-  <tr><td>Chuyến … thay đổi</td><td>Xem nội dung thay đổi (giờ, điểm đón, số khách…) và báo tài xế; nên gửi lại <b>Lệnh điều xe</b>.</td></tr>
-  <tr><td>Chuyến … đã hủy</td><td>Báo tài xế không chạy chuyến đó.</td></tr>
+  <tr><th style="width:38%">Thông báo / email</th><th>Việc cần làm</th></tr>
+  <tr><td>Chuyến mới … – chờ nhà xe nhận</td><td>Mở chuyến → nhận hoặc từ chối.</td></tr>
+  <tr><td>Chuyến xe ghép … – chờ nhà xe nhận</td><td>Xem danh sách giao khách; nhận từng nhóm khách.</td></tr>
+  <tr><td>Chuyến … thay đổi</td><td>Xem thay đổi (giờ, điểm đón, số khách…), báo tài xế; gửi lại <b>Lệnh điều xe</b>.</td></tr>
+  <tr><td>Chuyến … đã hủy</td><td>Báo tài xế không chạy.</td></tr>
   <tr><td>Chuyến … đã được chuyển</td><td>Chuyến không còn giao cho nhà xe – báo tài xế hủy lịch.</td></tr>
+  <tr><td>Điều chỉnh giá chuyến …</td><td>Xem giá mới và lý do.</td></tr>
 </table>
-<div class="note">Nên mở cổng nhà xe <b>nhiều lần trong ngày</b> (hoặc để sẵn trên màn hình chính điện thoại) để không bỏ sót chuyến mới và thay đổi.</div>
+<div class="note">Email gửi tự động, không trả lời email này – cần trao đổi hãy gọi văn phòng. Không thấy email thì xem mục <b>Spam / Quảng cáo</b> và đánh dấu "Không phải spam".</div>
 
-<h2>11. Quy định khi phục vụ khách</h2>
+<h2>12. Quy định khi phục vụ khách</h2>
 <ul>
-  <li>Tài xế có mặt tại điểm đón <b>trước giờ đón</b>; đón sân bay theo dõi giờ hạ cánh thực tế.</li>
-  <li>Xe đúng loại, sạch sẽ; tài xế trang phục lịch sự, <b>không sử dụng rượu bia</b>, tuân thủ luật giao thông.</li>
-  <li>Mang theo / mở được <b>hợp đồng vận chuyển</b> (nút <b>Hợp đồng</b>) để xuất trình khi kiểm tra.</li>
-  <li>Dùng <b>Bảng đón</b> đúng tên khách khi đón tại sân bay, ga, khách sạn.</li>
-  <li><b>Bảo mật thông tin khách:</b> danh sách khách, số điện thoại chỉ dùng để phục vụ chuyến; không chia sẻ, không liên hệ khách vào mục đích khác.</li>
-  <li>Mọi thay đổi do khách yêu cầu trên đường (thêm điểm, thêm giờ…) cần báo văn phòng và khai báo phát sinh khi hoàn thành chuyến.</li>
-  <li>Sự cố (xe hỏng, tai nạn, khách vắng mặt, trễ chuyến bay kéo dài…) → <b>gọi ngay hotline điều hành</b>.</li>
+  <li>Tài xế có mặt <b>trước giờ đón</b>; đón sân bay theo dõi giờ hạ cánh thực tế.</li>
+  <li>Xe đúng loại, sạch sẽ; tài xế lịch sự, <b>không sử dụng rượu bia</b>, tuân thủ luật giao thông.</li>
+  <li>Mở được <b>hợp đồng vận chuyển</b> để xuất trình khi kiểm tra; dùng <b>Bảng đón</b> đúng tên khách.</li>
+  <li><b>Bảo mật thông tin khách:</b> danh sách khách, SĐT chỉ dùng để phục vụ chuyến; không chia sẻ, không liên hệ khách vào mục đích khác.</li>
+  <li>Khách yêu cầu thay đổi trên đường → báo văn phòng và khai phát sinh khi hoàn thành.</li>
+  <li>Sự cố (xe hỏng, tai nạn, khách vắng mặt…) → <b>gọi ngay hotline điều hành</b>.</li>
 </ul>
 
-<h2>12. Câu hỏi thường gặp</h2>
+<h2>13. Câu hỏi thường gặp</h2>
 <table>
   <tr><th style="width:40%">Câu hỏi</th><th>Trả lời</th></tr>
-  <tr><td>Quên mật khẩu?</td><td>Liên hệ văn phòng để được cấp lại mật khẩu mới, sau đó đổi mật khẩu.</td></tr>
-  <tr><td>Không thấy chuyến văn phòng nói đã giao?</td><td>Bấm <b>Tải lại</b>; kiểm tra đúng thẻ (Chờ nhận / Đang chạy). Vẫn không có → chuyến có thể đã chuyển, hãy hỏi văn phòng.</td></tr>
-  <tr><td>Không bấm được "Bắt đầu đi đón"?</td><td>Chưa nhập biển số hoặc tên tài xế. Vào phần <b>Xe &amp; tài xế</b> → <b>Sửa</b>.</td></tr>
-  <tr><td>Đổi xe / tài xế sau khi đã nhận?</td><td>Phần <b>Xe &amp; tài xế</b> → <b>Sửa</b>, lưu lại; văn phòng được báo tự động. Gửi lại lệnh điều xe cho tài xế mới.</td></tr>
-  <tr><td>Muốn trả lại chuyến đã nhận?</td><td>Không tự từ chối được – gọi văn phòng điều hành.</td></tr>
-  <tr><td>Bấm nhầm trạng thái?</td><td>Báo văn phòng để chỉnh lại.</td></tr>
-  <tr><td>Khai báo sai phát sinh?</td><td>Báo văn phòng trước khi phát sinh được duyệt.</td></tr>
+  <tr><td>Quên mật khẩu?</td><td>Liên hệ văn phòng để được cấp lại, sau đó đổi mật khẩu.</td></tr>
+  <tr><td>Không thấy chuyến văn phòng nói đã giao?</td><td>Bấm <b>Tải lại</b>; kiểm tra đúng thẻ. Vẫn không có → hỏi văn phòng.</td></tr>
+  <tr><td>Không nhận thông báo trên iPhone?</td><td>Phải mở cổng nhà xe <b>từ biểu tượng trên màn hình chính</b> (iOS 16.4+) và đã bấm <b>Cho phép</b>. Kiểm tra Cài đặt → Thông báo.</td></tr>
+  <tr><td>Muốn nhận email chuyến mới?</td><td>Gửi địa chỉ email (có thể nhiều email) cho văn phòng để khai vào hồ sơ nhà xe.</td></tr>
+  <tr><td>Không bấm được "Bắt đầu đi đón"?</td><td>Chưa nhập biển số / tên tài xế: <b>Xe &amp; tài xế</b> → <b>Sửa</b>.</td></tr>
+  <tr><td>Muốn trả lại chuyến đã nhận?</td><td>Gọi văn phòng điều hành.</td></tr>
+  <tr><td>Bấm nhầm trạng thái / khai sai phát sinh?</td><td>Báo văn phòng để chỉnh lại.</td></tr>
 </table>
-
 <div class="tip" style="margin-top:18px">
   <b>Liên hệ văn phòng điều hành – CÔNG TY TNHH DU LỊCH VIETNAM EXPLORE</b><br />
   Hotline điều hành: <b>+84 941 533 737</b> · Điện thoại: +84 972 090 501 · Email: md@vietnamexplore.vn<br />
